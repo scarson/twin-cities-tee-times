@@ -14,17 +14,22 @@ export default function Home() {
   const [endTime, setEndTime] = useState("");
   const [teeTimes, setTeeTimes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [favoritesOnly, setFavoritesOnly] = useState(() => {
+    return getFavorites().length > 0;
+  });
 
   useEffect(() => {
     const fetchTeeTimes = async () => {
       setLoading(true);
-      const favorites = getFavorites();
 
       try {
         const fetches = dates.map((date) => {
           const params = new URLSearchParams({ date });
-          if (favorites.length > 0) {
-            params.set("courses", favorites.join(","));
+          if (favoritesOnly) {
+            const favorites = getFavorites();
+            if (favorites.length > 0) {
+              params.set("courses", favorites.join(","));
+            }
           }
           if (startTime) params.set("startTime", startTime);
           if (endTime) params.set("endTime", endTime);
@@ -45,12 +50,17 @@ export default function Home() {
     };
 
     fetchTeeTimes();
-  }, [dates, startTime, endTime]);
+  }, [dates, startTime, endTime, favoritesOnly]);
+
+  const hasFavorites = getFavorites().length > 0;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
       <div className="flex flex-wrap items-center gap-4">
         <DatePicker selected={dates} onChange={setDates} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mt-3">
         <TimeFilter
           startTime={startTime}
           endTime={endTime}
@@ -59,9 +69,21 @@ export default function Home() {
             setEndTime(e);
           }}
         />
+        {hasFavorites && (
+          <button
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              favoritesOnly
+                ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {favoritesOnly ? "Favorites" : "All courses"}
+          </button>
+        )}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <TeeTimeList teeTimes={teeTimes} loading={loading} />
       </div>
     </main>
