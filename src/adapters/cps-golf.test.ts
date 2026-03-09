@@ -103,4 +103,32 @@ describe("CpsGolfAdapter", () => {
     const results = await adapter.fetchTeeTimes(incompleteConfig, "2026-04-15");
     expect(results).toEqual([]);
   });
+
+  it("handles null TeeTimes array from API", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ TeeTimes: null }), { status: 200 })
+    );
+
+    const result = await adapter.fetchTeeTimes(mockConfig, "2026-03-15");
+    expect(result).toEqual([]);
+  });
+
+  it("handles null GreenFee as null price", async () => {
+    const teeTimeWithNullFee = {
+      TeeTimeId: 100,
+      TeeDateTime: "2026-03-15T10:00:00",
+      GreenFee: null,
+      NumberOfOpenSlots: 4,
+      Holes: 18,
+      CourseId: 17,
+      CourseName: "Theodore Wirth",
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ TeeTimes: [teeTimeWithNullFee] }), { status: 200 })
+    );
+
+    const result = await adapter.fetchTeeTimes(mockConfig, "2026-03-15");
+    expect(result).toHaveLength(1);
+    expect(result[0].price).toBeNull();
+  });
 });
