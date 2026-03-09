@@ -163,5 +163,38 @@
       "scheduleId": "10216"
     },
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216"
+  },
+  {
+    "id": "sd-balboa-park",
+    "name": "Balboa Park (SD Test)",
+    "city": "San Diego",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "19348",
+      "scheduleId": "1470"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19348/1470"
+  },
+  {
+    "id": "sd-goat-hill",
+    "name": "Goat Hill Park (SD Test)",
+    "city": "Oceanside",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "20906",
+      "scheduleId": "6161"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20906/6161"
+  },
+  {
+    "id": "sd-oceanside",
+    "name": "Oceanside Muni (SD Test)",
+    "city": "Oceanside",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "19162",
+      "scheduleId": "1202"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202"
   }
 ]
