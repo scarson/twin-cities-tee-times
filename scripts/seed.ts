@@ -19,6 +19,7 @@ interface CourseEntry {
   platform: string;
   platformConfig: Record<string, string>;
   bookingUrl: string;
+  is_active?: number;
 }
 
 const coursesPath = resolve(__dirname, "../src/config/courses.json");
@@ -35,7 +36,7 @@ const lines: string[] = [
 for (const course of courses) {
   const esc = (s: string) => s.replace(/'/g, "''");
   lines.push(
-    `INSERT INTO courses (id, name, city, platform, platform_config, booking_url, is_active) VALUES ('${esc(course.id)}', '${esc(course.name)}', '${esc(course.city)}', '${esc(course.platform)}', '${esc(JSON.stringify(course.platformConfig))}', '${esc(course.bookingUrl)}', 1);`
+    `INSERT INTO courses (id, name, city, platform, platform_config, booking_url, is_active) VALUES ('${esc(course.id)}', '${esc(course.name)}', '${esc(course.city)}', '${esc(course.platform)}', '${esc(JSON.stringify(course.platformConfig))}', '${esc(course.bookingUrl)}', ${course.is_active ?? 1});`
   );
 }
 

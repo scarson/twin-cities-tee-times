@@ -20,7 +20,8 @@
     "platformConfig": {
       "subdomain": "minneapolisgrossnational"
     },
-    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "meadowbrook",
@@ -30,7 +31,8 @@
     "platformConfig": {
       "subdomain": "minneapolismeadowbrook"
     },
-    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "columbia",
@@ -40,7 +42,8 @@
     "platformConfig": {
       "subdomain": "minneapoliscolumbia"
     },
-    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "hiawatha",
@@ -50,7 +53,8 @@
     "platformConfig": {
       "subdomain": "minneapolishiawatha"
     },
-    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "phalen",
@@ -60,7 +64,8 @@
     "platformConfig": {
       "subdomain": "phalen"
     },
-    "bookingUrl": "https://phalen.cps.golf/onlineresweb"
+    "bookingUrl": "https://phalen.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "chaska-town-course",
@@ -70,7 +75,8 @@
     "platformConfig": {
       "subdomain": "chaska"
     },
-    "bookingUrl": "https://chaska.cps.golf/onlineresweb"
+    "bookingUrl": "https://chaska.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "edinburgh-usa",
@@ -80,7 +86,8 @@
     "platformConfig": {
       "subdomain": "edinburghusa"
     },
-    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb"
+    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "oak-glen",
@@ -90,7 +97,8 @@
     "platformConfig": {
       "subdomain": "oakglen"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "highland-national",
@@ -100,7 +108,8 @@
     "platformConfig": {
       "subdomain": "highlandnationalmn"
     },
-    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "como-park",
@@ -110,7 +119,8 @@
     "platformConfig": {
       "subdomain": "como"
     },
-    "bookingUrl": "https://como.cps.golf/onlineresweb"
+    "bookingUrl": "https://como.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "victory-links",
@@ -120,7 +130,8 @@
     "platformConfig": {
       "subdomain": "victorylinksmn"
     },
-    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb"
+    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "gem-lake-hills",
@@ -130,7 +141,8 @@
     "platformConfig": {
       "subdomain": "gem"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb"
+    "bookingUrl": "https://gem.cps.golf/onlineresweb",
+    "is_active": 0
   },
   {
     "id": "braemar",
@@ -151,7 +163,8 @@
     "platformConfig": {
       "facilityId": "20252"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252",
+    "is_active": 0
   },
   {
     "id": "roseville-cedarholm",
