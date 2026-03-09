@@ -46,7 +46,9 @@ export class ForeUpAdapter implements PlatformAdapter {
       return data.map((tt) => ({
         courseId: config.id,
         time: this.toIso(tt.time),
-        price: tt.green_fee !== null ? parseFloat(tt.green_fee) : null,
+        price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
+          ? parseFloat(tt.green_fee)
+          : null,
         holes: tt.holes === 9 ? 9 : 18,
         openSlots: tt.available_spots,
         bookingUrl: config.bookingUrl,
