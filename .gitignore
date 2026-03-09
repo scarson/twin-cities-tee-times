@@ -16,6 +16,9 @@ out/
 .env.local
 .env.*.local
 
+# Local images
+.img/
+
 # TypeScript
 next-env.d.ts
 *.tsbuildinfo
