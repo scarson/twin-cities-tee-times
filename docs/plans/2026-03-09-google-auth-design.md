@@ -43,7 +43,7 @@ Add optional Google OAuth login so users can persist favorites and preferences a
     - Cookie settings: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` only when `request.url` starts with `https://` (allows HTTP on localhost)
 11. Server enforces max 10 active sessions per user (deletes oldest by `created_at` if exceeded)
 12. Server clears the OAuth state/verifier cookies
-13. Server redirects to `returnTo` URL with `?justSignedIn=true` appended
+13. Server redirects to `returnTo` URL with `justSignedIn=true` added as a query parameter (use `new URL()` to properly append — don't concatenate `?` since `returnTo` might already have query params)
 
 **Error handling:** If the user cancels Google consent or any OAuth step fails, redirect to `returnTo` (or `/`) with no session cookies set. The app continues working as anonymous.
 
@@ -319,7 +319,9 @@ JOIN users u ON u.id = bc.user_id GROUP BY bc.user_id ORDER BY clicks DESC;
 | GET | `/api/auth/google` | None | Generate Google OAuth URL, redirect |
 | GET | `/api/auth/google/callback` | None | Handle OAuth callback, create session |
 | POST | `/api/auth/logout` | Best-effort | Delete session, clear cookies (works even with expired/missing JWT) |
-| GET | `/api/auth/me` | JWT | Return current user info (id, email, name) or 401 |
+| GET | `/api/auth/me` | JWT | Return current user info or 401 |
+
+**`/api/auth/me` implementation detail:** This route calls `authenticateRequest` (which only returns `{ userId, email }` from the JWT), then queries `SELECT name FROM users WHERE id = ?` to get the display name. This D1 lookup also validates the user still exists — if deleted, return 401. Response format: `{ userId: string, email: string, name: string }`.
 
 **No standalone refresh endpoint.** Token refresh is handled transparently inside `authenticateRequest` — when a route receives an expired JWT with a valid refresh cookie, `authenticateRequest` rotates the tokens and returns updated `Set-Cookie` headers. There is no reason for the client to explicitly request a refresh.
 
