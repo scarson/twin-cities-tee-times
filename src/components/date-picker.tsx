@@ -1,5 +1,5 @@
 // ABOUTME: Date selector showing the next 7 days as clickable buttons.
-// ABOUTME: Displays day-of-week abbreviation and date for quick selection.
+// ABOUTME: Supports multi-select for searching across multiple days.
 "use client";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,21 +20,32 @@ function buildDays(): { value: string; dayName: string; dayNum: number }[] {
 }
 
 interface DatePickerProps {
-  value: string;
-  onChange: (date: string) => void;
+  selected: string[];
+  onChange: (dates: string[]) => void;
 }
 
-export function DatePicker({ value, onChange }: DatePickerProps) {
+export function DatePicker({ selected, onChange }: DatePickerProps) {
   const days = buildDays();
+
+  function toggle(date: string) {
+    if (selected.includes(date)) {
+      // Don't allow deselecting the last date
+      if (selected.length > 1) {
+        onChange(selected.filter((d) => d !== date));
+      }
+    } else {
+      onChange([...selected, date].sort());
+    }
+  }
 
   return (
     <div className="flex gap-1">
       {days.map((day) => (
         <button
           key={day.value}
-          onClick={() => onChange(day.value)}
+          onClick={() => toggle(day.value)}
           className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors ${
-            value === day.value
+            selected.includes(day.value)
               ? "bg-green-600 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}

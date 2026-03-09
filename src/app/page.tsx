@@ -7,9 +7,9 @@ import { TeeTimeList } from "@/components/tee-time-list";
 import { getFavorites } from "@/lib/favorites";
 
 export default function Home() {
-  const [date, setDate] = useState(() =>
+  const [dates, setDates] = useState<string[]>(() => [
     new Date().toISOString().split("T")[0],
-  );
+  ]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [teeTimes, setTeeTimes] = useState([]);
@@ -18,19 +18,25 @@ export default function Home() {
   useEffect(() => {
     const fetchTeeTimes = async () => {
       setLoading(true);
-      const params = new URLSearchParams({ date });
-
       const favorites = getFavorites();
-      if (favorites.length > 0) {
-        params.set("courses", favorites.join(","));
-      }
-      if (startTime) params.set("startTime", startTime);
-      if (endTime) params.set("endTime", endTime);
 
       try {
-        const res = await fetch(`/api/tee-times?${params}`);
-        const data: { teeTimes?: never[] } = await res.json();
-        setTeeTimes(data.teeTimes ?? []);
+        const fetches = dates.map((date) => {
+          const params = new URLSearchParams({ date });
+          if (favorites.length > 0) {
+            params.set("courses", favorites.join(","));
+          }
+          if (startTime) params.set("startTime", startTime);
+          if (endTime) params.set("endTime", endTime);
+          return fetch(`/api/tee-times?${params}`).then((r) => r.json()) as Promise<{ teeTimes?: never[] }>;
+        });
+
+        const results = await Promise.all(fetches);
+        const merged = results.flatMap((r) => r.teeTimes ?? []);
+        merged.sort((a: { date: string; time: string }, b: { date: string; time: string }) =>
+          `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
+        );
+        setTeeTimes(merged);
       } catch {
         setTeeTimes([]);
       } finally {
@@ -39,7 +45,7 @@ export default function Home() {
     };
 
     fetchTeeTimes();
-  }, [date, startTime, endTime]);
+  }, [dates, startTime, endTime]);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
@@ -49,7 +55,7 @@ export default function Home() {
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
-        <DatePicker value={date} onChange={setDate} />
+        <DatePicker selected={dates} onChange={setDates} />
         <TimeFilter
           startTime={startTime}
           endTime={endTime}

@@ -9,29 +9,36 @@ import { RefreshButton } from "@/components/refresh-button";
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>();
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dates, setDates] = useState<string[]>(() => [
+    new Date().toISOString().split("T")[0],
+  ]);
   const [course, setCourse] = useState<any>(null);
-  const [teeTimes, setTeeTimes] = useState([]);
+  const [teeTimes, setTeeTimes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [courseRes, timesRes] = await Promise.all([
+      const [courseRes, ...timesResults] = await Promise.all([
         fetch(`/api/courses/${id}`),
-        fetch(`/api/tee-times?date=${date}&courses=${id}`),
+        ...dates.map((date) =>
+          fetch(`/api/tee-times?date=${date}&courses=${id}`).then((r) => r.json())
+        ),
       ]);
       const courseData = (await courseRes.json()) as any;
-      const timesData = (await timesRes.json()) as any;
+      const merged = (timesResults as any[]).flatMap((r) => r.teeTimes ?? []);
+      merged.sort((a: { date: string; time: string }, b: { date: string; time: string }) =>
+        `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
+      );
 
       setCourse(courseData.course ?? null);
-      setTeeTimes(timesData.teeTimes ?? []);
+      setTeeTimes(merged);
     } catch {
       setTeeTimes([]);
     } finally {
       setLoading(false);
     }
-  }, [id, date]);
+  }, [id, dates]);
 
   useEffect(() => {
     fetchData();
@@ -50,11 +57,11 @@ export default function CoursePage() {
       {course && <CourseHeader course={course} />}
 
       <div className="mt-4 flex items-center gap-4">
-        <DatePicker value={date} onChange={setDate} />
+        <DatePicker selected={dates} onChange={setDates} />
         {course && (
           <RefreshButton
             courseId={id}
-            date={date}
+            dates={dates}
             onRefreshed={fetchData}
           />
         )}
