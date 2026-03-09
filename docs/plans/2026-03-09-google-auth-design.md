@@ -526,3 +526,15 @@ async function sha256(input: string): Promise<string> {
 | Open redirect via `returnTo` param | Phishing risk | Validate `returnTo` is a relative path starting with `/`; reject absolute URLs |
 | Concurrent refresh token rotation | Second tab gets 401 | Acceptable — tab recovers on next page load when new cookie is available |
 | `Secure` cookies on localhost | Auth broken in local dev | Set `Secure` flag only when request URL starts with `https://` |
+
+## Appendix: CLAUDE.md Updates After Implementation
+
+After the auth feature is implemented and tested, update `CLAUDE.md` with:
+
+- **Gotcha: Never hard-delete courses** — CASCADE would destroy `booking_clicks` history. Use `is_active = 0` for soft delete.
+- **Gotcha: Auth uses `authenticateRequest()` utility, not Next.js middleware** — middleware can't reliably access D1 via `getCloudflareContext()` on OpenNext/CF Workers.
+- **Convention: `.dev.vars`** for local secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`). Wrangler reads it automatically; already gitignored.
+- **Convention: Cookie prefix `tct-`** — all app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
+- **Update `env.d.ts` reference** in Conventions to note it also declares secret bindings, not just D1.
+- **Update Project Layout** with new files: `src/lib/auth.ts`, `src/hooks/use-favorites.ts`, `src/components/auth-provider.tsx`, `src/app/api/auth/`, `src/app/api/user/`, `migrations/0002_auth_schema.sql`.
+- **Update Tech Stack** to add `arctic` (OAuth) and `jose` (JWT) dependencies.

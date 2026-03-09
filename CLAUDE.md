@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Twin Cities Tee Times is an app that checks and displays tee times at public golf courses in the Minnesota Twin Cities metro area
 
 **docs/plans/2026-03-08-tee-times-app-design.md** — design doc.
+**docs/plans/** — implementation plans, bugfix plans, feature designs.
 
 **dev/research/** — decision rationale (read when you need the *why* behind an architectural choice).
 
@@ -241,6 +242,12 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 - Tests live alongside source: `src/**/*.test.ts`
 - Course catalog: `src/config/courses.json`
 
+### Gotchas
+
+- **Central Time everywhere**: All date logic uses `America/Chicago` timezone. Use `todayCT()` from `src/lib/format.ts` instead of `new Date()` for date strings.
+- **No `process.env`**: Cloudflare Workers don't support `process.env`. Use `const { env } = await getCloudflareContext()` from `@opennextjs/cloudflare` for all bindings (D1, secrets, etc.). The cron handler receives `env` directly from Worker `scheduled()`.
+- **Course `is_active`**: In `courses.json`, `"is_active": 0` skips polling. Omitting the field defaults to active (`seed.ts`: `is_active ?? 1`).
+
 ## Linter Suppressions
 
 **Before adding any `eslint-disable` comment, first try to fix the underlying code.** Suppressions are only justified when:
@@ -256,7 +263,7 @@ When suppression is necessary, prefer **inline `// eslint-disable-next-line rule
 
 **Update `dev/implementation-log.md` after each commit** — record what was built, key implementation decisions, gotchas discovered, and quality check results. This is the primary mechanism for preserving context across compacted sessions.
 
-**CI runs 3 parallel jobs**: type-check (`npx tsc --noEmit`), test (`npm test`), build (`npx @opennextjs/cloudflare build`). All must pass on `main` and `dev` branches.
+**CI runs 3 parallel jobs**: type-check (`npx tsc --noEmit`), test (`npm test`), build (`npx @opennextjs/cloudflare build`). Runs on pushes to `main` and PRs targeting `main`.
 
 ## Project Layout
 
@@ -269,8 +276,9 @@ src/
     courses/[id]/    # Course detail page
   components/        # React components (nav, tee-time-list, date-picker, etc.)
   config/            # courses.json (static course catalog)
-  lib/               # Core logic: cron-handler, db, poller, favorites
+  lib/               # Core logic: cron-handler, db, poller, favorites, format, rate-limit
   test/              # Test helpers
+    fixtures/        # JSON response fixtures for adapter tests
   types/             # TypeScript interfaces (CourseConfig, TeeTime, PlatformAdapter, D1 row types)
 migrations/          # D1 SQL migrations
 scripts/             # Seed data generation
