@@ -9,15 +9,15 @@ import "react-day-picker/style.css";
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_RANGE_DAYS = 14;
 
-function toDateStr(d: Date): string {
+export function toDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-function fromDateStr(s: string): Date {
+export function fromDateStr(s: string): Date {
   return new Date(s + "T00:00:00");
 }
 
-function buildQuickDays(): { value: string; dayName: string; dayNum: number }[] {
+export function buildQuickDays(): { value: string; dayName: string; dayNum: number }[] {
   const days: { value: string; dayName: string; dayNum: number }[] = [];
   const now = new Date();
   for (let i = 0; i < 7; i++) {
@@ -32,7 +32,7 @@ function buildQuickDays(): { value: string; dayName: string; dayNum: number }[] 
   return days;
 }
 
-function datesInRange(start: string, end: string): string[] {
+export function datesInRange(start: string, end: string): string[] {
   const dates: string[] = [];
   const d = fromDateStr(start);
   const endDate = fromDateStr(end);
@@ -43,7 +43,7 @@ function datesInRange(start: string, end: string): string[] {
   return dates;
 }
 
-function formatShortDate(dateStr: string): string {
+export function formatShortDate(dateStr: string): string {
   const d = fromDateStr(dateStr);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
