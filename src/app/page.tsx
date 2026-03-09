@@ -52,7 +52,8 @@ export default function Home() {
     fetchTeeTimes();
   }, [dates, startTime, endTime, favoritesOnly]);
 
-  const hasFavorites = getFavorites().length > 0;
+  const favorites = getFavorites();
+  const hasFavorites = favorites.length > 0;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
@@ -82,7 +83,7 @@ export default function Home() {
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
-            Favorites
+            Favorites ({favorites.length})
           </button>
           <span className="mx-1.5 text-gray-300">|</span>
           <button
