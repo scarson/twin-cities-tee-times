@@ -22,6 +22,37 @@ export async function GET(request: NextRequest) {
   const holes = searchParams.get("holes"); // "9" or "18"
   const minSlots = searchParams.get("minSlots"); // minimum open slots
 
+  // Validate startTime/endTime format (HH:MM)
+  const timeRegex = /^\d{2}:\d{2}$/;
+  if (startTime && !timeRegex.test(startTime)) {
+    return NextResponse.json(
+      { error: "Invalid startTime format (HH:MM)" },
+      { status: 400 }
+    );
+  }
+  if (endTime && !timeRegex.test(endTime)) {
+    return NextResponse.json(
+      { error: "Invalid endTime format (HH:MM)" },
+      { status: 400 }
+    );
+  }
+
+  // Validate minSlots is a positive integer
+  if (minSlots && (Number.isNaN(parseInt(minSlots)) || parseInt(minSlots) < 1)) {
+    return NextResponse.json(
+      { error: "minSlots must be a positive integer" },
+      { status: 400 }
+    );
+  }
+
+  // Cap courses list to prevent unbounded IN clause
+  if (courseIds && courseIds.length > 50) {
+    return NextResponse.json(
+      { error: "Too many course IDs (max 50)" },
+      { status: 400 }
+    );
+  }
+
   let query = `
     SELECT t.*, c.name as course_name, c.city as course_city
     FROM tee_times t
@@ -58,10 +89,17 @@ export async function GET(request: NextRequest) {
 
   query += " ORDER BY t.time ASC";
 
-  const result = await db.prepare(query).bind(...bindings).all();
-
-  return NextResponse.json({
-    date,
-    teeTimes: result.results,
-  });
+  try {
+    const result = await db.prepare(query).bind(...bindings).all();
+    return NextResponse.json({
+      date,
+      teeTimes: result.results,
+    });
+  } catch (err) {
+    console.error("tee-times query error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
