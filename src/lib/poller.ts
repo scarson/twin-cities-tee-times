@@ -44,12 +44,12 @@ export async function pollCourse(
   db: D1Database,
   course: CourseRow,
   date: string
-): Promise<void> {
+): Promise<"success" | "no_data" | "error"> {
   const adapter = getAdapter(course.platform);
 
   if (!adapter) {
     await logPoll(db, course.id, date, "error", 0, `No adapter for platform: ${course.platform}`);
-    return;
+    return "error";
   }
 
   const config: CourseConfig = {
@@ -65,14 +65,16 @@ export async function pollCourse(
 
     if (teeTimes.length === 0) {
       await logPoll(db, course.id, date, "no_data", 0, undefined);
-      return;
+      return "no_data";
     }
 
     const now = new Date().toISOString();
     await upsertTeeTimes(db, course.id, date, teeTimes, now);
     await logPoll(db, course.id, date, "success", teeTimes.length, undefined);
+    return "success";
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logPoll(db, course.id, date, "error", 0, message);
+    return "error";
   }
 }

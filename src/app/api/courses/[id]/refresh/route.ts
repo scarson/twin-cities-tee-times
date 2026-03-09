@@ -42,7 +42,14 @@ export async function POST(
     );
   }
 
-  await pollCourse(db, course, date);
+  const result = await pollCourse(db, course, date);
 
-  return NextResponse.json({ message: "Refreshed", courseId: id, date });
+  if (result === "error") {
+    return NextResponse.json(
+      { error: "Refresh failed" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ message: "Refreshed", courseId: id, date, result });
 }

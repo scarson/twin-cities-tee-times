@@ -36,13 +36,18 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
     if (refreshDisabled) return;
     setRefreshing(true);
     try {
-      await Promise.all(
+      const responses = await Promise.all(
         dates.map((date) =>
           fetch(`/api/courses/${course.id}/refresh?date=${date}`, {
             method: "POST",
           })
         )
       );
+      // 429 = rate-limited (data is fresh), not a real failure
+      const failed = responses.filter((r) => !r.ok && r.status !== 429);
+      if (failed.length > 0) {
+        console.error(`Refresh failed for ${failed.length}/${responses.length} dates`);
+      }
       setLastRefreshedAt(new Date().toISOString());
       onRefreshed();
       setCoolingDown(true);
