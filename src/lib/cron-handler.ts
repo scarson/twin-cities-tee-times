@@ -1,3 +1,5 @@
+// ABOUTME: Cron polling orchestrator that runs on a 5-minute schedule.
+// ABOUTME: Controls polling frequency by time of day and polls active courses via adapters.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 // D1Database is a global type from @cloudflare/workers-types
 import type { CourseRow } from "@/types";

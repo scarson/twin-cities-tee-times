@@ -1,3 +1,5 @@
+// ABOUTME: ForeUp platform adapter for fetching tee times.
+// ABOUTME: Handles API requests, time format conversion, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 
 interface ForeUpTeeTime {

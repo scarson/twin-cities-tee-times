@@ -1,3 +1,5 @@
+// ABOUTME: Platform adapter registry mapping platform IDs to adapter instances.
+// ABOUTME: Used by the poller to look up the correct adapter for each course.
 import type { PlatformAdapter } from "@/types";
 import { CpsGolfAdapter } from "./cps-golf";
 import { ForeUpAdapter } from "./foreup";

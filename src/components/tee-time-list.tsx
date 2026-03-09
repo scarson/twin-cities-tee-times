@@ -1,3 +1,5 @@
+// ABOUTME: Tee time list component rendering available times with price, slots, and staleness.
+// ABOUTME: Groups times by course with links to course detail pages.
 "use client";
 
 import Link from "next/link";

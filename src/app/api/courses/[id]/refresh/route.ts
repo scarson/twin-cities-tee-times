@@ -1,3 +1,5 @@
+// ABOUTME: API route for user-triggered tee time refresh on a single course.
+// ABOUTME: Enforces rate limiting and returns poll result status.
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
 import { pollCourse } from "@/lib/poller";

@@ -1,3 +1,5 @@
+// ABOUTME: Tests for the CPS Golf adapter.
+// ABOUTME: Covers API URL construction, response parsing, error handling, and edge cases.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CpsGolfAdapter } from "./cps-golf";
 import type { CourseConfig } from "@/types";

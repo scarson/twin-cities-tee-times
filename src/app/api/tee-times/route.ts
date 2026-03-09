@@ -1,3 +1,5 @@
+// ABOUTME: API route querying cached tee times with optional date, course, time, and slot filters.
+// ABOUTME: Returns tee times joined with course metadata.
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
 

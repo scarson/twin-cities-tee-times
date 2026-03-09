@@ -1,3 +1,5 @@
+// ABOUTME: Tests for polling logic including date frequency, month boundaries, and error handling.
+// ABOUTME: Covers shouldPollDate, getPollingDates, and pollCourse with mocked adapters.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { pollCourse, shouldPollDate, getPollingDates } from "./poller";
 

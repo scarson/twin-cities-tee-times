@@ -1,5 +1,5 @@
-// ABOUTME: Manages favorite courses in localStorage.
-// ABOUTME: Stores {id, name} pairs with backward compat for legacy string[] format.
+// ABOUTME: Client-side favorites management using localStorage.
+// ABOUTME: Stores favorite course IDs with SSR-safe window guard.
 
 const STORAGE_KEY = "tct-favorites";
 

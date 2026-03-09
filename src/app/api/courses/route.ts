@@ -1,3 +1,5 @@
+// ABOUTME: API route listing all courses with their most recent poll status.
+// ABOUTME: Returns course metadata joined with latest poll_log entry.
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 

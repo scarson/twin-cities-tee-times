@@ -1,3 +1,5 @@
+// ABOUTME: Tests for the cron handler's time-of-day polling frequency logic.
+// ABOUTME: Covers shouldRunThisCycle at different Central Time hours.
 import { describe, it, expect } from "vitest";
 import { shouldRunThisCycle } from "./cron-handler";
 

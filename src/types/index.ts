@@ -1,3 +1,5 @@
+// ABOUTME: TypeScript interfaces for the app's domain model.
+// ABOUTME: Defines CourseConfig, TeeTime, PlatformAdapter, and D1 row types.
 /** Platform-specific configuration for a course's booking system */
 export interface CourseConfig {
   id: string;

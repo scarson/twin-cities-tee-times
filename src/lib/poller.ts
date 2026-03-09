@@ -1,3 +1,5 @@
+// ABOUTME: Core polling logic for fetching tee times from platform adapters.
+// ABOUTME: Handles per-date polling frequency and result logging to poll_log.
 import { getAdapter } from "@/adapters";
 import { upsertTeeTimes, logPoll } from "@/lib/db";
 // D1Database is a global type from @cloudflare/workers-types

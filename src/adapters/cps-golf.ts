@@ -1,3 +1,5 @@
+// ABOUTME: CPS Golf (Club Prophet) platform adapter for fetching tee times.
+// ABOUTME: Handles API auth, date formatting, and response parsing for CPS-hosted courses.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 
 interface CpsTeeTimes {

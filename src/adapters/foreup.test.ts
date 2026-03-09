@@ -1,3 +1,5 @@
+// ABOUTME: Tests for the ForeUp adapter.
+// ABOUTME: Covers API URL construction, response parsing, price edge cases, and errors.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ForeUpAdapter } from "./foreup";
 import type { CourseConfig } from "@/types";

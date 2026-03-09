@@ -1,3 +1,5 @@
+// ABOUTME: Root layout with global styles, metadata, and navigation.
+// ABOUTME: Wraps all pages with Nav component and base styling.
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import "./globals.css";

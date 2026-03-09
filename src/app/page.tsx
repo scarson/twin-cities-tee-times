@@ -1,3 +1,5 @@
+// ABOUTME: Home page showing tee times across all courses with date and time filtering.
+// ABOUTME: Supports favorites toggle to filter to user's preferred courses.
 "use client";
 
 import { useState, useEffect, useRef } from "react";
