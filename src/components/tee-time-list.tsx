@@ -44,9 +44,9 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
       {teeTimes.map((tt, i) => (
         <div
           key={`${tt.course_id}-${tt.time}-${i}`}
-          className="flex items-center justify-between py-3 lg:inline-flex lg:py-4"
+          className="flex items-center py-3 lg:py-4"
         >
-          <div>
+          <div className="flex-1 lg:flex-initial">
             <div className="flex items-baseline gap-2">
               <span className="text-lg font-semibold tabular-nums lg:text-xl">
                 {formatTime(tt.time)}
