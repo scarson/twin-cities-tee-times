@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
 import { pollCourse } from "@/lib/poller";
+import { checkRefreshAllowed } from "@/lib/rate-limit";
 import type { CourseRow } from "@/types";
 
 export async function POST(
@@ -33,21 +34,12 @@ export async function POST(
     );
   }
 
-  // Check for recent poll (30-second cache to prevent duplicate upstream calls)
-  const recentPoll = await db
-    .prepare(
-      `SELECT polled_at FROM poll_log
-       WHERE course_id = ? AND date = ? AND polled_at > datetime('now', '-30 seconds')
-       ORDER BY polled_at DESC LIMIT 1`
-    )
-    .bind(id, date)
-    .first<{ polled_at: string }>();
-
-  if (recentPoll) {
-    return NextResponse.json({
-      message: "Recently refreshed",
-      lastPolled: recentPoll.polled_at,
-    });
+  const rateCheck = await checkRefreshAllowed(db, id);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { message: rateCheck.reason },
+      { status: 429 }
+    );
   }
 
   await pollCourse(db, course, date);
