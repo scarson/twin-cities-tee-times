@@ -4,7 +4,7 @@ import Link from "next/link";
 export function Nav() {
   return (
     <nav className="border-b border-gray-200 bg-[#1a2425]">
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 lg:max-w-4xl">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/logo-icon.png"
@@ -19,7 +19,7 @@ export function Nav() {
             src="/logo-wordmark.png"
             alt="Twin Cities Tee Times"
             width={854}
-            height={393}
+            height={365}
             className="h-10 w-auto"
             unoptimized
             priority

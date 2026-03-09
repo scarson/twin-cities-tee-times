@@ -55,7 +55,7 @@ export default function Home() {
   const hasFavorites = getFavorites().length > 0;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
+    <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-4xl">
       <div className="flex flex-wrap items-center gap-4">
         <DatePicker selected={dates} onChange={setDates} />
       </div>
