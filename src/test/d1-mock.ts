@@ -19,7 +19,7 @@ export function createMockD1() {
   const mockRun = vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } });
 
   const boundStatement = { first: mockFirst, all: mockAll, run: mockRun };
-  const statement = { bind: vi.fn().mockReturnValue(boundStatement), ...boundStatement };
+  const statement = { bind: vi.fn().mockReturnValue(boundStatement) };
   const db = {
     prepare: vi.fn().mockReturnValue(statement),
     batch: vi.fn().mockResolvedValue([]),
