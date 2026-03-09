@@ -29,7 +29,7 @@ Add optional Google OAuth login so users can persist favorites and preferences a
 3. Server generates authorization URL via Arctic with:
    - CSRF `state` parameter stored in a short-lived HTTP-only cookie (`tct-oauth-state`, 10 min expiry)
    - PKCE `code_verifier` stored in a short-lived HTTP-only cookie (`tct-oauth-verifier`, 10 min expiry)
-   - `returnTo` URL stored in the state cookie (validated: must be a relative path starting with `/`, defaults to `/`)
+   - `returnTo` URL stored in the state cookie (validated: must start with `/` but NOT `//`, and must not contain `\`; defaults to `/`)
 4. Server responds with a redirect to Google's consent screen
 5. Google redirects to `GET /api/auth/google/callback` with authorization code (or `error` param if user cancelled)
 6. Server validates `state` matches the cookie (CSRF protection). On mismatch: redirect to `/?error=auth_failed`
@@ -63,10 +63,21 @@ When a request arrives with an expired JWT but a valid `tct-refresh` cookie:
 This is implemented as a **utility function** (`authenticateRequest` in `src/lib/auth.ts`), NOT as Next.js middleware. Each authenticated route handler calls it at the top. Reason: Next.js middleware on OpenNext/CF Workers may not have reliable access to D1 via `getCloudflareContext()`, and the refresh flow requires D1 access.
 
 ```typescript
-// Returns { user, response } where response has updated cookies if tokens were refreshed
-// Returns { user: null, response } with 401 if auth fails
+// Returns user info + any Set-Cookie headers needed (e.g., rotated tokens after refresh).
+// Callers MUST append the returned headers to their own response.
+// Returns { user: null } when auth fails — caller should return 401.
 async function authenticateRequest(request: NextRequest, db: D1Database, jwtSecret: string):
   Promise<{ user: { userId: string; email: string } | null; headers: Headers }>
+```
+
+Example usage in a route handler:
+```typescript
+const { user, headers } = await authenticateRequest(request, db, jwtSecret);
+if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+// ... business logic ...
+const response = NextResponse.json({ data });
+headers.forEach((value, key) => response.headers.append(key, value));
+return response;
 ```
 
 **Concurrent refresh race condition:** If two tabs both try to refresh simultaneously, the second tab's request will fail (old token already deleted). This is acceptable — the second tab will show the user as logged out until its next page load, when the first tab's new cookie will be available. For this app's usage pattern this is a non-issue.
@@ -307,9 +318,10 @@ JOIN users u ON u.id = bc.user_id GROUP BY bc.user_id ORDER BY clicks DESC;
 |--------|------|------|---------|
 | GET | `/api/auth/google` | None | Generate Google OAuth URL, redirect |
 | GET | `/api/auth/google/callback` | None | Handle OAuth callback, create session |
-| POST | `/api/auth/refresh` | Refresh cookie | Exchange refresh token for new JWT + refresh token |
-| POST | `/api/auth/logout` | JWT | Delete session, clear cookies |
+| POST | `/api/auth/logout` | Best-effort | Delete session, clear cookies (works even with expired/missing JWT) |
 | GET | `/api/auth/me` | JWT | Return current user info (id, email, name) or 401 |
+
+**No standalone refresh endpoint.** Token refresh is handled transparently inside `authenticateRequest` — when a route receives an expired JWT with a valid refresh cookie, `authenticateRequest` rotates the tokens and returns updated `Set-Cookie` headers. There is no reason for the client to explicitly request a refresh.
 
 ### User Data Routes
 
@@ -321,7 +333,9 @@ JOIN users u ON u.id = bc.user_id GROUP BY bc.user_id ORDER BY clicks DESC;
 | DELETE | `/api/user/favorites/:courseId` | JWT | Remove a single favorite |
 | POST | `/api/user/booking-clicks` | JWT | Record a booking click (fire-and-forget) |
 
-All authenticated routes return 401 if no valid JWT is present. The refresh flow is transparent — middleware checks for expired JWT + valid refresh cookie before returning 401.
+All authenticated routes call `authenticateRequest` at the top. If the JWT is expired but a valid refresh cookie exists, `authenticateRequest` transparently rotates the tokens. If neither is valid, the route returns 401. Exception: `POST /api/auth/logout` is best-effort — it clears cookies and deletes the session row if possible, but never returns 401 (a user should always be able to "sign out").
+
+**Single favorite add/delete response format:** `{ ok: true }` on success, `{ error: "Course not found" }` with 404 if the course ID doesn't exist in the `courses` table. The add route should validate the course exists (query `courses` table) before inserting, rather than relying on FK constraint errors.
 
 ## UI Changes
 
@@ -333,6 +347,8 @@ The existing nav bar (`src/components/nav.tsx`) gets a sign-in/user area on the 
 - **Logged in:** User's first name or avatar initial in a small circle. Tapping opens a dropdown with "Sign out"
 
 ### Toasts
+
+Build a lightweight `Toast` component (`src/components/toast.tsx`) — no external library. It's a fixed-position div at the bottom-center of the viewport with text and auto-dismiss. Use React state + `setTimeout` for the 5-second auto-dismiss. A simple `useToast()` hook or a `showToast(message)` function exposed via context is sufficient. Keep it minimal — this app only has two toast messages.
 
 - **Merge toast:** "Synced N favorites from this device" — shown after first-login merge when localStorage contributed favorites. Auto-dismisses after 5 seconds.
 - **Error toast:** "Couldn't save — try again" — shown when a favorites API write fails and localStorage is rolled back. Auto-dismisses after 5 seconds.
@@ -388,7 +404,7 @@ JWT_SECRET: string;
 **`GET /api/auth/google`:**
 - Redirects to Google's OAuth URL
 - Sets state and verifier cookies
-- `returnTo` param is stored and validated (rejects absolute URLs, accepts relative paths)
+- `returnTo` param is stored and validated (see `returnTo` validation tests below)
 - Missing `returnTo` defaults to `/`
 
 **`GET /api/auth/google/callback`:**
@@ -400,8 +416,9 @@ JWT_SECRET: string;
 - Max sessions enforcement → 11th login evicts oldest session
 
 **`POST /api/auth/logout`:**
-- Deletes session row, clears cookies
-- Invalid/missing JWT → still clears cookies (idempotent)
+- Valid JWT → deletes session row, clears cookies, returns 200
+- Expired JWT + valid refresh cookie → deletes session by refresh token hash, clears cookies, returns 200
+- No auth at all → clears cookies anyway, returns 200 (best-effort, never 401)
 
 **`GET /api/auth/me`:**
 - Valid JWT → returns user info
@@ -451,13 +468,39 @@ JWT_SECRET: string;
 - Missing fields → 400
 - No auth → 401
 
+### AuthProvider Tests (`src/components/auth-provider.test.tsx`)
+
+- On mount: calls `GET /api/auth/me`, exposes loading state
+- Successful `/me` → sets `user` in context, `isLoggedIn = true`
+- Failed `/me` (401) → sets `user = null`, `isLoggedIn = false`
+- `signOut()` → calls `POST /api/auth/logout`, clears context, redirects
+- Detects `?justSignedIn=true` → triggers merge flow when localStorage has favorites
+- Detects `?justSignedIn=true` with empty localStorage → skips merge, no toast
+- Strips `?justSignedIn=true` from URL via `history.replaceState()` after processing
+
+### `returnTo` Validation Tests (in auth route tests)
+
+- `/courses/braemar` → accepted
+- `/` → accepted
+- `//evil.com` → rejected (protocol-relative URL), defaults to `/`
+- `https://evil.com` → rejected (absolute URL), defaults to `/`
+- `/path\with\backslashes` → rejected, defaults to `/`
+- Empty string → defaults to `/`
+
 ### useFavorites Hook Tests
 
 - Anonymous mode: delegates to localStorage
 - Logged-in mode: fetches from server on mount, updates localStorage
 - Toggle favorite (logged in): optimistic update + server call
 - Toggle favorite failure: rolls back localStorage, exposes error state
-- Merge on sign-in: detects `?justSignedIn=true`, runs merge, shows toast
+
+Note: The post-login merge flow is owned by `AuthProvider`, not the `useFavorites` hook. AuthProvider detects `?justSignedIn=true`, calls the merge API directly, updates localStorage, and shows the toast. The `useFavorites` hook handles ongoing CRUD operations only.
+
+### Session Cleanup Tests (in `src/lib/cron-handler.test.ts`)
+
+- Expired sessions are deleted by cron
+- Non-expired sessions are preserved
+- Cleanup runs without error when `sessions` table is empty
 
 ### Manual E2E (Not Automated)
 
@@ -483,6 +526,14 @@ const url = google.createAuthorizationURL(state, codeVerifier, ["openid", "email
 // Step 2: Exchange code for tokens (in callback handler)
 const tokens = await google.validateAuthorizationCode(code, codeVerifier);
 const idToken = tokens.idToken(); // JWT string — decode to get sub, email, name
+```
+
+**Decoding the ID token:** Use jose's `decodeJwt()` (NOT `jwtVerify()`). Signature verification is unnecessary because we received the token directly from Google's token endpoint over HTTPS — it's a trusted channel. `decodeJwt()` is a simple base64 decode:
+
+```typescript
+import { decodeJwt } from "jose";
+const claims = decodeJwt(idToken);
+// claims.sub = Google user ID, claims.email, claims.name
 ```
 
 Note: Check Arctic docs for exact API — method signatures may differ slightly between versions.
@@ -523,7 +574,7 @@ async function sha256(input: string): Promise<string> {
 | JWT secret leaked or rotated | All users logged out | Secret rotation = all refresh tokens invalid; users just sign in again |
 | Arctic or jose incompatible with Workers runtime | Build failure | Both are Fetch/WebCrypto-based; verify in preview build before deploying |
 | D1 write failures on favorites | User sees error toast, localStorage rolled back | Graceful degradation; anonymous mode always works |
-| Open redirect via `returnTo` param | Phishing risk | Validate `returnTo` is a relative path starting with `/`; reject absolute URLs |
+| Open redirect via `returnTo` param | Phishing risk | Validate `returnTo` starts with `/` but NOT `//` (protocol-relative), contains no `\` (browser normalization); reject all others |
 | Concurrent refresh token rotation | Second tab gets 401 | Acceptable — tab recovers on next page load when new cookie is available |
 | `Secure` cookies on localhost | Auth broken in local dev | Set `Secure` flag only when request URL starts with `https://` |
 
