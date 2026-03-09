@@ -20,7 +20,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
+          restore-keys: |
+            nextjs-${{ hashFiles('package-lock.json') }}-
       - run: npx @opennextjs/cloudflare build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply tee-times-db --remote
         env:
