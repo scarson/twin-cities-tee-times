@@ -23,15 +23,15 @@ interface TeeTimeListProps {
 export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
   if (loading) {
     return (
-      <p className="py-8 text-center text-gray-500">Loading tee times...</p>
+      <p className="py-8 text-center text-gray-500 lg:text-lg">Loading tee times...</p>
     );
   }
 
   if (teeTimes.length === 0) {
     return (
       <div className="py-8 text-center text-gray-500">
-        <p className="text-lg font-medium">No tee times found</p>
-        <p className="mt-1 text-sm">
+        <p className="text-lg font-medium lg:text-xl">No tee times found</p>
+        <p className="mt-1 text-sm lg:text-base">
           Try a different date, widen the time window, or add more courses to
           your favorites.
         </p>
@@ -44,22 +44,22 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
       {teeTimes.map((tt, i) => (
         <div
           key={`${tt.course_id}-${tt.time}-${i}`}
-          className="flex items-center py-3"
+          className="flex items-center py-3 lg:py-4"
         >
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-semibold tabular-nums">
+              <span className="text-lg font-semibold tabular-nums lg:text-xl">
                 {formatTime(tt.time)}
               </span>
               <Link
                 href={`/courses/${tt.course_id}`}
-                className="text-sm text-gray-600 hover:text-green-700 hover:underline"
+                className="text-sm text-gray-600 hover:text-green-700 hover:underline lg:text-base"
               >
                 {tt.course_name}
               </Link>
-              <span className="text-xs text-gray-400">{tt.course_city}</span>
+              <span className="text-xs text-gray-400 lg:text-sm">{tt.course_city}</span>
             </div>
-            <div className="mt-0.5 flex gap-3 text-xs text-gray-500">
+            <div className="mt-0.5 flex gap-3 text-xs text-gray-500 lg:text-sm lg:gap-4">
               <span>{tt.holes} holes</span>
               <span>
                 {tt.open_slots} {tt.open_slots === 1 ? "spot" : "spots"}
@@ -71,7 +71,7 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
             href={tt.booking_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-4 rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+            className="ml-4 rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 lg:px-4 lg:py-2 lg:text-base"
           >
             Book
           </a>

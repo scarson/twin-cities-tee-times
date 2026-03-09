@@ -55,7 +55,7 @@ export default function Home() {
   const hasFavorites = getFavorites().length > 0;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-4xl">
+    <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-4xl lg:py-8">
       <div className="flex flex-wrap items-center gap-4">
         <DatePicker selected={dates} onChange={setDates} />
       </div>
@@ -72,7 +72,7 @@ export default function Home() {
       </div>
 
       {hasFavorites && (
-        <div className="mt-2 text-sm text-gray-600">
+        <div className="mt-2 text-sm text-gray-600 lg:text-base">
           Showing:{" "}
           <button
             onClick={() => setFavoritesOnly(true)}

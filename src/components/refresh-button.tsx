@@ -31,7 +31,7 @@ export function RefreshButton({ courseId, dates, onRefreshed }: RefreshButtonPro
     <button
       onClick={handleRefresh}
       disabled={refreshing}
-      className="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+      className="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 lg:px-4 lg:py-1.5 lg:text-base"
     >
       {refreshing ? "Refreshing..." : "Refresh now"}
     </button>
