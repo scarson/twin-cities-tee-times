@@ -49,12 +49,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="text-2xl font-bold">Twin Cities Tee Times</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Find available tee times across Twin Cities golf courses
-      </p>
-
-      <div className="mt-4 flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <DatePicker selected={dates} onChange={setDates} />
         <TimeFilter
           startTime={startTime}
