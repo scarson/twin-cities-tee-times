@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { pollCourse } from "@/lib/poller";
 import type { CourseRow } from "@/types";
 
-export const runtime = "edge";
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
