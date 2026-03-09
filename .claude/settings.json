@@ -9,7 +9,9 @@
       "Bash(npm install next@latest react@latest react-dom@latest)",
       "Bash(npm install -D typescript @types/react @types/node @opennextjs/cloudflare wrangler tailwindcss @tailwindcss/postcss postcss eslint eslint-config-next @cloudflare/workers-types)",
       "Skill(commit-commands:commit)",
-      "Skill(commit-commands:commit:*)"
+      "Skill(commit-commands:commit:*)",
+      "WebFetch(domain:twin-cities-tee-times.samuel-carson.workers.dev)",
+      "WebFetch(domain:blog.cloudflare.com)"
     ]
   }
 }

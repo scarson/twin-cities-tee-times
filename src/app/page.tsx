@@ -69,19 +69,34 @@ export default function Home() {
             setEndTime(e);
           }}
         />
-        {hasFavorites && (
+      </div>
+
+      {hasFavorites && (
+        <div className="mt-2 text-sm text-gray-600">
+          Showing:{" "}
           <button
-            onClick={() => setFavoritesOnly(!favoritesOnly)}
-            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+            onClick={() => setFavoritesOnly(true)}
+            className={`font-medium ${
               favoritesOnly
-                ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
+                ? "text-green-700 underline underline-offset-2"
+                : "text-gray-400 hover:text-gray-600"
             }`}
           >
-            {favoritesOnly ? "Favorites" : "All courses"}
+            Favorites
           </button>
-        )}
-      </div>
+          <span className="mx-1.5 text-gray-300">|</span>
+          <button
+            onClick={() => setFavoritesOnly(false)}
+            className={`font-medium ${
+              !favoritesOnly
+                ? "text-green-700 underline underline-offset-2"
+                : "text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            All courses
+          </button>
+        </div>
+      )}
 
       <div className="mt-4">
         <TeeTimeList teeTimes={teeTimes} loading={loading} />
