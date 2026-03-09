@@ -2,6 +2,7 @@
 // ABOUTME: and inline refresh trigger next to the "last updated" timestamp.
 "use client";
 
+import { formatAge } from "@/lib/format";
 import { toggleFavorite, isFavorite } from "@/lib/favorites";
 import { useRef, useState } from "react";
 
@@ -61,7 +62,7 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
         <p className="mt-1 text-xs text-gray-400 lg:text-sm">
           {displayTimestamp ? (
             <>
-              Last updated {timeAgo(displayTimestamp)}
+              Last updated {formatAge(displayTimestamp)}
               {" · "}
               {refreshing ? (
                 <span className="text-gray-400">Refreshing…</span>
@@ -109,14 +110,4 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
       </div>
     </div>
   );
-}
-
-function timeAgo(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }

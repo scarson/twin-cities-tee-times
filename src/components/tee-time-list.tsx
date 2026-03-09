@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatTime, staleAge } from "@/lib/format";
 
 interface TeeTimeItem {
   course_id: string;
@@ -90,17 +91,3 @@ export function isStale(fetchedAt: string): boolean {
   return Date.now() - new Date(fetchedAt).getTime() > STALE_THRESHOLD_MS;
 }
 
-function staleAge(fetchedAt: string): string {
-  const hours = Math.floor((Date.now() - new Date(fetchedAt).getTime()) / 3_600_000);
-  if (hours < 24) return `${hours}h old`;
-  const days = Math.floor(hours / 24);
-  return `${days}d old`;
-}
-
-function formatTime(time: string): string {
-  const [h, m] = time.split(":");
-  const hour = parseInt(h);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${hour12}:${m} ${ampm}`;
-}
