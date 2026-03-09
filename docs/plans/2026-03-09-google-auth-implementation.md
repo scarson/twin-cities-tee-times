@@ -99,6 +99,8 @@ await db.batch([stmt1, stmt2, stmt3]);
 // ABOUTME: Tests for [module].
 // ABOUTME: Covers [what scenarios].
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { createMockD1, createMockEnv } from "@/test/d1-mock";
 
 // Mock getCloudflareContext for route tests:
 vi.mock("@opennextjs/cloudflare", () => ({
@@ -107,6 +109,12 @@ vi.mock("@opennextjs/cloudflare", () => ({
 
 beforeEach(() => {
   vi.restoreAllMocks();
+
+  // Wire up fresh D1 mock for each test:
+  const { db, mockFirst, mockAll, mockRun } = createMockD1();
+  const env = createMockEnv(db);
+  vi.mocked(getCloudflareContext).mockResolvedValue({ env, ctx: {} } as any);
+  // Then use mockFirst/mockAll/mockRun to set up query results per test
 });
 ```
 
@@ -729,14 +737,10 @@ The route must:
 7. Set `tct-oauth-verifier` cookie with code verifier, 10-min expiry, HttpOnly
 8. Return `NextResponse.redirect(authUrl)`
 
-**returnTo validation function** — add this as an export in `src/lib/auth.ts` (NOT locally in the route file). It's used by the OAuth initiation route and tested directly in auth tests:
+**returnTo validation:** Import `validateReturnTo` from `@/lib/auth` — it's already defined there (created in Task 2). Do NOT redefine it locally. Usage:
 ```typescript
-export function validateReturnTo(returnTo: string | null): string {
-  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//") || returnTo.includes("\\")) {
-    return "/";
-  }
-  return returnTo;
-}
+import { validateReturnTo } from "@/lib/auth";
+const returnTo = validateReturnTo(request.nextUrl.searchParams.get("returnTo"));
 ```
 
 **Step 4: Run tests to verify they pass**
@@ -875,11 +879,11 @@ git commit -m "feat: add OAuth callback route with user upsert and session creat
 
 **Step 3: Implement the three routes**
 
-`POST /api/auth/logout` — Best-effort handler:
-- Try to get user from `authenticateRequest` (ok if it fails)
-- If refresh cookie exists, hash it and delete from sessions
-- Clear auth cookies
-- Always return 200 `{ ok: true }`
+`POST /api/auth/logout` — Best-effort handler. Do NOT use `authenticateRequest` — it could trigger token rotation (new cookies) right before we clear them, which is wasteful and confusing. Instead:
+- Read the `tct-refresh` cookie directly from `request.cookies`
+- If present, hash it via `sha256()` and `DELETE FROM sessions WHERE token_hash = ?`
+- Clear auth cookies via `clearAuthCookies()`
+- Always return 200 `{ ok: true }` (never 401, even if no cookies found)
 
 `GET /api/auth/me`:
 - Call `authenticateRequest`, return 401 if no user
