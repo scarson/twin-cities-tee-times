@@ -44,7 +44,7 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
       {teeTimes.map((tt, i) => (
         <div
           key={`${tt.course_id}-${tt.time}-${i}`}
-          className="flex items-center py-3 lg:py-4"
+          className="flex items-center rounded-lg py-3 -mx-3 px-3 transition-colors hover:bg-stone-50 lg:py-4"
         >
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
