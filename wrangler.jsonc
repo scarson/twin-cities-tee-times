@@ -3,10 +3,13 @@
   "name": "twin-cities-tee-times",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat"],
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
   },
   "d1_databases": [
     {
