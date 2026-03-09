@@ -9,16 +9,18 @@ export function Nav() {
           <Image
             src="/logo-icon.png"
             alt=""
-            width={123}
-            height={48}
+            width={854}
+            height={333}
+            className="h-12 w-auto"
             unoptimized
             priority
           />
           <Image
             src="/logo-wordmark.png"
             alt="Twin Cities Tee Times"
-            width={88}
-            height={48}
+            width={854}
+            height={393}
+            className="h-10 w-auto"
             unoptimized
             priority
           />
