@@ -9,24 +9,27 @@ import "react-day-picker/style.css";
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_RANGE_DAYS = 14;
 
+// Central Time date string. All courses are in the Twin Cities metro.
 export function toDateStr(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 }
 
+// Noon UTC avoids timezone drift: noon UTC is the same calendar date
+// in all timezones from UTC-12 to UTC+12, including Central Time.
 export function fromDateStr(s: string): Date {
-  return new Date(s + "T00:00:00");
+  return new Date(s + "T12:00:00Z");
 }
 
 export function buildQuickDays(): { value: string; dayName: string; dayNum: number }[] {
   const days: { value: string; dayName: string; dayNum: number }[] = [];
-  const now = new Date();
+  const today = fromDateStr(toDateStr(new Date()));
   for (let i = 0; i < 7; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + i);
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() + i);
     days.push({
       value: toDateStr(d),
-      dayName: i === 0 ? "Today" : DAY_NAMES[d.getDay()],
-      dayNum: d.getDate(),
+      dayName: i === 0 ? "Today" : DAY_NAMES[d.getUTCDay()],
+      dayNum: d.getUTCDate(),
     });
   }
   return days;
@@ -38,14 +41,14 @@ export function datesInRange(start: string, end: string): string[] {
   const endDate = fromDateStr(end);
   while (d <= endDate) {
     dates.push(toDateStr(d));
-    d.setDate(d.getDate() + 1);
+    d.setUTCDate(d.getUTCDate() + 1);
   }
   return dates;
 }
 
 export function formatShortDate(dateStr: string): string {
   const d = fromDateStr(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 interface DatePickerProps {

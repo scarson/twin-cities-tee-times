@@ -11,20 +11,20 @@ import {
 } from "./date-picker";
 
 describe("toDateStr", () => {
-  it("converts a Date to YYYY-MM-DD string", () => {
-    // Use noon local to avoid UTC/local day mismatch
-    const d = new Date(2026, 2, 15, 12, 0, 0); // March 15, noon local
+  it("converts a Date to YYYY-MM-DD in Central Time", () => {
+    // Noon UTC: same calendar date in all timezones including CT
+    const d = new Date("2026-03-15T12:00:00Z");
     expect(toDateStr(d)).toBe("2026-03-15");
   });
 });
 
 describe("fromDateStr", () => {
-  it("parses YYYY-MM-DD to a Date at local midnight", () => {
+  it("parses YYYY-MM-DD to a Date at noon UTC", () => {
     const d = fromDateStr("2026-03-15");
-    expect(d.getFullYear()).toBe(2026);
-    expect(d.getMonth()).toBe(2); // 0-indexed: March = 2
-    expect(d.getDate()).toBe(15);
-    expect(d.getHours()).toBe(0);
+    expect(d.getUTCFullYear()).toBe(2026);
+    expect(d.getUTCMonth()).toBe(2); // 0-indexed: March = 2
+    expect(d.getUTCDate()).toBe(15);
+    expect(d.getUTCHours()).toBe(12);
   });
 });
 
@@ -45,7 +45,8 @@ describe("buildQuickDays", () => {
 
   it("entries have sequential dates", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 2, 15, 12, 0, 0)); // March 15
+    // 18:00 UTC = 1pm CDT (March is DST). CT date is still March 15.
+    vi.setSystemTime(new Date("2026-03-15T18:00:00Z"));
 
     const days = buildQuickDays();
     expect(days[0].value).toBe("2026-03-15");

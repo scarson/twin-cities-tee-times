@@ -27,3 +27,11 @@ export function staleAge(fetchedAt: string): string {
   const days = Math.floor(hours / 24);
   return `${days}d old`;
 }
+
+/** Today's date as YYYY-MM-DD in Central Time (America/Chicago).
+ * All golf courses in the app are in the Twin Cities metro, so Central Time
+ * is the canonical timezone for date logic. San Diego test courses also
+ * display in CT — this is intentional. */
+export function todayCT(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+}

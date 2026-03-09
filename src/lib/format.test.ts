@@ -2,7 +2,7 @@
 // ABOUTME: Covers formatTime, formatAge, and staleAge with boundary conditions.
 
 import { describe, it, expect } from "vitest";
-import { formatTime, formatAge, staleAge } from "./format";
+import { formatTime, formatAge, staleAge, todayCT } from "./format";
 
 describe("formatTime", () => {
   it("formats morning time", () => {
@@ -96,5 +96,12 @@ describe("staleAge", () => {
   it("boundary: 24h returns 1d", () => {
     const ts = new Date(Date.now() - 24 * 3_600_000).toISOString();
     expect(staleAge(ts)).toBe("1d old");
+  });
+});
+
+describe("todayCT", () => {
+  it("returns a YYYY-MM-DD string", () => {
+    const result = todayCT();
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
