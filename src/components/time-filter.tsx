@@ -1,34 +1,43 @@
+// ABOUTME: Time-of-day preset filter with named time blocks (Early, Morning, etc.).
+// ABOUTME: Maps preset selections to startTime/endTime for the tee times API.
 "use client";
+
+const PRESETS = [
+  { id: "any", label: "Any", start: "", end: "" },
+  { id: "early", label: "Early", start: "05:00", end: "08:00" },
+  { id: "morning", label: "Morning", start: "08:00", end: "11:00" },
+  { id: "afternoon", label: "Afternoon", start: "11:00", end: "15:00" },
+  { id: "late", label: "Late", start: "15:00", end: "" },
+] as const;
 
 interface TimeFilterProps {
   startTime: string;
   endTime: string;
-  onStartChange: (time: string) => void;
-  onEndChange: (time: string) => void;
+  onChange: (times: { startTime: string; endTime: string }) => void;
 }
 
-export function TimeFilter({
-  startTime,
-  endTime,
-  onStartChange,
-  onEndChange,
-}: TimeFilterProps) {
+export function TimeFilter({ startTime, endTime, onChange }: TimeFilterProps) {
+  const activePreset =
+    PRESETS.find((p) => p.start === startTime && p.end === endTime)?.id ??
+    "any";
+
   return (
-    <div className="flex items-center gap-2">
-      <label className="text-sm text-gray-600">From</label>
-      <input
-        type="time"
-        value={startTime}
-        onChange={(e) => onStartChange(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
-      />
-      <label className="text-sm text-gray-600">to</label>
-      <input
-        type="time"
-        value={endTime}
-        onChange={(e) => onEndChange(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
-      />
+    <div className="flex gap-1">
+      {PRESETS.map((preset) => (
+        <button
+          key={preset.id}
+          onClick={() =>
+            onChange({ startTime: preset.start, endTime: preset.end })
+          }
+          className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+            activePreset === preset.id
+              ? "bg-green-600 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          {preset.label}
+        </button>
+      ))}
     </div>
   );
 }

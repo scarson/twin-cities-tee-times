@@ -4,19 +4,23 @@ import { useState } from "react";
 
 interface RefreshButtonProps {
   courseId: string;
-  date: string;
+  dates: string[];
   onRefreshed: () => void;
 }
 
-export function RefreshButton({ courseId, date, onRefreshed }: RefreshButtonProps) {
+export function RefreshButton({ courseId, dates, onRefreshed }: RefreshButtonProps) {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetch(`/api/courses/${courseId}/refresh?date=${date}`, {
-        method: "POST",
-      });
+      await Promise.all(
+        dates.map((date) =>
+          fetch(`/api/courses/${courseId}/refresh?date=${date}`, {
+            method: "POST",
+          })
+        )
+      );
       onRefreshed();
     } finally {
       setRefreshing(false);
