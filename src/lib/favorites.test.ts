@@ -43,7 +43,7 @@ describe("favorites", () => {
   });
 
   beforeEach(() => {
-    (localStorageMock.clear as ReturnType<typeof vi.fn>)();
+    (localStorageMock.clear as () => void)();
     vi.clearAllMocks();
   });
 
