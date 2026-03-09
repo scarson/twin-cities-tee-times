@@ -1,0 +1,31 @@
+{
+  "TeeTimes": [
+    {
+      "TeeTimeId": 1001,
+      "TeeDateTime": "2026-04-15T07:00:00",
+      "GreenFee": 42.00,
+      "NumberOfOpenSlots": 4,
+      "Holes": 18,
+      "CourseId": 17,
+      "CourseName": "Championship 18"
+    },
+    {
+      "TeeTimeId": 1002,
+      "TeeDateTime": "2026-04-15T07:10:00",
+      "GreenFee": 42.00,
+      "NumberOfOpenSlots": 2,
+      "Holes": 18,
+      "CourseId": 17,
+      "CourseName": "Championship 18"
+    },
+    {
+      "TeeTimeId": 1003,
+      "TeeDateTime": "2026-04-15T14:30:00",
+      "GreenFee": 30.00,
+      "NumberOfOpenSlots": 4,
+      "Holes": 9,
+      "CourseId": 17,
+      "CourseName": "Championship 18"
+    }
+  ]
+}
