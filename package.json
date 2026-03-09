@@ -10,7 +10,9 @@
     "test": "vitest run --pass-with-no-tests",
     "test:watch": "vitest",
     "preview": "opennextjs-cloudflare build && wrangler dev",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy"
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "seed:generate": "npx tsx scripts/seed.ts",
+    "seed:local": "npx tsx scripts/seed.ts && npx wrangler d1 execute tee-times-db --local --file=scripts/seed.sql"
   },
   "repository": {
     "type": "git",
@@ -41,6 +43,7 @@
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
     "wrangler": "^4.71.0"

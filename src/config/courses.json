@@ -1,0 +1,167 @@
+[
+  {
+    "id": "theodore-wirth-18",
+    "name": "Theodore Wirth",
+    "city": "Minneapolis",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "minneapolistheodorewirth",
+      "apiKey": "8ea2914e-cac2-48a7-a3e5-e0f41350bf3a",
+      "courseIds": "17",
+      "websiteId": "8265e495-5c83-44e5-93d8-c9e3f3a40529"
+    },
+    "bookingUrl": "https://minneapolistheodorewirth.cps.golf/onlineresweb"
+  },
+  {
+    "id": "gross-national",
+    "name": "Gross National",
+    "city": "Minneapolis",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "minneapolisgrossnational"
+    },
+    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb"
+  },
+  {
+    "id": "meadowbrook",
+    "name": "Meadowbrook",
+    "city": "Minneapolis",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "minneapolismeadowbrook"
+    },
+    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb"
+  },
+  {
+    "id": "columbia",
+    "name": "Columbia",
+    "city": "Minneapolis",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "minneapoliscolumbia"
+    },
+    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb"
+  },
+  {
+    "id": "hiawatha",
+    "name": "Hiawatha",
+    "city": "Minneapolis",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "minneapolishiawatha"
+    },
+    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb"
+  },
+  {
+    "id": "phalen",
+    "name": "Phalen",
+    "city": "St. Paul",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "phalen"
+    },
+    "bookingUrl": "https://phalen.cps.golf/onlineresweb"
+  },
+  {
+    "id": "chaska-town-course",
+    "name": "Chaska Town Course",
+    "city": "Chaska",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "chaska"
+    },
+    "bookingUrl": "https://chaska.cps.golf/onlineresweb"
+  },
+  {
+    "id": "edinburgh-usa",
+    "name": "Edinburgh USA",
+    "city": "Brooklyn Park",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "edinburghusa"
+    },
+    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb"
+  },
+  {
+    "id": "oak-glen",
+    "name": "Oak Glen",
+    "city": "Stillwater",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "oakglen"
+    },
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
+  },
+  {
+    "id": "highland-national",
+    "name": "Highland National",
+    "city": "St. Paul",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "highlandnationalmn"
+    },
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
+  },
+  {
+    "id": "como-park",
+    "name": "Como Park",
+    "city": "St. Paul",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "como"
+    },
+    "bookingUrl": "https://como.cps.golf/onlineresweb"
+  },
+  {
+    "id": "victory-links",
+    "name": "Victory Links",
+    "city": "Blaine",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "victorylinksmn"
+    },
+    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb"
+  },
+  {
+    "id": "gem-lake-hills",
+    "name": "Gem Lake Hills",
+    "city": "White Bear Lake",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "gem"
+    },
+    "bookingUrl": "https://gem.cps.golf/onlineresweb"
+  },
+  {
+    "id": "braemar",
+    "name": "Braemar",
+    "city": "Edina",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "21445",
+      "scheduleId": "7829"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21445/7829"
+  },
+  {
+    "id": "bunker-hills",
+    "name": "Bunker Hills",
+    "city": "Coon Rapids",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "20252"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
+  },
+  {
+    "id": "roseville-cedarholm",
+    "name": "Roseville Cedarholm",
+    "city": "Roseville",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "22244",
+      "scheduleId": "10216"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216"
+  }
+]
