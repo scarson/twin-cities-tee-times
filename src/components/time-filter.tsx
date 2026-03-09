@@ -32,7 +32,7 @@ export function TimeFilter({ startTime, endTime, onChange }: TimeFilterProps) {
           className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
             activePreset === preset.id
               ? "bg-green-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-stone-100 text-gray-700 hover:bg-stone-200"
           }`}
         >
           {preset.label}

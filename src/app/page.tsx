@@ -75,7 +75,7 @@ export default function Home() {
             className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
               favoritesOnly
                 ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
             }`}
           >
             {favoritesOnly ? "Favorites" : "All courses"}
