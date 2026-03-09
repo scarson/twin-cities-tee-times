@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/components/auth-provider";
 import { formatTime, staleAge } from "@/lib/format";
 
 interface TeeTimeItem {
@@ -24,6 +25,8 @@ interface TeeTimeListProps {
 }
 
 export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
+  const { isLoggedIn } = useAuth();
+
   if (loading) {
     return (
       <p className="py-8 text-center text-gray-500 lg:text-lg">Loading tee times...</p>
@@ -77,6 +80,17 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
             href={tt.booking_url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              if (isLoggedIn) {
+                navigator.sendBeacon(
+                  "/api/user/booking-clicks",
+                  new Blob(
+                    [JSON.stringify({ courseId: tt.course_id, date: tt.date, time: tt.time })],
+                    { type: "application/json" }
+                  )
+                );
+              }
+            }}
             className="ml-4 rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 lg:px-4 lg:py-2 lg:text-base"
           >
             Book

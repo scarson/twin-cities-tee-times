@@ -7,17 +7,18 @@ import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
-import { getFavorites, getFavoriteDetails } from "@/lib/favorites";
+import { useFavorites } from "@/hooks/use-favorites";
 import { todayCT } from "@/lib/format";
 
 export default function Home() {
+  const { favorites, favoriteDetails } = useFavorites();
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [teeTimes, setTeeTimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(() => {
-    return getFavorites().length > 0;
+    return favorites.length > 0;
   });
 
   useEffect(() => {
@@ -28,7 +29,6 @@ export default function Home() {
         const fetches = dates.map((date) => {
           const params = new URLSearchParams({ date });
           if (favoritesOnly) {
-            const favorites = getFavorites();
             if (favorites.length > 0) {
               params.set("courses", favorites.join(","));
             }
@@ -52,10 +52,8 @@ export default function Home() {
     };
 
     fetchTeeTimes();
-  }, [dates, startTime, endTime, favoritesOnly]);
+  }, [dates, startTime, endTime, favoritesOnly, favorites]);
 
-  const favorites = getFavorites();
-  const favoriteDetails = getFavoriteDetails();
   const hasFavorites = favorites.length > 0;
   const [showFavList, setShowFavList] = useState(false);
   const favListRef = useRef<HTMLDivElement>(null);

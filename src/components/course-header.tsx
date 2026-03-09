@@ -3,7 +3,7 @@
 "use client";
 
 import { formatAge } from "@/lib/format";
-import { toggleFavorite, isFavorite } from "@/lib/favorites";
+import { useFavorites } from "@/hooks/use-favorites";
 import { useEffect, useRef, useState } from "react";
 
 interface CourseHeaderProps {
@@ -19,7 +19,7 @@ interface CourseHeaderProps {
 }
 
 export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) {
-  const [favorited, setFavorited] = useState(() => isFavorite(course.id));
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
   const [coolingDown, setCoolingDown] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
@@ -31,9 +31,10 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
     };
   }, []);
 
+  const favorited = isFavorite(course.id);
+
   const handleToggle = () => {
     toggleFavorite(course.id, course.name);
-    setFavorited(!favorited);
   };
 
   const refreshDisabled = refreshing || coolingDown;
