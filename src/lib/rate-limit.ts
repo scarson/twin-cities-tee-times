@@ -13,6 +13,9 @@ export async function checkRefreshAllowed(
   courseId: string
 ): Promise<RateLimitResult> {
   // Per-course cooldown: any date
+  // Note: COURSE_COOLDOWN_SECONDS is interpolated (not bound) because SQLite's
+  // datetime() modifier string cannot accept parameter bindings. The value is a
+  // module-level constant, not user input.
   const recentPoll = await db
     .prepare(
       `SELECT polled_at FROM poll_log

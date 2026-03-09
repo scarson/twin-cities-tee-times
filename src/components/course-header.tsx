@@ -4,7 +4,7 @@
 
 import { formatAge } from "@/lib/format";
 import { toggleFavorite, isFavorite } from "@/lib/favorites";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CourseHeaderProps {
   course: {
@@ -25,8 +25,14 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+    };
+  }, []);
+
   const handleToggle = () => {
-    toggleFavorite(course.id);
+    toggleFavorite(course.id, course.name);
     setFavorited(!favorited);
   };
 
