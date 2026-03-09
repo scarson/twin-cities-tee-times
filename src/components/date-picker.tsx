@@ -61,12 +61,17 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>();
   const calendarRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
 
   const inCalendarMode = selected.some((d) => !quickDateSet.has(d));
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        calendarRef.current && !calendarRef.current.contains(target) &&
+        moreButtonRef.current && !moreButtonRef.current.contains(target)
+      ) {
         setCalendarOpen(false);
       }
     }
@@ -146,15 +151,15 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           </button>
         ))}
         <button
+          ref={moreButtonRef}
           onClick={handleMoreClick}
-          className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors lg:px-3 lg:py-2 lg:text-sm ${
+          className={`flex items-center rounded px-2.5 py-1.5 text-xs font-medium transition-colors lg:px-3 lg:py-2 lg:text-sm ${
             inCalendarMode || calendarOpen
               ? "bg-green-600 text-white"
               : "bg-stone-100 text-gray-700 hover:bg-stone-200"
           }`}
         >
-          <span className="font-medium">More</span>
-          <span className="text-[11px] lg:text-xs">{calendarOpen ? "▲" : "▼"}</span>
+          More Dates
         </button>
       </div>
 

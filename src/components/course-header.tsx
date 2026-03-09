@@ -92,7 +92,7 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
               : "border-gray-300 text-gray-600 hover:bg-gray-50"
           }`}
         >
-          {favorited ? "Favorited" : "Add to Favorites"}
+          {favorited ? "★ Favorite" : "☆ Favorite"}
         </button>
         <a
           href={course.booking_url}

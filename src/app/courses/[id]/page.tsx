@@ -17,8 +17,8 @@ export default function CoursePage() {
   const [teeTimes, setTeeTimes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [courseRes, ...timesResults] = await Promise.all([
         fetch(`/api/courses/${id}`),
@@ -60,7 +60,7 @@ export default function CoursePage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && (
-        <CourseHeader course={course} dates={dates} onRefreshed={fetchData} />
+        <CourseHeader course={course} dates={dates} onRefreshed={() => fetchData(false)} />
       )}
 
       <div className="mt-4">
