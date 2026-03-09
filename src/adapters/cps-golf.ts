@@ -23,7 +23,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
       config.platformConfig;
 
     if (!apiKey) {
-      return [];
+      throw new Error("Missing apiKey in platformConfig");
     }
 
     const baseUrl = `https://${subdomain}.cps.golf/onlineres/onlineapi/api/v1/onlinereservation`;
@@ -50,8 +50,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     const url = `${baseUrl}/TeeTimes?${params}`;
 
-    try {
-      const response = await fetch(url, {
+    const response = await fetch(url, {
         headers: {
           "x-apikey": apiKey,
           "client-id": "onlineresweb",
@@ -68,7 +67,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
       });
 
       if (!response.ok) {
-        return [];
+        throw new Error(`CPS Golf API returned HTTP ${response.status}`);
       }
 
       const data: CpsTeeTimes = await response.json();
@@ -81,9 +80,6 @@ export class CpsGolfAdapter implements PlatformAdapter {
         openSlots: tt.NumberOfOpenSlots,
         bookingUrl: config.bookingUrl,
       }));
-    } catch {
-      return [];
-    }
   }
 
   /** Convert "2026-04-15" → "Wed Apr 15 2026" (CPS Golf's expected format) */

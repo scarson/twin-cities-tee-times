@@ -18,7 +18,7 @@ export class ForeUpAdapter implements PlatformAdapter {
     const { scheduleId } = config.platformConfig;
 
     if (!scheduleId) {
-      return [];
+      throw new Error("Missing scheduleId in platformConfig");
     }
 
     const params = new URLSearchParams({
@@ -34,11 +34,10 @@ export class ForeUpAdapter implements PlatformAdapter {
 
     const url = `https://foreupsoftware.com/index.php/api/booking/times?${params}`;
 
-    try {
-      const response = await fetch(url);
+    const response = await fetch(url);
 
       if (!response.ok) {
-        return [];
+        throw new Error(`ForeUp API returned HTTP ${response.status}`);
       }
 
       const data: ForeUpTeeTime[] = await response.json();
@@ -53,9 +52,6 @@ export class ForeUpAdapter implements PlatformAdapter {
         openSlots: tt.available_spots,
         bookingUrl: config.bookingUrl,
       }));
-    } catch {
-      return [];
-    }
   }
 
   /** Convert "YYYY-MM-DD HH:MM" → "YYYY-MM-DDTHH:MM:00" */
