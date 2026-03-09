@@ -201,6 +201,11 @@ npx wrangler d1 execute tee-times-db --local --file=migrations/0001_initial_sche
 npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"          # Query local D1
 ```
 
+## Cloudflare Platform Questions
+
+- NEVER guess about Cloudflare Workers, D1, Cron Triggers, or Wrangler behavior.
+- ALWAYS use the Cloudflare documentation MCP tools (`search_cloudflare_documentation`) to verify platform-specific behavior before making claims or design decisions.
+
 ## Tech Stack
 
 | Layer | Choice |
