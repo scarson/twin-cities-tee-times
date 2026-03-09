@@ -285,6 +285,7 @@ The `courses` table is seeded from a JSON config file checked into the repo (`sr
 - **Price alerts** — Notify users when a favorited course has openings below a price threshold
 - **Custom course groupings** — Named groups beyond a flat favorites list (e.g., "Weekday Spots", "Weekend with Dad")
 - **Display preferences** — Default view (favorites vs. all), sort order, other UI personalization
+- **Share favorites via link** — Generate a URL encoding the user's favorite course IDs; recipient opens the link and union-merges those courses into their own favorites (works for both logged-in and anonymous users)
 
 ## Explicitly Out of Scope
 
