@@ -10,6 +10,12 @@
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
+	"routes": [
+		{
+			"pattern": "teetimes.scarson.io",
+			"custom_domain": true
+		}
+	],
 	"triggers": {
 		"crons": [
 			"*/5 * * * *"
