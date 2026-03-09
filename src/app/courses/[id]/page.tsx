@@ -46,7 +46,7 @@ export default function CoursePage() {
 
   if (!course && !loading) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-4xl lg:py-8">
+      <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
         <p className="text-gray-500">Course not found.</p>
       </main>
     );
