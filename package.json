@@ -1,0 +1,48 @@
+{
+  "name": "twin-cities-tee-times",
+  "version": "1.0.0",
+  "description": "App that checks and displays tee times at public golf courses in the Minnesota Twin Cities metro area",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run --pass-with-no-tests",
+    "test:watch": "vitest",
+    "preview": "opennextjs-cloudflare build && wrangler dev",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scarson/twin-cities-tee-times.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/scarson/twin-cities-tee-times/issues"
+  },
+  "homepage": "https://github.com/scarson/twin-cities-tee-times#readme",
+  "dependencies": {
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260307.1",
+    "@eslint/eslintrc": "^3.3.5",
+    "@opennextjs/cloudflare": "^1.17.1",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^25.3.5",
+    "@types/react": "^19.2.14",
+    "@vitejs/plugin-react": "^5.1.4",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.71.0"
+  }
+}
