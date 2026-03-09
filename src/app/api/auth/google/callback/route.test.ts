@@ -1,6 +1,7 @@
 // ABOUTME: Tests for the OAuth callback route (GET /api/auth/google/callback).
 // ABOUTME: Verifies token exchange, user upsert, session creation, and error handling.
 
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

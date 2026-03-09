@@ -1,6 +1,7 @@
 // ABOUTME: Tests for POST /api/auth/logout route.
 // ABOUTME: Verifies session deletion, cookie clearing, and always-200 behavior.
 
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

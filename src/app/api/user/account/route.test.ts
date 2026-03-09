@@ -1,6 +1,7 @@
 // ABOUTME: Tests for DELETE /api/user/account route.
 // ABOUTME: Verifies user deletion, cookie clearing, and unauthorized responses.
 
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

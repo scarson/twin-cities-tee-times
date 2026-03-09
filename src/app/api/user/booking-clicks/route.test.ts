@@ -1,6 +1,7 @@
 // ABOUTME: Tests for POST /api/user/booking-clicks route.
 // ABOUTME: Verifies click tracking, idempotency, validation, and auth.
 
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

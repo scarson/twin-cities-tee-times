@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // ABOUTME: Tests for AuthProvider context.
 // ABOUTME: Covers login detection, post-login merge, sign-out, and account deletion.
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./auth-provider";
 

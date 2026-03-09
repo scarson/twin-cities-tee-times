@@ -1,6 +1,7 @@
 // ABOUTME: Tests for the OAuth initiation route (GET /api/auth/google).
 // ABOUTME: Verifies redirect to Google, cookie setting, and returnTo validation.
 
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

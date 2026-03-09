@@ -219,14 +219,18 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 | Scheduling | Cron Triggers → Worker `scheduled()` handler |
 | Testing | Vitest 4 |
 | Linting | ESLint 9 (next/core-web-vitals) |
+| Auth | `arctic` (OAuth), `jose` (JWT) |
 | Deploy | GitHub Actions → OpenNext build → wrangler deploy |
 
 ## Architecture (Key Points)
 
-**Data model** — 3 tables in D1 (see `migrations/0001_initial_schema.sql`):
+**Data model** — 6 tables in D1 (see `migrations/0001_initial_schema.sql`, `migrations/0002_auth_schema.sql`):
 - `courses` — static catalog with `platform_config` JSON and `is_active` flag
 - `tee_times` — cached availability, delete+insert per course+date
 - `poll_log` — per-course-per-date polling history (freshness + debugging)
+- `users` — Google OAuth accounts
+- `user_favorites` — per-user favorite courses (FK to users + courses)
+- `booking_clicks` — per-user booking click tracking (FK to users + courses)
 
 **Platform adapters** — each booking system (CPS Golf, ForeUp, etc.) implements `PlatformAdapter` in `src/adapters/`. Adapter registry in `src/adapters/index.ts` maps `platformId → adapter`.
 
@@ -238,7 +242,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 
 - Path alias: `@/` → `src/` (configured in tsconfig + vitest)
 - D1 types (`D1Database`, etc.) are ambient globals from `@cloudflare/workers-types`
-- Cloudflare env bindings declared in `env.d.ts`
+- Cloudflare env bindings and secret bindings (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`) declared in `env.d.ts`
 - Tests live alongside source: `src/**/*.test.ts`
 - Course catalog: `src/config/courses.json`
 
@@ -247,6 +251,10 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 - **Central Time everywhere**: All date logic uses `America/Chicago` timezone. Use `todayCT()` from `src/lib/format.ts` instead of `new Date()` for date strings.
 - **No `process.env`**: Cloudflare Workers don't support `process.env`. Use `const { env } = await getCloudflareContext()` from `@opennextjs/cloudflare` for all bindings (D1, secrets, etc.). The cron handler receives `env` directly from Worker `scheduled()`.
 - **Course `is_active`**: In `courses.json`, `"is_active": 0` skips polling. Omitting the field defaults to active (`seed.ts`: `is_active ?? 1`).
+- **Never hard-delete courses**: CASCADE on `user_favorites` and `booking_clicks` would destroy user data. Use `is_active = 0` instead.
+- **Auth uses `authenticateRequest()` utility, not Next.js middleware**: Middleware can't reliably access D1 on OpenNext/CF Workers.
+- **`.dev.vars` for local secrets**: Store `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` here for local dev. Already gitignored.
+- **Cookie prefix `tct-`**: All app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
 
 ## Linter Suppressions
 
@@ -271,15 +279,18 @@ When suppression is necessary, prefer **inline `// eslint-disable-next-line rule
 src/
   adapters/          # Platform adapters (CPS Golf, ForeUp, …) + tests
   app/               # Next.js App Router pages + API routes
+    api/auth/        # OAuth routes (google, google/callback, logout, me)
     api/courses/     # GET /api/courses, GET/POST /api/courses/[id], POST /api/courses/[id]/refresh
     api/tee-times/   # GET /api/tee-times
+    api/user/        # User data routes (favorites, booking-clicks, account)
     courses/[id]/    # Course detail page
-  components/        # React components (nav, tee-time-list, date-picker, etc.)
+  components/        # React components (nav, auth-provider, nav-auth-area, toast, etc.)
   config/            # courses.json (static course catalog)
-  lib/               # Core logic: cron-handler, db, poller, favorites, format, rate-limit
+  hooks/             # React hooks (use-favorites)
+  lib/               # Core logic: auth, cron-handler, db, poller, favorites, format, rate-limit
   test/              # Test helpers
     fixtures/        # JSON response fixtures for adapter tests
-  types/             # TypeScript interfaces (CourseConfig, TeeTime, PlatformAdapter, D1 row types)
+  types/             # TypeScript interfaces (CourseConfig, TeeTime, PlatformAdapter, auth, D1 row types)
 migrations/          # D1 SQL migrations
 scripts/             # Seed data generation
 worker.ts            # Cloudflare Worker entry (HTTP via OpenNext + cron scheduled())
