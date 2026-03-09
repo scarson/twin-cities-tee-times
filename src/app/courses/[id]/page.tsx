@@ -41,6 +41,10 @@ export default function CoursePage() {
   }, [id, dates]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [fetchData]);
 
@@ -53,7 +57,7 @@ export default function CoursePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
+    <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && <CourseHeader course={course} />}
 
       <div className="mt-4 flex items-center gap-4">
