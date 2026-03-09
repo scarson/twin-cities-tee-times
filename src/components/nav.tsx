@@ -11,6 +11,7 @@ export function Nav() {
             alt="Twin Cities Tee Times"
             width={140}
             height={78}
+            unoptimized
             priority
           />
         </Link>
