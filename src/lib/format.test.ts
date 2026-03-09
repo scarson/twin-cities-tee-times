@@ -1,7 +1,7 @@
 // ABOUTME: Tests for shared time/date formatting utilities.
 // ABOUTME: Covers formatTime, formatAge, and staleAge with boundary conditions.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { formatTime, formatAge, staleAge, todayCT } from "./format";
 
 describe("formatTime", () => {
@@ -100,8 +100,19 @@ describe("staleAge", () => {
 });
 
 describe("todayCT", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns a YYYY-MM-DD string", () => {
     const result = todayCT();
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("returns Central Time date, not UTC, near midnight", () => {
+    vi.useFakeTimers();
+    // 4:30 UTC on July 15 = 11:30pm CDT on July 14 (CDT = UTC-5)
+    vi.setSystemTime(new Date("2026-07-15T04:30:00Z"));
+    expect(todayCT()).toBe("2026-07-14");
   });
 });
