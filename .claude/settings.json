@@ -7,7 +7,9 @@
       "Bash(npx create-next-app@latest temp-scaffold --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --turbopack)",
       "Bash(npm init -y)",
       "Bash(npm install next@latest react@latest react-dom@latest)",
-      "Bash(npm install -D typescript @types/react @types/node @opennextjs/cloudflare wrangler tailwindcss @tailwindcss/postcss postcss eslint eslint-config-next @cloudflare/workers-types)"
+      "Bash(npm install -D typescript @types/react @types/node @opennextjs/cloudflare wrangler tailwindcss @tailwindcss/postcss postcss eslint eslint-config-next @cloudflare/workers-types)",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)"
     ]
   }
 }

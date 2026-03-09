@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Twin Cities Tee Times is an app that checks and displays tee times at public golf courses in the Minnesota Twin Cities metro area
 
-**docs\plans\2026-03-08-tee-times-app-design.md** — design doc. Key sections: 
+**docs/plans/2026-03-08-tee-times-app-design.md** — design doc.
 
-**dev/research** — decision rationale (read when you need the *why* behind an architectural choice).
+**dev/research/** — decision rationale (read when you need the *why* behind an architectural choice).
 
 ## Principles
 You are an experienced, pragmatic software engineer. You don't over-engineer a solution when a simple one is possible.
@@ -178,51 +178,72 @@ YOU MUST follow this debugging framework for ANY technical issue:
 
 ## Build & Dev Commands
 
-# NOTE: Claude Code's Bash tool runs bash (Unix syntax). Use bash/forward-slash paths in Bash commands.
-# PowerShell is available if explicitly needed for Windows-specific tasks.
-# Do NOT prefix bash commands with "cd /c/Users/Sam/Code/CVErt-Ops" unless you're outside the project base directory. Prefixing with that will cause Claude to unnecessarily prompt the user for permission to use already approved commands.
-
-# WORKTREE COMMANDS: When running git commands in a worktree, use `git -C <path>` instead of
-# `cd <path> && git <command>`. The `cd && command` pattern triggers permission prompts because
-# the glob matcher can't reliably parse compound shell commands.
-# Example: `git -C .worktrees/bug-fixes status` instead of `cd .worktrees/bug-fixes && git status`
-# For go commands in worktrees, use `go -C` the same way (Go 1.24+).
-# For npm/npx in worktrees, `cd <path> && npm ...` will prompt — that's expected and acceptable.
+<!-- NOTE: Claude Code's Bash tool runs bash (Unix syntax). Use bash/forward-slash paths. -->
+<!-- WORKTREE COMMANDS: Use `git -C <path>` instead of `cd <path> && git <command>` to avoid permission prompts. -->
+<!-- For npm/npx in worktrees, `cd <path> && npm ...` will prompt — that's expected and acceptable. -->
 
 ```bash
-# TODO
+npm run dev             # Next.js dev server (Turbopack)
+npm run build           # Production build (next build)
+npm test                # Run tests (vitest run)
+npm run test:watch      # Watch mode tests
+npm run lint            # ESLint (next lint)
+npx tsc --noEmit        # Type-check (excludes worker.ts — see tsconfig)
+npm run preview         # OpenNext build + wrangler dev (local CF preview)
+npm run deploy          # OpenNext build + wrangler deploy
+npm run seed:local      # Generate + apply seed data to local D1
 ```
 
-### Dev Startup (full stack with frontend)
-
+### Wrangler / D1
 
 ```bash
-# TODO 
+npx wrangler d1 execute tee-times-db --local --file=migrations/0001_initial_schema.sql  # Apply migration locally
+npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"          # Query local D1
 ```
-
 
 ## Tech Stack
 
 | Layer | Choice |
 |-------|--------|
-# TODO
+| Framework | Next.js 16 (App Router, Turbopack dev) |
+| UI | React 19, Tailwind CSS 4 |
+| Language | TypeScript 5 (strict) |
+| Hosting | Cloudflare Workers (via OpenNext) |
+| Database | Cloudflare D1 (SQLite) |
+| Scheduling | Cron Triggers → Worker `scheduled()` handler |
+| Testing | Vitest 4 |
+| Linting | ESLint 9 (next/core-web-vitals) |
+| Deploy | GitHub Actions → OpenNext build → wrangler deploy |
 
 ## Architecture (Key Points)
 
-**Data model**
-# TODO
+**Data model** — 3 tables in D1 (see `migrations/0001_initial_schema.sql`):
+- `courses` — static catalog with `platform_config` JSON and `is_active` flag
+- `tee_times` — cached availability, delete+insert per course+date
+- `poll_log` — per-course-per-date polling history (freshness + debugging)
+
+**Platform adapters** — each booking system (CPS Golf, ForeUp, etc.) implements `PlatformAdapter` in `src/adapters/`. Adapter registry in `src/adapters/index.ts` maps `platformId → adapter`.
+
+**Worker entry** — `worker.ts` wraps OpenNext for HTTP + adds `scheduled()` for cron polling. Excluded from `tsconfig.json` because it imports build-time OpenNext artifacts.
+
+**Cron polling** — `src/lib/cron-handler.ts` runs on `*/5 * * * *`, queries active courses, calls adapters, upserts results via `src/lib/db.ts`.
 
 ## Conventions
-# TODO
+
+- Path alias: `@/` → `src/` (configured in tsconfig + vitest)
+- D1 types (`D1Database`, etc.) are ambient globals from `@cloudflare/workers-types`
+- Cloudflare env bindings declared in `env.d.ts`
+- Tests live alongside source: `src/**/*.test.ts`
+- Course catalog: `src/config/courses.json`
 
 ## Linter Suppressions
 
-**Before adding any `//nolint` comment or exclusion, first try to fix the underlying code.** Suppressions are only justified when:
-1. The warning is a **confirmed false positive** 
+**Before adding any `eslint-disable` comment, first try to fix the underlying code.** Suppressions are only justified when:
+1. The warning is a **confirmed false positive**
 2. The risk is **architecturally controlled** at a higher level
 3. The fix would be **disproportionate** to the actual risk in context
 
-When suppression is necessary, prefer **inline `//nolint:linter // reason`** over global config exclusions. Inline suppressions are visible to reviewers, scoped to exactly the affected line, and force documentation of the reason.
+When suppression is necessary, prefer **inline `// eslint-disable-next-line rule-name -- reason`** over block or file-level disables. Inline suppressions are visible to reviewers, scoped to exactly the affected line, and force documentation of the reason.
 
 ## Development Workflow
 
@@ -230,23 +251,26 @@ When suppression is necessary, prefer **inline `//nolint:linter // reason`** ove
 
 **Update `dev/implementation-log.md` after each commit** — record what was built, key implementation decisions, gotchas discovered, and quality check results. This is the primary mechanism for preserving context across compacted sessions.
 
+**CI runs 3 parallel jobs**: type-check (`npx tsc --noEmit`), test (`npm test`), build (`npx @opennextjs/cloudflare build`). All must pass on `main` and `dev` branches.
+
 ## Project Layout
 
 ```
-cmd/cvert-ops/     # cobra CLI entry points
-internal/api/      # huma HTTP handlers + middleware
-internal/config/   # caarlos0/env config structs
-internal/feed/     # feed adapters (nvd, mitre, kev, osv, ghsa, epss)
-internal/merge/    # CVE merge pipeline
-internal/alert/    # alert DSL compiler + evaluator
-internal/notify/   # notification channels + delivery
-internal/auth/     # JWT, OAuth, API keys, argon2id
-internal/worker/   # job queue + goroutine pool
-internal/search/   # FTS + facets
-internal/store/    # repository layer (sqlc + squirrel)
-internal/metrics/  # Prometheus counters/histograms
-migrations/        # SQL files (embedded)
-templates/         # notification + watchlist templates (embedded)
+src/
+  adapters/          # Platform adapters (CPS Golf, ForeUp, …) + tests
+  app/               # Next.js App Router pages + API routes
+    api/courses/     # GET /api/courses, GET/POST /api/courses/[id], POST /api/courses/[id]/refresh
+    api/tee-times/   # GET /api/tee-times
+    courses/[id]/    # Course detail page
+  components/        # React components (nav, tee-time-list, date-picker, etc.)
+  config/            # courses.json (static course catalog)
+  lib/               # Core logic: cron-handler, db, poller, favorites
+  test/              # Test helpers
+  types/             # TypeScript interfaces (CourseConfig, TeeTime, PlatformAdapter, D1 row types)
+migrations/          # D1 SQL migrations
+scripts/             # Seed data generation
+worker.ts            # Cloudflare Worker entry (HTTP via OpenNext + cron scheduled())
+wrangler.jsonc       # Cloudflare config (D1 binding, cron triggers)
 ```
 
 ## Skills & Subagents
@@ -276,10 +300,6 @@ Use these proactively — don't wait to be asked.
 
 | Skill | When to use |
 |-------|-------------|
-# TODO
-
-**Subagents** (invoke via `Task` tool):
-
-| Agent | When to use |
-|-------|-------------|
-# TODO
+| `code-bug-hunter-multipass` | Systematic multi-pass bug analysis |
+| `code-bug-hunter-holistic` | Deep semantic analysis of focused codebase |
+| `code-bug-hunter-exploratory` | Depth-first exploration of high-risk code |
