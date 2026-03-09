@@ -25,8 +25,15 @@ export async function POST(
 
   // Get date from query param or default to today
   const { searchParams } = new URL(request.url);
-  const date =
-    searchParams.get("date") ?? new Date().toISOString().split("T")[0];
+  const dateParam = searchParams.get("date");
+  const date = dateParam ?? new Date().toISOString().split("T")[0];
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json(
+      { error: "Invalid date format (YYYY-MM-DD)" },
+      { status: 400 }
+    );
+  }
 
   // Check for recent poll (30-second cache to prevent duplicate upstream calls)
   const recentPoll = await db
