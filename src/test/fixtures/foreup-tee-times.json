@@ -1,0 +1,23 @@
+[
+  {
+    "time": "2026-04-15 07:00",
+    "available_spots": 4,
+    "green_fee": "45.00",
+    "holes": 18,
+    "schedule_id": 7829
+  },
+  {
+    "time": "2026-04-15 07:12",
+    "available_spots": 3,
+    "green_fee": "45.00",
+    "holes": 18,
+    "schedule_id": 7829
+  },
+  {
+    "time": "2026-04-15 15:00",
+    "available_spots": 4,
+    "green_fee": "29.00",
+    "holes": 9,
+    "schedule_id": 7829
+  }
+]
