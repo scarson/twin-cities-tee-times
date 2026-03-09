@@ -1227,7 +1227,7 @@ Test cases:
   - On mount: reads localStorage for instant data, fetches `GET /api/user/favorites` in background, updates state + localStorage with server response
   - `toggleFavorite(id, name)` when not favorited: optimistic add to state + localStorage, fires `POST /api/user/favorites/:id`, keeps change on success
   - `toggleFavorite(id, name)` when already favorited: optimistic remove, fires `DELETE /api/user/favorites/:id`, keeps change on success
-  - `toggleFavorite` failure: rolls back state + localStorage to previous value
+  - `toggleFavorite` failure: rolls back state + localStorage to previous value, shows error toast "Couldn't save — try again" via `showToast` from auth context
 - `isFavorite(id)`: returns true/false based on current state
 
 Mock `useAuth` by mocking the auth-provider module:
@@ -1252,7 +1252,7 @@ The hook should:
 2. Maintain `favorites: string[]` and `favoriteDetails: FavoriteEntry[]` in state
 3. Initialize from localStorage on first render (both modes)
 4. In logged-in mode: useEffect to fetch `GET /api/user/favorites`, replace local state + localStorage
-5. `toggleFavorite`: in anonymous mode, call localStorage functions directly and update state; in logged-in mode, do optimistic update + API call + rollback on failure
+5. `toggleFavorite`: in anonymous mode, call localStorage functions directly and update state; in logged-in mode, do optimistic update + API call + rollback on failure + call `showToast("Couldn't save — try again")` from auth context on failure
 6. `isFavorite`: check `favorites.includes(courseId)`
 
 **Important:** Import from `@/lib/favorites` for `getFavorites`, `getFavoriteDetails`, `setFavorites`, `toggleFavorite as localToggleFavorite`, `isFavorite as localIsFavorite`. Rename to avoid conflicts with the hook's own methods.
@@ -1351,7 +1351,10 @@ Same pattern — replace direct localStorage calls with the hook.
 
 **Step 4: Migrate course-header.tsx**
 
-Replace `toggleFavorite(id, name)` and `isFavorite(id)` calls with the hook's versions. The hook's `toggleFavorite` is async (returns Promise<void>) while the current one is sync — update the click handler to be async.
+Replace `toggleFavorite(id, name)` and `isFavorite(id)` calls with the hook's versions. Key changes:
+- **Remove the local `useState` for `favorited`** — the hook manages favorites state. Use `isFavorite(course.id)` from the hook instead.
+- **Remove `setFavorited(!favorited)`** — the hook's `toggleFavorite` updates state internally.
+- The hook's `toggleFavorite` is async (returns `Promise<void>`) while the current one is sync — update the click handler to be async.
 
 **Step 5: Add booking click tracking**
 
