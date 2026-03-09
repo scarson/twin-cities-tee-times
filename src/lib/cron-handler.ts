@@ -110,5 +110,14 @@ export async function runCronPoll(db: D1Database): Promise<{
     console.error("poll_log cleanup error:", err);
   }
 
+  // Remove expired sessions
+  try {
+    await db
+      .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+      .run();
+  } catch (err) {
+    console.error("session cleanup error:", err);
+  }
+
   return { pollCount, courseCount: courses.length, skipped: false };
 }
