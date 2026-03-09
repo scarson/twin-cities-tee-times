@@ -117,8 +117,12 @@ Route tests need to mock D1. Use the shared helper at `src/test/d1-mock.ts` (cre
 ```typescript
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 
-const { db, mockQuery } = createMockD1();
+const { db, mockFirst, mockAll, mockRun } = createMockD1();
 const env = createMockEnv(db);
+
+// Queue results for sequential queries (resolved in call order):
+mockFirst.mockResolvedValueOnce({ id: "user-1", email: "a@b.com" }); // first .first() call
+mockFirst.mockResolvedValueOnce(null); // second .first() call
 ```
 
 ### Cookie Names (EXACT — do not change)
@@ -361,7 +365,15 @@ export function createMockEnv(db: any) {
 }
 ```
 
-**Step 7: Run type-check to verify**
+**Step 7: Update vitest config to include `.tsx` test files**
+
+The current `vitest.config.ts` has `include: ["src/**/*.test.ts"]` which only matches `.ts` files. React component tests (Tasks 9, 10, 11) use `.test.tsx`. Update the include pattern:
+
+```typescript
+include: ["src/**/*.test.{ts,tsx}"],
+```
+
+**Step 8: Run type-check to verify**
 
 ```bash
 npx tsc --noEmit
@@ -369,10 +381,10 @@ npx tsc --noEmit
 
 Expected: No new errors. (Existing worker.ts exclusion still applies.)
 
-**Step 8: Commit**
+**Step 9: Commit**
 
 ```bash
-git add migrations/0002_auth_schema.sql env.d.ts src/types/auth.ts src/types/index.ts src/test/d1-mock.ts package.json package-lock.json
+git add migrations/0002_auth_schema.sql env.d.ts src/types/auth.ts src/types/index.ts src/test/d1-mock.ts package.json package-lock.json vitest.config.ts
 git commit -m "feat: add auth schema migration, types, test helpers, and dependencies"
 ```
 
@@ -404,6 +416,13 @@ Test cases:
 - `verifyJWT(expiredToken, secret)` returns null
 - `verifyJWT(wrongSignatureToken, secret)` returns null
 - `verifyJWT("garbage", secret)` returns null
+- `validateReturnTo("/courses/braemar")` returns `"/courses/braemar"`
+- `validateReturnTo("/")` returns `"/"`
+- `validateReturnTo("//evil.com")` returns `"/"`
+- `validateReturnTo("https://evil.com")` returns `"/"`
+- `validateReturnTo("/path\\with\\backslash")` returns `"/"`
+- `validateReturnTo(null)` returns `"/"`
+- `validateReturnTo("")` returns `"/"`
 
 **Step 2: Run tests to verify they fail**
 
@@ -465,6 +484,14 @@ export async function verifyJWT(
 
 /** Re-export decodeJwt for use in OAuth callback (decodes Google's ID token without verification). */
 export { decodeJwt };
+
+/** Validate a returnTo URL to prevent open redirects. Must start with / but not //. No backslashes. */
+export function validateReturnTo(returnTo: string | null): string {
+  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//") || returnTo.includes("\\")) {
+    return "/";
+  }
+  return returnTo;
+}
 ```
 
 **Step 4: Run tests to verify they pass**
@@ -702,9 +729,9 @@ The route must:
 7. Set `tct-oauth-verifier` cookie with code verifier, 10-min expiry, HttpOnly
 8. Return `NextResponse.redirect(authUrl)`
 
-**returnTo validation function** (export from auth.ts or define locally):
+**returnTo validation function** — add this as an export in `src/lib/auth.ts` (NOT locally in the route file). It's used by the OAuth initiation route and tested directly in auth tests:
 ```typescript
-function validateReturnTo(returnTo: string | null): string {
+export function validateReturnTo(returnTo: string | null): string {
   if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//") || returnTo.includes("\\")) {
     return "/";
   }
@@ -1143,12 +1170,19 @@ Key implementation details:
   - GET `/api/user/favorites` to get full list
   - Map server response to localStorage format: `setFavorites(favorites.map(f => ({ id: f.courseId, name: f.courseName })))`
   - If `merged > 0`, show toast: `"Synced ${merged} favorites from this device"`
-- Strip query param: `history.replaceState({}, "", window.location.pathname)`
+- Strip ONLY the `justSignedIn` param (preserve any other query params):
+  ```typescript
+  const url = new URL(window.location.href);
+  url.searchParams.delete("justSignedIn");
+  history.replaceState({}, "", url.pathname + url.search);
+  ```
 - Expose: `user`, `isLoggedIn`, `isLoading`, `signOut()`, `deleteAccount()`
 - `signOut()`: POST `/api/auth/logout`, set user to null
 - `deleteAccount()`: DELETE `/api/user/account`, call `setFavorites([])`, set user to null, `window.location.href = "/"`
 
 Export `useAuth()` hook: `const context = useContext(AuthContext); return context;`
+
+**Toast integration:** AuthProvider owns toast state. Add `const [toastMessage, setToastMessage] = useState<string | null>(null)` to the provider. Render `<Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />` alongside `{children}` in the provider's return JSX. Call `setToastMessage("Synced N favorites from this device")` after a successful merge with `merged > 0`. The `useFavorites` hook also needs toast access for error messages — export a `showToast(message: string)` function via the auth context (or create a separate ToastContext if preferred, but keeping it in AuthProvider is simpler since there are only two toast messages in the app).
 
 **Step 4: Update layout.tsx**
 
@@ -1317,20 +1351,30 @@ Replace `toggleFavorite(id, name)` and `isFavorite(id)` calls with the hook's ve
 
 **Step 5: Add booking click tracking**
 
-Find where the "Book" link/button is rendered (likely in `src/components/tee-time-list.tsx` or similar). Before the link opens in a new tab, fire:
+The "Book" link is in `src/components/tee-time-list.tsx` — it's an `<a>` tag with `target="_blank"`. Add an `onClick` handler that fires `sendBeacon` before the browser navigates. Do NOT prevent default or change the `<a>` to a `<button>` — the link must continue to work as-is:
 
-```typescript
-if (isLoggedIn) {
-  navigator.sendBeacon(
-    "/api/user/booking-clicks",
-    new Blob([JSON.stringify({ courseId, date, time })], { type: "application/json" })
-  );
-}
+```tsx
+<a
+  href={tt.booking_url}
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() => {
+    if (isLoggedIn) {
+      navigator.sendBeacon(
+        "/api/user/booking-clicks",
+        new Blob([JSON.stringify({ courseId: tt.course_id, date: tt.date, time: tt.time })], { type: "application/json" })
+      );
+    }
+  }}
+  className="..."
+>
+  Book
+</a>
 ```
 
-The `isLoggedIn` check comes from `useAuth()`. Only track for logged-in users.
+Get `isLoggedIn` from `useAuth()` at the top of the `TeeTimeList` component. Import `useAuth` from `@/components/auth-provider`.
 
-**Important:** `sendBeacon` doesn't send cookies by default in all browsers. Since it's same-origin, cookies should be included. But verify this works in testing. If not, the server should still process the request — the auth will just fail and return 401, which is fine for fire-and-forget.
+**Important:** `sendBeacon` sends cookies for same-origin requests, so the JWT cookie will be included automatically. No special handling needed.
 
 **Step 6: Run existing tests**
 
@@ -1421,3 +1465,7 @@ These are the areas most likely to cause subagent failures. Review carefully dur
 | `process.env` used instead of `getCloudflareContext()` | All | Called out in Critical Context, repeated in relevant tasks |
 | Cookie `Secure` flag breaks localhost | 2, 4 | Conditional on `request.url.startsWith("https://")` |
 | `?justSignedIn=true` appended with string concat | 4 | Explicit: use `new URL()` to handle existing query params |
+| vitest config doesn't discover `.test.tsx` files | 9, 10, 11 | Task 1 updates vitest include to `["src/**/*.test.{ts,tsx}"]` |
+| `validateReturnTo` duplicated across files | 3, 4 | Explicitly exported from `auth.ts`, not defined locally |
+| Query param strip removes all params | 10 | Explicit URL manipulation to only delete `justSignedIn` |
+| Toast state management unclear for AuthProvider | 10, 11 | Explicit: AuthProvider owns toast state, renders Toast component |
