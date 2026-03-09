@@ -53,8 +53,10 @@ export default function Home() {
         <TimeFilter
           startTime={startTime}
           endTime={endTime}
-          onStartChange={setStartTime}
-          onEndChange={setEndTime}
+          onChange={({ startTime: s, endTime: e }) => {
+            setStartTime(s);
+            setEndTime(e);
+          }}
         />
       </div>
 
