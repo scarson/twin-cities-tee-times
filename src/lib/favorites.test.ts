@@ -26,7 +26,7 @@ const localStorageMock = {
   key: vi.fn(() => null),
 };
 
-vi.stubGlobal("window", globalThis);
+vi.stubGlobal("window", {});
 vi.stubGlobal("localStorage", localStorageMock);
 
 beforeEach(() => {
