@@ -25,7 +25,8 @@ export async function POST(
   // Get date from query param or default to today
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date");
-  const date = dateParam ?? new Date().toISOString().split("T")[0];
+  // Default to today in Central Time — all courses are in the Twin Cities metro
+  const date = dateParam ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json(
@@ -42,14 +43,22 @@ export async function POST(
     );
   }
 
-  const result = await pollCourse(db, course, date);
+  try {
+    const result = await pollCourse(db, course, date);
 
-  if (result === "error") {
+    if (result === "error") {
+      return NextResponse.json(
+        { error: "Refresh failed" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ message: "Refreshed", courseId: id, date, result });
+  } catch (err) {
+    console.error("Refresh exception:", err);
     return NextResponse.json(
       { error: "Refresh failed" },
       { status: 500 }
     );
   }
-
-  return NextResponse.json({ message: "Refreshed", courseId: id, date, result });
 }
