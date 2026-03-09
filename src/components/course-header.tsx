@@ -24,10 +24,10 @@ export function CourseHeader({ course }: CourseHeaderProps) {
   return (
     <div className="flex items-start justify-between">
       <div>
-        <h1 className="text-2xl font-bold">{course.name}</h1>
-        <p className="text-sm text-gray-500">{course.city}</p>
+        <h1 className="text-2xl font-bold lg:text-3xl">{course.name}</h1>
+        <p className="text-sm text-gray-500 lg:text-base">{course.city}</p>
         {course.last_polled && (
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-gray-400 lg:text-sm">
             Last updated {timeAgo(course.last_polled)}
           </p>
         )}
@@ -35,7 +35,7 @@ export function CourseHeader({ course }: CourseHeaderProps) {
       <div className="flex gap-2">
         <button
           onClick={handleToggle}
-          className={`rounded border px-3 py-1 text-sm ${
+          className={`rounded border px-3 py-1 text-sm lg:px-4 lg:py-1.5 lg:text-base ${
             favorited
               ? "border-yellow-400 bg-yellow-50 text-yellow-700"
               : "border-gray-300 text-gray-600 hover:bg-gray-50"
@@ -47,7 +47,7 @@ export function CourseHeader({ course }: CourseHeaderProps) {
           href={course.booking_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700"
+          className="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700 lg:px-4 lg:py-1.5 lg:text-base"
         >
           Book online
         </a>

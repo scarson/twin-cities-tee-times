@@ -130,38 +130,38 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 lg:gap-1.5">
         {quickDays.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors ${
+            className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors lg:px-3 lg:py-2 lg:text-sm ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
             }`}
           >
             <span className="font-medium">{day.dayName}</span>
-            <span className="text-[11px]">{day.dayNum}</span>
+            <span className="text-[11px] lg:text-xs">{day.dayNum}</span>
           </button>
         ))}
         <button
           onClick={handleMoreClick}
-          className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors ${
+          className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors lg:px-3 lg:py-2 lg:text-sm ${
             inCalendarMode || calendarOpen
               ? "bg-green-600 text-white"
               : "bg-stone-100 text-gray-700 hover:bg-stone-200"
           }`}
         >
           <span className="font-medium">More</span>
-          <span className="text-[11px]">{calendarOpen ? "▲" : "▼"}</span>
+          <span className="text-[11px] lg:text-xs">{calendarOpen ? "▲" : "▼"}</span>
         </button>
       </div>
 
       {/* Reserve space so content below doesn't jump */}
       <div className="h-5 mt-1">
         {calendarLabel && !calendarOpen && (
-          <span className="text-xs text-gray-500">{calendarLabel}</span>
+          <span className="text-xs text-gray-500 lg:text-sm">{calendarLabel}</span>
         )}
       </div>
 

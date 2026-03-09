@@ -7,20 +7,20 @@ export function Nav() {
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 lg:max-w-4xl">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/logo-icon.png"
-            alt=""
-            width={854}
-            height={333}
-            className="h-12 w-auto"
-            unoptimized
-            priority
-          />
-          <Image
             src="/logo-wordmark.png"
             alt="Twin Cities Tee Times"
             width={854}
             height={365}
-            className="h-10 w-auto"
+            className="h-10 w-auto lg:h-12"
+            unoptimized
+            priority
+          />
+          <Image
+            src="/logo-icon.png"
+            alt=""
+            width={854}
+            height={333}
+            className="h-12 w-auto lg:h-14"
             unoptimized
             priority
           />

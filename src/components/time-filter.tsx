@@ -22,14 +22,14 @@ export function TimeFilter({ startTime, endTime, onChange }: TimeFilterProps) {
     "any";
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1 lg:gap-1.5">
       {PRESETS.map((preset) => (
         <button
           key={preset.id}
           onClick={() =>
             onChange({ startTime: preset.start, endTime: preset.end })
           }
-          className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded px-3 py-1.5 text-xs font-medium transition-colors lg:px-4 lg:py-2 lg:text-sm ${
             activePreset === preset.id
               ? "bg-green-600 text-white"
               : "bg-stone-100 text-gray-700 hover:bg-stone-200"
