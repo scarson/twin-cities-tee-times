@@ -1,3 +1,5 @@
+// ABOUTME: Course detail page showing tee times for a single course.
+// ABOUTME: Fetches course info and tee times, supports date selection and refresh.
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -5,7 +7,6 @@ import { useParams } from "next/navigation";
 import { DatePicker } from "@/components/date-picker";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { CourseHeader } from "@/components/course-header";
-import { RefreshButton } from "@/components/refresh-button";
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +42,10 @@ export default function CoursePage() {
   }, [id, dates]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [fetchData]);
 
@@ -53,18 +58,13 @@ export default function CoursePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
-      {course && <CourseHeader course={course} />}
+    <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
+      {course && (
+        <CourseHeader course={course} dates={dates} onRefreshed={fetchData} />
+      )}
 
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4">
         <DatePicker selected={dates} onChange={setDates} />
-        {course && (
-          <RefreshButton
-            courseId={id}
-            dates={dates}
-            onRefreshed={fetchData}
-          />
-        )}
       </div>
 
       <div className="mt-6">
