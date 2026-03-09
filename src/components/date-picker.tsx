@@ -138,7 +138,7 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
             className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
             }`}
           >
             <span className="font-medium">{day.dayName}</span>
@@ -150,7 +150,7 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors ${
             inCalendarMode || calendarOpen
               ? "bg-green-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-stone-100 text-gray-700 hover:bg-stone-200"
           }`}
         >
           <span className="font-medium">More</span>
