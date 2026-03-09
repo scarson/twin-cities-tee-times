@@ -65,6 +65,11 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
                 {tt.open_slots} {tt.open_slots === 1 ? "spot" : "spots"}
               </span>
               {tt.price !== null && <span>${tt.price.toFixed(2)}</span>}
+              {isStale(tt.fetched_at) && (
+                <span className="text-amber-500" title="Last checked over an hour ago">
+                  ⚠ stale
+                </span>
+              )}
             </div>
           </div>
           <a
@@ -79,6 +84,12 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
       ))}
     </div>
   );
+}
+
+export const STALE_THRESHOLD_MS = 75 * 60 * 1000;
+
+export function isStale(fetchedAt: string): boolean {
+  return Date.now() - new Date(fetchedAt).getTime() > STALE_THRESHOLD_MS;
 }
 
 function formatTime(time: string): string {
