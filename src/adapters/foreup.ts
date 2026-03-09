@@ -38,22 +38,22 @@ export class ForeUpAdapter implements PlatformAdapter {
 
     const response = await fetch(url);
 
-      if (!response.ok) {
-        throw new Error(`ForeUp API returned HTTP ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`ForeUp API returned HTTP ${response.status}`);
+    }
 
-      const data: ForeUpTeeTime[] = await response.json();
+    const data: ForeUpTeeTime[] = await response.json();
 
-      return data.map((tt) => ({
-        courseId: config.id,
-        time: this.toIso(tt.time),
-        price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
-          ? parseFloat(tt.green_fee)
-          : null,
-        holes: tt.holes === 9 ? 9 : 18,
-        openSlots: tt.available_spots,
-        bookingUrl: config.bookingUrl,
-      }));
+    return data.map((tt) => ({
+      courseId: config.id,
+      time: this.toIso(tt.time),
+      price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
+        ? parseFloat(tt.green_fee)
+        : null,
+      holes: tt.holes === 9 ? 9 : 18,
+      openSlots: tt.available_spots,
+      bookingUrl: config.bookingUrl,
+    }));
   }
 
   /** Convert "YYYY-MM-DD HH:MM" → "YYYY-MM-DDTHH:MM:00" */

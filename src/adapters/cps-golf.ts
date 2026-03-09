@@ -53,35 +53,35 @@ export class CpsGolfAdapter implements PlatformAdapter {
     const url = `${baseUrl}/TeeTimes?${params}`;
 
     const response = await fetch(url, {
-        headers: {
-          "x-apikey": apiKey,
-          "client-id": "onlineresweb",
-          ...(websiteId && { "x-websiteid": websiteId }),
-          ...(siteId && { "x-siteid": siteId }),
-          ...(terminalId && { "x-terminalid": terminalId }),
-          "x-componentid": "1",
-          "x-moduleid": "7",
-          "x-productid": "1",
-          "x-ismobile": "false",
-          "x-timezone-offset": "300",
-          "x-timezoneid": "America/Chicago",
-        },
-      });
+      headers: {
+        "x-apikey": apiKey,
+        "client-id": "onlineresweb",
+        ...(websiteId && { "x-websiteid": websiteId }),
+        ...(siteId && { "x-siteid": siteId }),
+        ...(terminalId && { "x-terminalid": terminalId }),
+        "x-componentid": "1",
+        "x-moduleid": "7",
+        "x-productid": "1",
+        "x-ismobile": "false",
+        "x-timezone-offset": "300",
+        "x-timezoneid": "America/Chicago",
+      },
+    });
 
-      if (!response.ok) {
-        throw new Error(`CPS Golf API returned HTTP ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`CPS Golf API returned HTTP ${response.status}`);
+    }
 
-      const data: CpsTeeTimes = await response.json();
+    const data: CpsTeeTimes = await response.json();
 
-      return (data.TeeTimes ?? []).map((tt) => ({
-        courseId: config.id,
-        time: tt.TeeDateTime,
-        price: tt.GreenFee ?? null,
-        holes: tt.Holes === 9 ? 9 : 18,
-        openSlots: tt.NumberOfOpenSlots,
-        bookingUrl: config.bookingUrl,
-      }));
+    return (data.TeeTimes ?? []).map((tt) => ({
+      courseId: config.id,
+      time: tt.TeeDateTime,
+      price: tt.GreenFee ?? null,
+      holes: tt.Holes === 9 ? 9 : 18,
+      openSlots: tt.NumberOfOpenSlots,
+      bookingUrl: config.bookingUrl,
+    }));
   }
 
   /** Convert "2026-04-15" → "Wed Apr 15 2026" (CPS Golf's expected format) */
