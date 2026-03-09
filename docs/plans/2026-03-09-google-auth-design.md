@@ -89,6 +89,22 @@ return response;
 - Clears `tct-session` and `tct-refresh` cookies
 - Does NOT clear localStorage — user keeps their favorites for anonymous use
 
+### Account Deletion
+
+`DELETE /api/user/account`:
+- Requires valid JWT (calls `authenticateRequest`)
+- Deletes the user row from D1 — CASCADE removes all sessions, favorites, settings, and booking clicks
+- Clears `tct-session` and `tct-refresh` cookies
+- Returns `{ ok: true, clearLocalStorage: true }` — client clears localStorage favorites and redirects to `/`
+
+The `AuthProvider` exposes a `deleteAccount()` method that:
+1. Calls `DELETE /api/user/account`
+2. Clears localStorage favorites via `setFavorites([])`
+3. Clears auth context (`user = null`)
+4. Redirects to `/`
+
+UI: "Delete account" option in the nav dropdown, below "Sign out". Requires a confirmation dialog ("Delete your account? Your favorites and booking history will be permanently removed.") before proceeding.
+
 ### Secrets (Wrangler Secrets)
 
 | Secret | Purpose |
@@ -188,7 +204,7 @@ The JWT is in an HTTP-only cookie — JavaScript cannot read it. The client dete
 2. On mount, it calls `GET /api/auth/me`
    - 200 → user is logged in, stores `{ userId, email, name }` in context
    - 401 → user is anonymous, stores `null`
-3. Exposes: `user` (object or null), `isLoggedIn` (boolean), `isLoading` (boolean), `signOut()` (calls logout API + clears context)
+3. Exposes: `user` (object or null), `isLoggedIn` (boolean), `isLoading` (boolean), `signOut()` (calls logout API + clears context), `deleteAccount()` (calls delete API + clears localStorage + clears context + redirects to `/`)
 4. The nav bar reads from this context to show "Sign in" vs user info
 
 ### Post-Login Merge Trigger
@@ -320,6 +336,7 @@ JOIN users u ON u.id = bc.user_id GROUP BY bc.user_id ORDER BY clicks DESC;
 | GET | `/api/auth/google/callback` | None | Handle OAuth callback, create session |
 | POST | `/api/auth/logout` | Best-effort | Delete session, clear cookies (works even with expired/missing JWT) |
 | GET | `/api/auth/me` | JWT | Return current user info or 401 |
+| DELETE | `/api/user/account` | JWT | Delete user and all associated data (CASCADE), clear cookies |
 
 **`/api/auth/me` implementation detail:** This route calls `authenticateRequest` (which only returns `{ userId, email }` from the JWT), then queries `SELECT name FROM users WHERE id = ?` to get the display name. This D1 lookup also validates the user still exists — if deleted, return 401. Response format: `{ userId: string, email: string, name: string }`.
 
@@ -346,7 +363,7 @@ All authenticated routes call `authenticateRequest` at the top. If the JWT is ex
 The existing nav bar (`src/components/nav.tsx`) gets a sign-in/user area on the right side:
 
 - **Logged out:** "Sign in" text link (not a button — keeps the nav minimal)
-- **Logged in:** User's first name or avatar initial in a small circle. Tapping opens a dropdown with "Sign out"
+- **Logged in:** User's first name or avatar initial in a small circle. Tapping opens a dropdown with "Sign out" and "Delete account"
 
 ### Toasts
 
@@ -428,6 +445,11 @@ JWT_SECRET: string;
 - No auth → 401
 - Valid JWT but user deleted from D1 → 401
 
+**`DELETE /api/user/account`:**
+- Valid JWT → deletes user row (CASCADE clears all data), clears cookies, returns `{ ok: true, clearLocalStorage: true }`
+- Verify CASCADE: after deletion, sessions/favorites/booking_clicks for that user are gone
+- No auth → 401
+
 ### `authenticateRequest` Tests (`src/lib/auth.test.ts`)
 
 - Valid JWT → returns user
@@ -476,6 +498,7 @@ JWT_SECRET: string;
 - Successful `/me` → sets `user` in context, `isLoggedIn = true`
 - Failed `/me` (401) → sets `user = null`, `isLoggedIn = false`
 - `signOut()` → calls `POST /api/auth/logout`, clears context, redirects
+- `deleteAccount()` → calls `DELETE /api/user/account`, clears localStorage favorites, clears context, redirects to `/`
 - Detects `?justSignedIn=true` → triggers merge flow when localStorage has favorites
 - Detects `?justSignedIn=true` with empty localStorage → skips merge, no toast
 - Strips `?justSignedIn=true` from URL via `history.replaceState()` after processing
