@@ -7,7 +7,7 @@ import type { SessionRow } from "@/types";
 
 const COOKIE_SESSION = "tct-session";
 const COOKIE_REFRESH = "tct-refresh";
-const REFRESH_EXPIRY_DAYS = 90;
+export const REFRESH_EXPIRY_DAYS = 90;
 
 // ── Pure helpers ──────────────────────────────────────────────
 

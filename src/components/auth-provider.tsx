@@ -98,11 +98,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteAccount = useCallback(async () => {
-    await fetch("/api/user/account", { method: "DELETE" });
-    setFavorites([]);
-    setUser(null);
-    window.location.href = "/";
-  }, []);
+    try {
+      const res = await fetch("/api/user/account", { method: "DELETE" });
+      if (!res.ok) {
+        showToast("Failed to delete account — try again");
+        return;
+      }
+      setFavorites([]);
+      setUser(null);
+      window.location.href = "/";
+    } catch {
+      showToast("Failed to delete account — try again");
+    }
+  }, [showToast]);
 
   const contextValue: AuthContextValue = {
     user,

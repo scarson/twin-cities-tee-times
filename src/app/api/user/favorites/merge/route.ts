@@ -15,7 +15,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { courseIds } = (await request.json()) as { courseIds: string[] };
+    const body = (await request.json()) as Record<string, unknown>;
+    const courseIds = body.courseIds;
+
+    if (!Array.isArray(courseIds)) {
+      const response = NextResponse.json(
+        { error: "courseIds must be an array" },
+        { status: 400 }
+      );
+      headers.forEach((value, key) => response.headers.append(key, value));
+      return response;
+    }
 
     // Count existing favorites before merge
     const before = await db

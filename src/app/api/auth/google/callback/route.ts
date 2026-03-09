@@ -10,10 +10,10 @@ import {
   setAuthCookies,
   decodeJwt,
   validateReturnTo,
+  REFRESH_EXPIRY_DAYS,
 } from "@/lib/auth";
 
 const MAX_SESSIONS = 10;
-const REFRESH_EXPIRY_DAYS = 90;
 
 export async function GET(request: NextRequest) {
   const { env } = await getCloudflareContext();
@@ -87,72 +87,86 @@ export async function GET(request: NextRequest) {
   const email = claims.email as string;
   const name = (claims.name as string) || "";
 
-  // Upsert user
-  const userId = crypto.randomUUID();
-  const now = new Date().toISOString();
-  await db
-    .prepare(
-      "INSERT INTO users (id, google_id, email, name, created_at) VALUES (?, ?, ?, ?, ?) " +
-        "ON CONFLICT(google_id) DO UPDATE SET email = excluded.email, name = excluded.name"
-    )
-    .bind(userId, googleId, email, name, now)
-    .run();
-
-  // Get the actual user ID (may differ from generated UUID if user already existed)
-  const userRow = await db
-    .prepare("SELECT id FROM users WHERE google_id = ?")
-    .bind(googleId)
-    .first<{ id: string }>();
-  const actualUserId = userRow!.id;
-
-  // Create session with hashed refresh token
-  const refreshToken = crypto.randomUUID();
-  const tokenHash = await sha256(refreshToken);
-  const expiresAt = new Date(
-    Date.now() + REFRESH_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-  ).toISOString();
-
-  await db
-    .prepare(
-      "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)"
-    )
-    .bind(tokenHash, actualUserId, expiresAt, now)
-    .run();
-
-  // Enforce max sessions per user
-  const countRow = await db
-    .prepare("SELECT COUNT(*) as count FROM sessions WHERE user_id = ?")
-    .bind(actualUserId)
-    .first<{ count: number }>();
-
-  if (countRow && countRow.count > MAX_SESSIONS) {
+  try {
+    // Upsert user
+    const userId = crypto.randomUUID();
+    const now = new Date().toISOString();
     await db
       .prepare(
-        "DELETE FROM sessions WHERE token_hash = " +
-          "(SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at ASC LIMIT 1)"
+        "INSERT INTO users (id, google_id, email, name, created_at) VALUES (?, ?, ?, ?, ?) " +
+          "ON CONFLICT(google_id) DO UPDATE SET email = excluded.email, name = excluded.name"
       )
-      .bind(actualUserId)
+      .bind(userId, googleId, email, name, now)
       .run();
+
+    // Get the actual user ID (may differ from generated UUID if user already existed)
+    const userRow = await db
+      .prepare("SELECT id FROM users WHERE google_id = ?")
+      .bind(googleId)
+      .first<{ id: string }>();
+
+    if (!userRow) {
+      const redirectUrl = new URL(returnTo, request.url);
+      redirectUrl.searchParams.set("error", "auth_failed");
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const actualUserId = userRow.id;
+
+    // Create session with hashed refresh token
+    const refreshToken = crypto.randomUUID();
+    const tokenHash = await sha256(refreshToken);
+    const expiresAt = new Date(
+      Date.now() + REFRESH_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    await db
+      .prepare(
+        "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)"
+      )
+      .bind(tokenHash, actualUserId, expiresAt, now)
+      .run();
+
+    // Enforce max sessions per user
+    const countRow = await db
+      .prepare("SELECT COUNT(*) as count FROM sessions WHERE user_id = ?")
+      .bind(actualUserId)
+      .first<{ count: number }>();
+
+    if (countRow && countRow.count > MAX_SESSIONS) {
+      await db
+        .prepare(
+          "DELETE FROM sessions WHERE token_hash = " +
+            "(SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at ASC LIMIT 1)"
+        )
+        .bind(actualUserId)
+        .run();
+    }
+
+    // Sign JWT
+    const jwt = await createJWT({ userId: actualUserId, email }, env.JWT_SECRET);
+
+    // Build redirect URL
+    const redirectUrl = new URL(returnTo, request.url);
+    redirectUrl.searchParams.set("justSignedIn", "true");
+
+    // Set auth cookies and clear OAuth cookies
+    const isSecure = request.url.startsWith("https://");
+    const headers = new Headers();
+    setAuthCookies(headers, jwt, refreshToken, isSecure);
+
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set("tct-oauth-state", "", { maxAge: 0, path: "/" });
+    response.cookies.set("tct-oauth-verifier", "", { maxAge: 0, path: "/" });
+    for (const cookie of headers.getSetCookie()) {
+      response.headers.append("Set-Cookie", cookie);
+    }
+
+    return response;
+  } catch (err) {
+    console.error("OAuth callback D1 error:", err);
+    const redirectUrl = new URL(returnTo, request.url);
+    redirectUrl.searchParams.set("error", "auth_failed");
+    return NextResponse.redirect(redirectUrl);
   }
-
-  // Sign JWT
-  const jwt = await createJWT({ userId: actualUserId, email }, env.JWT_SECRET);
-
-  // Build redirect URL
-  const redirectUrl = new URL(returnTo, request.url);
-  redirectUrl.searchParams.set("justSignedIn", "true");
-
-  // Set auth cookies and clear OAuth cookies
-  const isSecure = request.url.startsWith("https://");
-  const headers = new Headers();
-  setAuthCookies(headers, jwt, refreshToken, isSecure);
-
-  const response = NextResponse.redirect(redirectUrl);
-  response.cookies.set("tct-oauth-state", "", { maxAge: 0, path: "/" });
-  response.cookies.set("tct-oauth-verifier", "", { maxAge: 0, path: "/" });
-  for (const cookie of headers.getSetCookie()) {
-    response.headers.append("Set-Cookie", cookie);
-  }
-
-  return response;
 }
