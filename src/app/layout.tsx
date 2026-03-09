@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
+import { Nav } from "@/components/nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Twin Cities Tee Times",
   description:
-    "Check tee times at public golf courses in the Twin Cities metro",
+    "Find available tee times across Twin Cities metro golf courses",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-gray-50 text-gray-900">
+        <Nav />
+        {children}
+      </body>
     </html>
   );
 }
