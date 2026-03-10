@@ -13,17 +13,25 @@ import {
 import type { FavoriteEntry } from "@/lib/favorites";
 
 export function useFavorites() {
-  const { isLoggedIn, favoritesVersion, showToast } = useAuth();
+  const { isLoggedIn, isLoading, favoritesVersion, showToast } = useAuth();
 
   // Initialize empty for SSR hydration safety — localStorage is read in useEffect
   const [favorites, setFavorites] = useState<string[]>([]);
   const [favoriteDetails, setFavoriteDetails] = useState<FavoriteEntry[]>([]);
+  const [favoritesReady, setFavoritesReady] = useState(false);
 
   // Populate from localStorage after mount (avoids React #418 hydration mismatch)
   useEffect(() => {
     setFavorites(localGetFavorites());
     setFavoriteDetails(localGetFavoriteDetails());
   }, []);
+
+  // Mark favorites ready once auth resolves for anonymous users
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      setFavoritesReady(true);
+    }
+  }, [isLoading, isLoggedIn]);
 
   // Logged-in mode: fetch server favorites and overwrite local state + localStorage
   useEffect(() => {
@@ -52,6 +60,10 @@ export function useFavorites() {
         localSetFavorites(details);
       } catch {
         // Keep localStorage data on fetch failure
+      } finally {
+        if (!cancelled) {
+          setFavoritesReady(true);
+        }
       }
     }
 
@@ -123,5 +135,35 @@ export function useFavorites() {
     [favorites]
   );
 
-  return { favorites, favoriteDetails, toggleFavorite, isFavorite };
+  const mergeFavorites = useCallback(
+    async (entries: FavoriteEntry[]) => {
+      // Deduplicate against current favorites
+      const newEntries = entries.filter(
+        (e) => !favorites.includes(e.id)
+      );
+      if (newEntries.length === 0) return;
+
+      // Update local state + localStorage
+      const merged = [...favoriteDetails, ...newEntries];
+      setFavoriteDetails(merged);
+      setFavorites(merged.map((d) => d.id));
+      localSetFavorites(merged);
+
+      // Logged-in: also sync to server
+      if (isLoggedIn) {
+        try {
+          await fetch("/api/user/favorites/merge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ courseIds: newEntries.map((e) => e.id) }),
+          });
+        } catch {
+          // localStorage already updated; server will catch up on next login
+        }
+      }
+    },
+    [isLoggedIn, favorites, favoriteDetails]
+  );
+
+  return { favorites, favoriteDetails, toggleFavorite, isFavorite, mergeFavorites, favoritesReady };
 }
