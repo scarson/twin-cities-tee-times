@@ -244,4 +244,29 @@ describe("authenticateRequest", () => {
     const result = await authenticateRequest(req, db, secret);
     expect(result.user).toBeNull();
   });
+
+  it("returns null without clearing cookies when session was already claimed (race condition)", async () => {
+    const { createJWT, authenticateRequest } = await import("./auth");
+    const { db, mockFirst } = createMockD1();
+
+    vi.useFakeTimers();
+    const jwt = await createJWT({ userId: "u1", email: "a@b.com" }, secret);
+    vi.advanceTimersByTime(16 * 60 * 1000); // expire the JWT
+
+    // DELETE RETURNING returns null — session was already claimed by another request
+    mockFirst.mockResolvedValueOnce(null);
+
+    const req = makeRequest({
+      "tct-session": jwt,
+      "tct-refresh": "claimed-refresh-token",
+    });
+
+    const result = await authenticateRequest(req, db, secret);
+    expect(result.user).toBeNull();
+
+    // CRITICAL: must NOT clear cookies — the winning request already set new ones
+    expect(result.headers.has("Set-Cookie")).toBe(false);
+
+    vi.useRealTimers();
+  });
 });

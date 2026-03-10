@@ -3,7 +3,6 @@
 
 import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { NextRequest } from "next/server";
-import type { SessionRow } from "@/types";
 
 const COOKIE_SESSION = "tct-session";
 const COOKIE_REFRESH = "tct-refresh";
@@ -107,45 +106,39 @@ export async function authenticateRequest(
   }
 
   const tokenHash = await sha256(refreshCookie);
-  const session = await db
-    .prepare("SELECT * FROM sessions WHERE token_hash = ?")
-    .bind(tokenHash)
-    .first<SessionRow>();
 
-  if (!session || new Date(session.expires_at) < new Date()) {
-    // Refresh token not found or expired — clean up
-    if (session) {
-      await db
-        .prepare("DELETE FROM sessions WHERE token_hash = ?")
-        .bind(tokenHash)
-        .run();
-    }
+  // Atomically claim the session — only one concurrent request can succeed.
+  // DELETE RETURNING prevents race conditions where two requests both try to rotate.
+  const claimed = await db
+    .prepare("DELETE FROM sessions WHERE token_hash = ? RETURNING user_id, expires_at")
+    .bind(tokenHash)
+    .first<{ user_id: string; expires_at: string }>();
+
+  if (!claimed) {
+    // Session not found — either already claimed by a concurrent request,
+    // or the token was never valid. Don't clear cookies: if another request
+    // just rotated successfully, it already set new cookies.
+    return { user: null, headers };
+  }
+
+  if (new Date(claimed.expires_at) < new Date()) {
+    // Session was expired — already deleted above. Clear cookies.
     clearAuthCookies(headers, isSecure);
     return { user: null, headers };
   }
 
   // Refresh token valid — rotate tokens
-  const userId = session.user_id;
+  const userId = claimed.user_id;
   const userRow = await db
     .prepare("SELECT email FROM users WHERE id = ?")
     .bind(userId)
     .first<{ email: string }>();
 
   if (!userRow) {
-    // User was deleted — clean up session
-    await db
-      .prepare("DELETE FROM sessions WHERE token_hash = ?")
-      .bind(tokenHash)
-      .run();
+    // User was deleted — session already deleted above. Clear cookies.
     clearAuthCookies(headers, isSecure);
     return { user: null, headers };
   }
-
-  // Delete old session
-  await db
-    .prepare("DELETE FROM sessions WHERE token_hash = ?")
-    .bind(tokenHash)
-    .run();
 
   // Create new session
   const newRefreshToken = crypto.randomUUID();
