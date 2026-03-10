@@ -7,14 +7,15 @@ import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
+import { ShareDialog } from "@/components/share-dialog";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
-import { buildShareUrl } from "@/lib/share";
+import { decodeFavorites, buildShareUrl, resolveSharedCourses } from "@/lib/share";
 import courseCatalog from "@/config/courses.json";
 
 export default function Home() {
-  const { favorites, favoriteDetails } = useFavorites();
+  const { favorites, favoriteDetails, mergeFavorites, favoritesReady } = useFavorites();
   const { showToast } = useAuth();
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
@@ -31,6 +32,48 @@ export default function Home() {
       favoritesInitialized.current = true;
     }
   }, [favorites]);
+
+  // Share link handling
+  const [sharedCourses, setSharedCourses] = useState<{ id: string; name: string }[]>([]);
+  const shareProcessed = useRef(false);
+
+  const stripShareParam = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("f");
+    history.replaceState({}, "", window.location.pathname + (params.toString() ? "?" + params : ""));
+  };
+
+  useEffect(() => {
+    if (shareProcessed.current || !favoritesReady) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const fParam = params.get("f");
+    if (!fParam) return;
+
+    shareProcessed.current = true;
+
+    const indices = decodeFavorites(fParam);
+    if (indices.length === 0) {
+      stripShareParam();
+      return;
+    }
+
+    const catalog = courseCatalog.map((c) => ({
+      index: c.index,
+      id: c.id,
+      name: c.name,
+    }));
+    const resolved = resolveSharedCourses(indices, catalog);
+    const newCourses = resolved.filter((c) => !favorites.includes(c.id));
+
+    if (newCourses.length === 0) {
+      showToast("You already have all these courses");
+      stripShareParam();
+      return;
+    }
+
+    setSharedCourses(newCourses);
+  }, [favoritesReady, favorites, showToast]);
 
   useEffect(() => {
     const fetchTeeTimes = async () => {
@@ -85,6 +128,18 @@ export default function Home() {
       showToast("Couldn\u2019t copy link");
     }
     setShowFavList(false);
+  };
+
+  const handleAcceptShare = async () => {
+    await mergeFavorites(sharedCourses);
+    showToast(`Added ${sharedCourses.length} ${sharedCourses.length === 1 ? "course" : "courses"} to favorites`);
+    setSharedCourses([]);
+    stripShareParam();
+  };
+
+  const handleCancelShare = () => {
+    setSharedCourses([]);
+    stripShareParam();
   };
 
   useEffect(() => {
@@ -176,6 +231,14 @@ export default function Home() {
       <div className="mt-4">
         <TeeTimeList teeTimes={teeTimes} loading={loading} />
       </div>
+
+      {sharedCourses.length > 0 && (
+        <ShareDialog
+          courses={sharedCourses}
+          onAccept={handleAcceptShare}
+          onCancel={handleCancelShare}
+        />
+      )}
     </main>
   );
 }
