@@ -64,16 +64,15 @@ export async function pollCourse(
 
   try {
     const teeTimes = await adapter.fetchTeeTimes(config, date);
-
-    if (teeTimes.length === 0) {
-      await logPoll(db, course.id, date, "no_data", 0, undefined);
-      return "no_data";
-    }
-
     const now = new Date().toISOString();
+
+    // Always upsert — when empty, this deletes stale rows so we don't
+    // show ghost availability from a previous poll.
     await upsertTeeTimes(db, course.id, date, teeTimes, now);
-    await logPoll(db, course.id, date, "success", teeTimes.length, undefined);
-    return "success";
+
+    const status = teeTimes.length === 0 ? "no_data" : "success";
+    await logPoll(db, course.id, date, status, teeTimes.length, undefined);
+    return status;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logPoll(db, course.id, date, "error", 0, message);

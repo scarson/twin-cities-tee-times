@@ -130,7 +130,7 @@ describe("pollCourse", () => {
     );
   });
 
-  it("logs no_data when adapter returns empty array", async () => {
+  it("clears stale rows and logs no_data when adapter returns empty array", async () => {
     const mockAdapter = {
       platformId: "foreup",
       fetchTeeTimes: vi.fn().mockResolvedValue([]),
@@ -139,6 +139,10 @@ describe("pollCourse", () => {
 
     await pollCourse(mockDb as any, mockCourse, "2026-04-15");
 
+    // Must clear old tee times so stale data doesn't persist
+    expect(upsertTeeTimes).toHaveBeenCalledWith(
+      mockDb, "braemar", "2026-04-15", [], expect.any(String)
+    );
     expect(logPoll).toHaveBeenCalledWith(mockDb, "braemar", "2026-04-15", "no_data", 0, undefined);
   });
 
