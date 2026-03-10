@@ -1,30 +1,25 @@
 // ABOUTME: Tests for POST /api/auth/logout route.
-// ABOUTME: Verifies session deletion, cookie clearing, and always-200 behavior.
+// ABOUTME: Verifies session deletion, actual cookie clearing in response, and always-200 behavior.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createMockD1, createMockEnv } from "@/test/d1-mock";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { sha256, clearAuthCookies } from "@/lib/auth";
 
 vi.mock("@opennextjs/cloudflare", () => ({
   getCloudflareContext: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({
-  sha256: vi.fn(),
-  clearAuthCookies: vi.fn(),
-}));
+// No mock of @/lib/auth — using real sha256 and clearAuthCookies
 
 describe("POST /api/auth/logout", () => {
   let db: ReturnType<typeof createMockD1>["db"];
-  let mockRun: ReturnType<typeof createMockD1>["mockRun"];
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
     const mock = createMockD1();
     db = mock.db;
-    mockRun = mock.mockRun;
     const env = createMockEnv(db);
     vi.mocked(getCloudflareContext).mockResolvedValue({
       env,
@@ -32,9 +27,7 @@ describe("POST /api/auth/logout", () => {
     } as any);
   });
 
-  it("deletes session by hash, clears cookies, returns 200", async () => {
-    vi.mocked(sha256).mockResolvedValue("hashed-refresh-token");
-
+  it("deletes session, sets Max-Age=0 cookies, and returns 200", async () => {
     const { POST } = await import("./route");
     const request = new NextRequest("https://example.com/api/auth/logout", {
       method: "POST",
@@ -47,11 +40,15 @@ describe("POST /api/auth/logout", () => {
     const body = await response.json();
     expect(body).toEqual({ ok: true });
 
-    expect(sha256).toHaveBeenCalledWith("some-refresh-token");
+    // Verify D1 delete was called
     expect(db.prepare).toHaveBeenCalledWith(
       "DELETE FROM sessions WHERE token_hash = ?"
     );
-    expect(clearAuthCookies).toHaveBeenCalled();
+
+    // Verify actual response headers contain cookie-clearing directives
+    const cookies = response.headers.getSetCookie();
+    expect(cookies.some((c) => c.includes("tct-session=") && c.includes("Max-Age=0"))).toBe(true);
+    expect(cookies.some((c) => c.includes("tct-refresh=") && c.includes("Max-Age=0"))).toBe(true);
   });
 
   it("clears cookies and returns 200 even with no auth cookies", async () => {
@@ -66,8 +63,12 @@ describe("POST /api/auth/logout", () => {
     const body = await response.json();
     expect(body).toEqual({ ok: true });
 
-    expect(sha256).not.toHaveBeenCalled();
+    // Should NOT have tried to delete any session
     expect(db.prepare).not.toHaveBeenCalled();
-    expect(clearAuthCookies).toHaveBeenCalled();
+
+    // Should still clear cookies in response
+    const cookies = response.headers.getSetCookie();
+    expect(cookies.some((c) => c.includes("tct-session=") && c.includes("Max-Age=0"))).toBe(true);
+    expect(cookies.some((c) => c.includes("tct-refresh=") && c.includes("Max-Age=0"))).toBe(true);
   });
 });
