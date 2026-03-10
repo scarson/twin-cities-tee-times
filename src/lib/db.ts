@@ -1,3 +1,5 @@
+// ABOUTME: D1 database helpers for upserting tee times and logging poll attempts.
+// ABOUTME: Uses batch transactions for atomic delete+insert of tee time data.
 import type { TeeTime } from "@/types";
 
 // D1Database, D1PreparedStatement, etc. are global types from

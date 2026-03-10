@@ -1,3 +1,5 @@
+// ABOUTME: Cron polling orchestrator that runs on a 5-minute schedule.
+// ABOUTME: Controls polling frequency by time of day and polls active courses via adapters.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 // D1Database is a global type from @cloudflare/workers-types
 import type { CourseRow } from "@/types";
@@ -77,22 +79,44 @@ export async function runCronPoll(db: D1Database): Promise<{
   let pollCount = 0;
 
   for (const course of courses) {
-    for (let i = 0; i < dates.length; i++) {
-      const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
-      const minutesSinceLast = lastPolled
-        ? (Date.now() - new Date(lastPolled).getTime()) / 60000
-        : Infinity;
+    try {
+      for (let i = 0; i < dates.length; i++) {
+        const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
+        const minutesSinceLast = lastPolled
+          ? (Date.now() - new Date(lastPolled).getTime()) / 60000
+          : Infinity;
 
-      if (shouldPollDate(i, minutesSinceLast)) {
-        await pollCourse(db, course, dates[i]);
-        pollCount++;
+        if (shouldPollDate(i, minutesSinceLast)) {
+          await pollCourse(db, course, dates[i]);
+          pollCount++;
 
-        // Rate limit: CPS Golf allows 5 req/sec. 250ms between requests
-        // gives ~4 req/sec with headroom. ForeUp has no known limit but
-        // being polite doesn't hurt.
-        await sleep(250);
+          // Rate limit: CPS Golf allows 5 req/sec. 250ms between requests
+          // gives ~4 req/sec with headroom. ForeUp has no known limit but
+          // being polite doesn't hurt.
+          await sleep(250);
+        }
       }
+    } catch (err) {
+      console.error(`Error polling course ${course.id}:`, err);
     }
+  }
+
+  // Purge poll_log entries older than 7 days to prevent unbounded growth
+  try {
+    await db
+      .prepare("DELETE FROM poll_log WHERE polled_at < datetime('now', '-7 days')")
+      .run();
+  } catch (err) {
+    console.error("poll_log cleanup error:", err);
+  }
+
+  // Remove expired sessions
+  try {
+    await db
+      .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+      .run();
+  } catch (err) {
+    console.error("session cleanup error:", err);
   }
 
   return { pollCount, courseCount: courses.length, skipped: false };

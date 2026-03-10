@@ -1,3 +1,5 @@
+// ABOUTME: Tests for the ForeUp adapter.
+// ABOUTME: Covers API URL construction, response parsing, price edge cases, and errors.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ForeUpAdapter } from "./foreup";
 import type { CourseConfig } from "@/types";
@@ -62,11 +64,10 @@ describe("ForeUpAdapter", () => {
     expect(url).toContain("api_key=no_limits");
   });
 
-  it("returns empty array on error", async () => {
+  it("throws on fetch error", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("fail"));
 
-    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results).toEqual([]);
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-04-15")).rejects.toThrow("fail");
   });
 
   it("converts time string to ISO 8601", async () => {
@@ -78,14 +79,13 @@ describe("ForeUpAdapter", () => {
     expect(results[0].time).toBe("2026-04-15T07:00:00");
   });
 
-  it("skips courses with missing scheduleId", async () => {
+  it("throws for courses with missing scheduleId", async () => {
     const incompleteConfig: CourseConfig = {
       ...mockConfig,
       platformConfig: {},
     };
 
-    const results = await adapter.fetchTeeTimes(incompleteConfig, "2026-04-15");
-    expect(results).toEqual([]);
+    await expect(adapter.fetchTeeTimes(incompleteConfig, "2026-04-15")).rejects.toThrow("Missing scheduleId");
   });
 
   it("handles null green_fee", async () => {
@@ -96,5 +96,28 @@ describe("ForeUpAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
     expect(results[0].price).toBeNull();
+  });
+
+  it("throws on non-200 response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Internal Server Error", { status: 500 })
+    );
+
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-03-15")).rejects.toThrow("HTTP 500");
+  });
+
+  it("returns null price for non-numeric green_fee", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-03-15 08:00",
+        green_fee: "free",
+        holes: 18,
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+
+    const result = await adapter.fetchTeeTimes(mockConfig, "2026-03-15");
+    expect(result[0].price).toBeNull();
   });
 });

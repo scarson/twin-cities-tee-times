@@ -278,14 +278,21 @@ The `courses` table is seeded from a JSON config file checked into the repo (`sr
 - **API route tests:** Test the Next.js API routes that serve tee time data to the frontend using the D1 test helpers.
 - **No E2E browser tests for MVP.** The frontend is simple enough that manual testing suffices initially.
 
+## Future Features (To Investigate)
+
+- **Google OAuth login + cross-device favorites sync** — Let users sign in with Google to persist favorites server-side, accessible from any device
+- **Saved filter defaults** — Per-user default time windows, date preferences (e.g., "always show 6-9am on weekends")
+- **Price alerts** — Notify users when a favorited course has openings below a price threshold
+- **Custom course groupings** — Named groups beyond a flat favorites list (e.g., "Weekday Spots", "Weekend with Dad")
+- **Display preferences** — Default view (favorites vs. all), sort order, other UI personalization
+- **Share favorites via link** — Generate a URL encoding the user's favorite course IDs; recipient opens the link and union-merges those courses into their own favorites (works for both logged-in and anonymous users)
+
 ## Explicitly Out of Scope
 
 - Booking through the app (link-out only)
-- User accounts / authentication
 - Member rates (public rates only)
 - Push notifications / PWA (architecture is PWA-friendly for later)
 - Walking vs. riding info
-- Cross-device favorites sync (localStorage only for MVP)
 
 ## Known Risks and Mitigations
 

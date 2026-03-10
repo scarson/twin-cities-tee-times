@@ -1,3 +1,5 @@
+// ABOUTME: ForeUp platform adapter for fetching tee times.
+// ABOUTME: Handles API requests, time format conversion, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 
 interface ForeUpTeeTime {
@@ -18,7 +20,7 @@ export class ForeUpAdapter implements PlatformAdapter {
     const { scheduleId } = config.platformConfig;
 
     if (!scheduleId) {
-      return [];
+      throw new Error("Missing scheduleId in platformConfig");
     }
 
     const params = new URLSearchParams({
@@ -34,26 +36,24 @@ export class ForeUpAdapter implements PlatformAdapter {
 
     const url = `https://foreupsoftware.com/index.php/api/booking/times?${params}`;
 
-    try {
-      const response = await fetch(url);
+    const response = await fetch(url);
 
-      if (!response.ok) {
-        return [];
-      }
-
-      const data: ForeUpTeeTime[] = await response.json();
-
-      return data.map((tt) => ({
-        courseId: config.id,
-        time: this.toIso(tt.time),
-        price: tt.green_fee !== null ? parseFloat(tt.green_fee) : null,
-        holes: tt.holes === 9 ? 9 : 18,
-        openSlots: tt.available_spots,
-        bookingUrl: config.bookingUrl,
-      }));
-    } catch {
-      return [];
+    if (!response.ok) {
+      throw new Error(`ForeUp API returned HTTP ${response.status}`);
     }
+
+    const data: ForeUpTeeTime[] = await response.json();
+
+    return data.map((tt) => ({
+      courseId: config.id,
+      time: this.toIso(tt.time),
+      price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
+        ? parseFloat(tt.green_fee)
+        : null,
+      holes: tt.holes === 9 ? 9 : 18,
+      openSlots: tt.available_spots,
+      bookingUrl: config.bookingUrl,
+    }));
   }
 
   /** Convert "YYYY-MM-DD HH:MM" → "YYYY-MM-DDTHH:MM:00" */

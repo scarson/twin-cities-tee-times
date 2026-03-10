@@ -1,3 +1,5 @@
+// ABOUTME: CPS Golf (Club Prophet) platform adapter for fetching tee times.
+// ABOUTME: Handles API auth, date formatting, and response parsing for CPS-hosted courses.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 
 interface CpsTeeTimes {
@@ -23,7 +25,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
       config.platformConfig;
 
     if (!apiKey) {
-      return [];
+      throw new Error("Missing apiKey in platformConfig");
     }
 
     const baseUrl = `https://${subdomain}.cps.golf/onlineres/onlineapi/api/v1/onlinereservation`;
@@ -50,40 +52,36 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     const url = `${baseUrl}/TeeTimes?${params}`;
 
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "x-apikey": apiKey,
-          "client-id": "onlineresweb",
-          ...(websiteId && { "x-websiteid": websiteId }),
-          ...(siteId && { "x-siteid": siteId }),
-          ...(terminalId && { "x-terminalid": terminalId }),
-          "x-componentid": "1",
-          "x-moduleid": "7",
-          "x-productid": "1",
-          "x-ismobile": "false",
-          "x-timezone-offset": "300",
-          "x-timezoneid": "America/Chicago",
-        },
-      });
+    const response = await fetch(url, {
+      headers: {
+        "x-apikey": apiKey,
+        "client-id": "onlineresweb",
+        ...(websiteId && { "x-websiteid": websiteId }),
+        ...(siteId && { "x-siteid": siteId }),
+        ...(terminalId && { "x-terminalid": terminalId }),
+        "x-componentid": "1",
+        "x-moduleid": "7",
+        "x-productid": "1",
+        "x-ismobile": "false",
+        "x-timezone-offset": "300",
+        "x-timezoneid": "America/Chicago",
+      },
+    });
 
-      if (!response.ok) {
-        return [];
-      }
-
-      const data: CpsTeeTimes = await response.json();
-
-      return (data.TeeTimes ?? []).map((tt) => ({
-        courseId: config.id,
-        time: tt.TeeDateTime,
-        price: tt.GreenFee ?? null,
-        holes: tt.Holes === 9 ? 9 : 18,
-        openSlots: tt.NumberOfOpenSlots,
-        bookingUrl: config.bookingUrl,
-      }));
-    } catch {
-      return [];
+    if (!response.ok) {
+      throw new Error(`CPS Golf API returned HTTP ${response.status}`);
     }
+
+    const data: CpsTeeTimes = await response.json();
+
+    return (data.TeeTimes ?? []).map((tt) => ({
+      courseId: config.id,
+      time: tt.TeeDateTime,
+      price: tt.GreenFee ?? null,
+      holes: tt.Holes === 9 ? 9 : 18,
+      openSlots: tt.NumberOfOpenSlots,
+      bookingUrl: config.bookingUrl,
+    }));
   }
 
   /** Convert "2026-04-15" → "Wed Apr 15 2026" (CPS Golf's expected format) */

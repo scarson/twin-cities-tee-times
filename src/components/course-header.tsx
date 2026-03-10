@@ -2,8 +2,9 @@
 // ABOUTME: and inline refresh trigger next to the "last updated" timestamp.
 "use client";
 
-import { toggleFavorite, isFavorite } from "@/lib/favorites";
-import { useRef, useState } from "react";
+import { formatAge } from "@/lib/format";
+import { useFavorites } from "@/hooks/use-favorites";
+import { useEffect, useRef, useState } from "react";
 
 interface CourseHeaderProps {
   course: {
@@ -18,15 +19,22 @@ interface CourseHeaderProps {
 }
 
 export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) {
-  const [favorited, setFavorited] = useState(() => isFavorite(course.id));
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
   const [coolingDown, setCoolingDown] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+    };
+  }, []);
+
+  const favorited = isFavorite(course.id);
+
   const handleToggle = () => {
-    toggleFavorite(course.id);
-    setFavorited(!favorited);
+    toggleFavorite(course.id, course.name);
   };
 
   const refreshDisabled = refreshing || coolingDown;
@@ -35,13 +43,18 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
     if (refreshDisabled) return;
     setRefreshing(true);
     try {
-      await Promise.all(
+      const responses = await Promise.all(
         dates.map((date) =>
           fetch(`/api/courses/${course.id}/refresh?date=${date}`, {
             method: "POST",
           })
         )
       );
+      // 429 = rate-limited (data is fresh), not a real failure
+      const failed = responses.filter((r) => !r.ok && r.status !== 429);
+      if (failed.length > 0) {
+        console.error(`Refresh failed for ${failed.length}/${responses.length} dates`);
+      }
       setLastRefreshedAt(new Date().toISOString());
       onRefreshed();
       setCoolingDown(true);
@@ -61,7 +74,7 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
         <p className="mt-1 text-xs text-gray-400 lg:text-sm">
           {displayTimestamp ? (
             <>
-              Last updated {timeAgo(displayTimestamp)}
+              Last updated {formatAge(displayTimestamp)}
               {" · "}
               {refreshing ? (
                 <span className="text-gray-400">Refreshing…</span>
@@ -109,14 +122,4 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
       </div>
     </div>
   );
-}
-
-function timeAgo(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }

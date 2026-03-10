@@ -30,14 +30,14 @@ describe("checkRefreshAllowed", () => {
     const db = mockDb({ courseRecent: true, globalCount: 0 });
     const result = await checkRefreshAllowed(db, "sd-oceanside");
     expect(result.allowed).toBe(false);
-    expect(result.reason).toMatch(/recently/i);
+    if (!result.allowed) expect(result.reason).toMatch(/recently/i);
   });
 
   it("blocks refresh when global rate limit exceeded", async () => {
     const db = mockDb({ courseRecent: false, globalCount: GLOBAL_MAX_PER_MINUTE + 1 });
     const result = await checkRefreshAllowed(db, "sd-oceanside");
     expect(result.allowed).toBe(false);
-    expect(result.reason).toMatch(/busy/i);
+    if (!result.allowed) expect(result.reason).toMatch(/busy/i);
   });
 
   it("checks course cooldown before global limit", async () => {
@@ -45,7 +45,7 @@ describe("checkRefreshAllowed", () => {
     const result = await checkRefreshAllowed(db, "sd-oceanside");
     expect(result.allowed).toBe(false);
     // Should mention "recently" (course-level), not "busy" (global)
-    expect(result.reason).toMatch(/recently/i);
+    if (!result.allowed) expect(result.reason).toMatch(/recently/i);
   });
 
   it("queries use correct cooldown intervals", async () => {

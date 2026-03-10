@@ -1,3 +1,5 @@
+// ABOUTME: Tests for polling logic including date frequency, month boundaries, and error handling.
+// ABOUTME: Covers shouldPollDate, getPollingDates, and pollCourse with mocked adapters.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { pollCourse, shouldPollDate, getPollingDates } from "./poller";
 
@@ -44,6 +46,14 @@ describe("getPollingDates", () => {
     expect(dates).toHaveLength(7);
     expect(dates[0]).toBe("2026-04-15");
     expect(dates[6]).toBe("2026-04-21");
+  });
+
+  it("handles month boundary rollover", () => {
+    const dates = getPollingDates("2026-03-28");
+    expect(dates).toEqual([
+      "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31",
+      "2026-04-01", "2026-04-02", "2026-04-03",
+    ]);
   });
 });
 
@@ -130,5 +140,24 @@ describe("pollCourse", () => {
     await pollCourse(mockDb as any, mockCourse, "2026-04-15");
 
     expect(logPoll).toHaveBeenCalledWith(mockDb, "braemar", "2026-04-15", "no_data", 0, undefined);
+  });
+
+  it("logs error when adapter throws", async () => {
+    const mockAdapter = {
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn().mockRejectedValue(new Error("API timeout")),
+    };
+    vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+
+    await pollCourse(mockDb as any, mockCourse, "2026-04-15");
+
+    expect(logPoll).toHaveBeenCalledWith(
+      mockDb,
+      "braemar",
+      "2026-04-15",
+      "error",
+      0,
+      "API timeout"
+    );
   });
 });

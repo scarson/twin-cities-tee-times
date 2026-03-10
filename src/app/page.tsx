@@ -1,21 +1,24 @@
+// ABOUTME: Home page showing tee times across all courses with date and time filtering.
+// ABOUTME: Supports favorites toggle to filter to user's preferred courses.
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
-import { getFavorites } from "@/lib/favorites";
+import { useFavorites } from "@/hooks/use-favorites";
+import { todayCT } from "@/lib/format";
 
 export default function Home() {
-  const [dates, setDates] = useState<string[]>(() => [
-    new Date().toISOString().split("T")[0],
-  ]);
+  const { favorites, favoriteDetails } = useFavorites();
+  const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [teeTimes, setTeeTimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(() => {
-    return getFavorites().length > 0;
+    return favorites.length > 0;
   });
 
   useEffect(() => {
@@ -26,7 +29,6 @@ export default function Home() {
         const fetches = dates.map((date) => {
           const params = new URLSearchParams({ date });
           if (favoritesOnly) {
-            const favorites = getFavorites();
             if (favorites.length > 0) {
               params.set("courses", favorites.join(","));
             }
@@ -42,17 +44,30 @@ export default function Home() {
           `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
         );
         setTeeTimes(merged);
-      } catch {
-        setTeeTimes([]);
+      } catch (err) {
+        console.error("Failed to fetch tee times:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTeeTimes();
-  }, [dates, startTime, endTime, favoritesOnly]);
+  }, [dates, startTime, endTime, favoritesOnly, favorites]);
 
-  const hasFavorites = getFavorites().length > 0;
+  const hasFavorites = favorites.length > 0;
+  const [showFavList, setShowFavList] = useState(false);
+  const favListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showFavList) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (favListRef.current && !favListRef.current.contains(e.target as Node)) {
+        setShowFavList(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showFavList]);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
@@ -72,21 +87,31 @@ export default function Home() {
       </div>
 
       {hasFavorites && (
-        <div className="mt-2 text-sm text-gray-600 lg:text-base">
+        <div className="relative mt-2 text-sm text-gray-600 lg:text-base" ref={favListRef}>
           Showing:{" "}
           <button
-            onClick={() => setFavoritesOnly(true)}
+            onClick={() => {
+              if (favoritesOnly) {
+                setShowFavList(!showFavList);
+              } else {
+                setFavoritesOnly(true);
+                setShowFavList(false);
+              }
+            }}
             className={`font-medium ${
               favoritesOnly
                 ? "text-green-700 underline underline-offset-2"
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
-            Favorites
+            Favorites ({favorites.length})
           </button>
           <span className="mx-1.5 text-gray-300">|</span>
           <button
-            onClick={() => setFavoritesOnly(false)}
+            onClick={() => {
+              setFavoritesOnly(false);
+              setShowFavList(false);
+            }}
             className={`font-medium ${
               !favoritesOnly
                 ? "text-green-700 underline underline-offset-2"
@@ -95,6 +120,20 @@ export default function Home() {
           >
             All courses
           </button>
+
+          {showFavList && (
+            <div className="absolute left-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              {favoriteDetails.map((fav) => (
+                <Link
+                  key={fav.id}
+                  href={`/courses/${fav.id}`}
+                  className="block px-4 py-1.5 text-sm text-gray-700 hover:bg-stone-50 hover:text-green-700"
+                >
+                  {fav.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

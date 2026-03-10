@@ -7,14 +7,21 @@ import { useParams } from "next/navigation";
 import { DatePicker } from "@/components/date-picker";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { CourseHeader } from "@/components/course-header";
+import { todayCT } from "@/lib/format";
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>();
-  const [dates, setDates] = useState<string[]>(() => [
-    new Date().toISOString().split("T")[0],
-  ]);
-  const [course, setCourse] = useState<any>(null);
-  const [teeTimes, setTeeTimes] = useState<any[]>([]);
+  const [dates, setDates] = useState<string[]>(() => [todayCT()]);
+  const [course, setCourse] = useState<{
+    id: string;
+    name: string;
+    city: string;
+    booking_url: string;
+    last_polled: string | null;
+  } | null>(null);
+  const [teeTimes, setTeeTimes] = useState<
+    { course_id: string; date: string; time: string; price: number | null; holes: number; open_slots: number; course_name: string; course_city: string; booking_url: string; fetched_at: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (showSpinner = true) => {
@@ -26,16 +33,16 @@ export default function CoursePage() {
           fetch(`/api/tee-times?date=${date}&courses=${id}`).then((r) => r.json())
         ),
       ]);
-      const courseData = (await courseRes.json()) as any;
-      const merged = (timesResults as any[]).flatMap((r) => r.teeTimes ?? []);
+      const courseData: { course?: typeof course } = await courseRes.json();
+      const merged = (timesResults as { teeTimes?: typeof teeTimes }[]).flatMap((r) => r.teeTimes ?? []);
       merged.sort((a: { date: string; time: string }, b: { date: string; time: string }) =>
         `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
       );
 
       setCourse(courseData.course ?? null);
       setTeeTimes(merged);
-    } catch {
-      setTeeTimes([]);
+    } catch (err) {
+      console.error("Failed to fetch course data:", err);
     } finally {
       setLoading(false);
     }

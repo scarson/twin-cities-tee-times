@@ -1,3 +1,5 @@
+// ABOUTME: Core polling logic for fetching tee times from platform adapters.
+// ABOUTME: Handles per-date polling frequency and result logging to poll_log.
 import { getAdapter } from "@/adapters";
 import { upsertTeeTimes, logPoll } from "@/lib/db";
 // D1Database is a global type from @cloudflare/workers-types
@@ -17,7 +19,7 @@ export function shouldPollDate(
     return true;
   }
   if (dayOffset <= 3) {
-    // Days 3-4: every 30 minutes
+    // Offsets 2-3 (day after tomorrow + next): every 30 minutes
     return minutesSinceLastPoll >= 30;
   }
   // Days 5-7: twice daily (roughly every 10 hours)
@@ -44,12 +46,12 @@ export async function pollCourse(
   db: D1Database,
   course: CourseRow,
   date: string
-): Promise<void> {
+): Promise<"success" | "no_data" | "error"> {
   const adapter = getAdapter(course.platform);
 
   if (!adapter) {
     await logPoll(db, course.id, date, "error", 0, `No adapter for platform: ${course.platform}`);
-    return;
+    return "error";
   }
 
   const config: CourseConfig = {
@@ -65,14 +67,16 @@ export async function pollCourse(
 
     if (teeTimes.length === 0) {
       await logPoll(db, course.id, date, "no_data", 0, undefined);
-      return;
+      return "no_data";
     }
 
     const now = new Date().toISOString();
     await upsertTeeTimes(db, course.id, date, teeTimes, now);
     await logPoll(db, course.id, date, "success", teeTimes.length, undefined);
+    return "success";
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await logPoll(db, course.id, date, "error", 0, message);
+    return "error";
   }
 }

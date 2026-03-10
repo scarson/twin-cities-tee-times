@@ -1,6 +1,10 @@
+// ABOUTME: Tee time list component rendering available times with price, slots, and staleness.
+// ABOUTME: Groups times by course with links to course detail pages.
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/components/auth-provider";
+import { formatTime, staleAge } from "@/lib/format";
 
 interface TeeTimeItem {
   course_id: string;
@@ -21,6 +25,8 @@ interface TeeTimeListProps {
 }
 
 export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
+  const { isLoggedIn } = useAuth();
+
   if (loading) {
     return (
       <p className="py-8 text-center text-gray-500 lg:text-lg">Loading tee times...</p>
@@ -74,6 +80,17 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
             href={tt.booking_url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              if (isLoggedIn) {
+                navigator.sendBeacon(
+                  "/api/user/booking-clicks",
+                  new Blob(
+                    [JSON.stringify({ courseId: tt.course_id, date: tt.date, time: tt.time })],
+                    { type: "application/json" }
+                  )
+                );
+              }
+            }}
             className="ml-4 rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 lg:px-4 lg:py-2 lg:text-base"
           >
             Book
@@ -90,17 +107,3 @@ export function isStale(fetchedAt: string): boolean {
   return Date.now() - new Date(fetchedAt).getTime() > STALE_THRESHOLD_MS;
 }
 
-function staleAge(fetchedAt: string): string {
-  const hours = Math.floor((Date.now() - new Date(fetchedAt).getTime()) / 3_600_000);
-  if (hours < 24) return `${hours}h old`;
-  const days = Math.floor(hours / 24);
-  return `${days}d old`;
-}
-
-function formatTime(time: string): string {
-  const [h, m] = time.split(":");
-  const hour = parseInt(h);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${hour12}:${m} ${ampm}`;
-}

@@ -131,3 +131,72 @@ All in API routes (zero test files exist):
 - `subagent-adapters-lib-findings.md`
 - `subagent-api-routes-findings.md`
 - `subagent-components-utils-findings.md`
+
+---
+
+## Remediation Summary
+
+**Date:** 2026-03-09
+**Plan:** `docs/plans/2026-03-09-test-coverage-and-fixes.md` (13 tasks, 6 batches)
+
+### Stats
+
+| Metric | Count |
+|--------|-------|
+| Total gaps identified | 42 |
+| Tests added | 50 (30 → 80) |
+| New test files | 5 (`format.test.ts`, `date-picker.test.ts`, `favorites.test.ts`, `index.test.ts` (adapters), coverage reports) |
+| Bugs fixed | 1 (ForeUp NaN price) |
+| Source files modified | 9 |
+
+### Tests Added
+
+**`src/lib/format.test.ts`** (19 tests) — new shared formatting module
+- `formatTime`: morning, afternoon, noon, midnight, 1 PM, 11:59 AM
+- `formatAge`: just now, minutes, hours, days + boundary conditions (59m, 60m, 23h, 24h)
+- `staleAge`: hours, days, threshold boundary, 23h, 24h
+
+**`src/components/date-picker.test.ts`** (10 tests) — exported helpers
+- `toDateStr`, `fromDateStr`, `buildQuickDays` (7 entries, Today label, sequential dates)
+- `datesInRange` (inclusive, single date, empty, month boundary)
+- `formatShortDate`
+
+**`src/lib/favorites.test.ts`** (7 tests) — localStorage with SSR guard
+- `getFavorites`: empty, parsed, malformed JSON
+- `toggleFavorite`: add, remove
+- `isFavorite`: true, false
+
+**`src/adapters/index.test.ts`** (3 tests) — adapter registry
+- Known platforms (cps_golf, foreup), unknown returns undefined
+
+**`src/adapters/foreup.test.ts`** (+2 tests) — edge cases
+- Non-200 response → empty array
+- Non-numeric green_fee → null price (caught NaN bug)
+
+**`src/adapters/cps-golf.test.ts`** (+2 tests) — edge cases
+- Null TeeTimes array → empty array
+- Null GreenFee → null price
+
+**`src/lib/poller.test.ts`** (+2 tests) — edge cases
+- Month boundary rollover in getPollingDates
+- Adapter throws → logPoll with error status
+
+### Bugs Found
+
+1. **ForeUp NaN price** (`src/adapters/foreup.ts:49`): `parseFloat("free")` returned `NaN`, displayed as "$NaN" in UI. Fixed with `Number.isNaN()` guard — non-numeric values now map to `null`.
+
+### Other Fixes
+
+- **Extracted shared formatting** (`src/lib/format.ts`): Consolidated duplicate `timeAgo`/`staleAge`/`formatTime` from components into shared module
+- **Exported date-picker helpers**: 5 pure functions made testable
+- **pollCourse return type**: Changed from `Promise<void>` to `Promise<"success" | "no_data" | "error">` so callers can detect failures
+- **Refresh failure surfacing**: Route returns 500 on pollCourse error; client-side logs failures (excluding 429 rate-limits)
+- **API input validation**: tee-times route validates time format, minSlots, courseIds cap
+- **API error handling**: All 3 route handlers now have try/catch with 500 responses
+
+### Remaining Gaps (deferred)
+
+- React component render tests (needs jsdom/testing-library setup)
+- `runCronPoll` integration tests (needs D1 mock harness)
+- `toDateStr` timezone edge case (architectural decision on UTC vs local)
+- API route integration tests (need D1 test harness)

@@ -1,5 +1,8 @@
+// ABOUTME: Top navigation bar with site logo and wordmark.
+// ABOUTME: Dark-themed fixed header used across all pages.
 import Image from "next/image";
 import Link from "next/link";
+import { NavAuthArea } from "./nav-auth-area";
 
 export function Nav() {
   return (
@@ -25,6 +28,7 @@ export function Nav() {
             priority
           />
         </Link>
+        <NavAuthArea />
       </div>
     </nav>
   );
