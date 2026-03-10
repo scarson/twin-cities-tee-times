@@ -585,10 +585,16 @@ Add Lomas Santa Fe to `src/config/courses.json` with `is_active: 0` (not polled 
 
 **Step 1: Add the entry**
 
-In `src/config/courses.json`, find the closing of the last entry (the `sd-oceanside` object). Add the new entry **before** the final `]`. The exact JSON to insert after the last `}` and before `]`:
-
+In `src/config/courses.json`, use the Edit tool. Find (the last entry's closing):
 ```json
-  ,
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202"
+  }
+]
+```
+Replace with:
+```json
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202"
+  },
   {
     "index": 19,
     "id": "sd-lomas-santa-fe",
@@ -603,6 +609,7 @@ In `src/config/courses.json`, find the closing of the last entry (the `sd-oceans
     "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
     "is_active": 0
   }
+]
 ```
 
 **IMPORTANT field naming:** Use `platformConfig` and `bookingUrl` (camelCase) to match all existing entries. Do NOT use `platform_config` or `booking_url`. There is no `state` field — don't add one. Follow the name pattern of other SD test courses (e.g., `"Goat Hill Park (SD Test)"`).
