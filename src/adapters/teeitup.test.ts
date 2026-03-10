@@ -66,9 +66,9 @@ describe("TeeItUpAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
 
-    // First: bookedPlayers=3, maxPlayers=1 → 1 open slot
+    // First: maxPlayers=1 (1 open slot, 3 already booked)
     expect(results[0].openSlots).toBe(1);
-    // Second: bookedPlayers=0, maxPlayers=4 → 4 open slots
+    // Second: maxPlayers=4 (4 open slots, none booked)
     expect(results[1].openSlots).toBe(4);
   });
 
