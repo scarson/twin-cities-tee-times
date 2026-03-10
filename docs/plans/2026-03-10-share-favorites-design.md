@@ -10,8 +10,8 @@ Each course in `courses.json` has a permanent `index` field (monotonically incre
 
 1. Build a byte array where bit N is set if the course at index N is favorited
 2. Base64url-encode the byte array (URL-safe, no padding)
-3. Prefix with `v1/` for format versioning
-4. Attach as `?f=v1/UAAA` query parameter
+3. Prefix with `v1.` for format versioning (`.` is not in the base64url alphabet, so it's an unambiguous delimiter that doesn't get percent-encoded in URLs)
+4. Attach as `?f=v1.UAAA` query parameter
 
 **Scaling:** 19 courses = 3 bytes = 4 base64 chars. 100 courses = 13 bytes = 18 chars. 200 courses = 25 bytes = 34 chars. Well within URL length limits even for text messages.
 
@@ -46,7 +46,7 @@ If both `?justSignedIn=true` and `?f=` are present (user signed in via a share l
 - **Unknown course index in bitfield:** skip that index (course may have been removed)
 - **No favorites to share:** "Share" button doesn't appear (dropdown requires favorites)
 - **All shared courses already favorited:** toast instead of dialog
-- **Version prefix mismatch:** if the prefix isn't `v1/`, silently ignore (forward-compatible)
+- **Version prefix mismatch:** if the prefix isn't `v1.`, silently ignore (forward-compatible)
 
 ## New Files
 

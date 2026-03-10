@@ -4,7 +4,7 @@
 
 **Goal:** Let users share their favorite courses via a compact URL that recipients can accept to union-merge into their own favorites.
 
-**Architecture:** Each course has a permanent numeric index. Favorites are encoded as a bitfield (one bit per index), base64url-encoded with a `v1/` version prefix, and passed as a `?f=` query parameter. The home page detects this param, shows a confirmation dialog listing the shared courses, and merges on accept. Works for both anonymous (localStorage) and logged-in (server API) users.
+**Architecture:** Each course has a permanent numeric index. Favorites are encoded as a bitfield (one bit per index), base64url-encoded with a `v1.` version prefix, and passed as a `?f=` query parameter. The home page detects this param, shows a confirmation dialog listing the shared courses, and merges on accept. Works for both anonymous (localStorage) and logged-in (server API) users.
 
 **Tech Stack:** TypeScript, React, Vitest, Tailwind CSS, existing `/api/user/favorites/merge` endpoint
 
@@ -93,7 +93,7 @@ git commit -m "feat: add stable numeric index to each course for share encoding"
 
 ## Task 2: Create share encoding/decoding module
 
-Pure functions to encode a set of course indices into a `v1/`-prefixed base64url string, and decode it back. Also a helper to build the full share URL and to resolve indices from the course catalog.
+Pure functions to encode a set of course indices into a `v1.`-prefixed base64url string, and decode it back. Also a helper to build the full share URL and to resolve indices from the course catalog.
 
 **Files:**
 - Create: `src/lib/share.ts`
@@ -113,26 +113,26 @@ import { encodeFavorites, decodeFavorites, buildShareUrl, resolveSharedCourses }
 describe("encodeFavorites", () => {
   it("encodes a single index", () => {
     const result = encodeFavorites([0]);
-    expect(result).toMatch(/^v1\//);
+    expect(result).toMatch(/^v1\./);
     // Bit 0 set = byte 0x80 = base64url "gA"
-    expect(result).toBe("v1/gA");
+    expect(result).toBe("v1.gA");
   });
 
   it("encodes multiple indices", () => {
     const result = encodeFavorites([0, 7]);
     // Bits 0 and 7 set = byte 0x81 = base64url "gQ"
-    expect(result).toBe("v1/gQ");
+    expect(result).toBe("v1.gQ");
   });
 
   it("encodes indices spanning multiple bytes", () => {
     const result = encodeFavorites([0, 8]);
     // Bit 0 in byte 0 = 0x80, bit 8 (= bit 0 of byte 1) = 0x80
     // Bytes: [0x80, 0x80] = base64url "gIA"
-    expect(result).toBe("v1/gIA");
+    expect(result).toBe("v1.gIA");
   });
 
-  it("returns v1/ prefix with empty base64 for empty input", () => {
-    expect(encodeFavorites([])).toBe("v1/");
+  it("returns v1. prefix with empty base64 for empty input", () => {
+    expect(encodeFavorites([])).toBe("v1.");
   });
 
   it("round-trips with decodeFavorites", () => {
@@ -151,12 +151,12 @@ describe("encodeFavorites", () => {
 });
 
 describe("decodeFavorites", () => {
-  it("returns empty array for empty v1/ prefix", () => {
-    expect(decodeFavorites("v1/")).toEqual([]);
+  it("returns empty array for empty v1. prefix", () => {
+    expect(decodeFavorites("v1.")).toEqual([]);
   });
 
   it("returns empty array for invalid version prefix", () => {
-    expect(decodeFavorites("v2/gA")).toEqual([]);
+    expect(decodeFavorites("v2.gA")).toEqual([]);
   });
 
   it("returns empty array for missing version prefix", () => {
@@ -164,7 +164,7 @@ describe("decodeFavorites", () => {
   });
 
   it("returns empty array for corrupted base64", () => {
-    expect(decodeFavorites("v1/!!!invalid!!!")).toEqual([]);
+    expect(decodeFavorites("v1.!!!invalid!!!")).toEqual([]);
   });
 
   it("returns empty array for null/undefined input", () => {
@@ -175,12 +175,11 @@ describe("decodeFavorites", () => {
 });
 
 describe("buildShareUrl", () => {
-  it("builds URL with f query param containing v1/ prefix", () => {
+  it("builds URL with f query param containing v1. prefix", () => {
     const url = buildShareUrl("https://example.com/", [0, 3]);
     const parsed = new URL(url);
-    // Use searchParams.get() which auto-decodes %2F back to /
     const fParam = parsed.searchParams.get("f");
-    expect(fParam).toMatch(/^v1\//);
+    expect(fParam).toMatch(/^v1\./);
   });
 
   it("preserves existing path", () => {
@@ -234,9 +233,9 @@ Create `src/lib/share.ts`:
 
 ```typescript
 // ABOUTME: Bitfield encoding/decoding for sharing favorite courses via URL.
-// ABOUTME: Encodes course indices as a compact base64url string with v1/ version prefix.
+// ABOUTME: Encodes course indices as a compact base64url string with v1. version prefix.
 
-const VERSION_PREFIX = "v1/";
+const VERSION_PREFIX = "v1.";
 
 /**
  * Encode an array of course indices into a versioned base64url string.
