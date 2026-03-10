@@ -17,9 +17,16 @@ export default function Home() {
   const [endTime, setEndTime] = useState("");
   const [teeTimes, setTeeTimes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [favoritesOnly, setFavoritesOnly] = useState(() => {
-    return favorites.length > 0;
-  });
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  // Auto-enable favorites filter once favorites load from localStorage (one-shot)
+  const favoritesInitialized = useRef(false);
+  useEffect(() => {
+    if (!favoritesInitialized.current && favorites.length > 0) {
+      setFavoritesOnly(true);
+      favoritesInitialized.current = true;
+    }
+  }, [favorites]);
 
   useEffect(() => {
     const fetchTeeTimes = async () => {

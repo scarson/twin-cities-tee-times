@@ -55,7 +55,7 @@ describe("useFavorites", () => {
       });
     });
 
-    it("delegates to localStorage functions with no fetch calls", () => {
+    it("populates from localStorage after mount", async () => {
       mockedGetFavorites.mockReturnValue(["course-a"]);
       mockedGetFavoriteDetails.mockReturnValue([
         { id: "course-a", name: "Course A" },
@@ -63,7 +63,10 @@ describe("useFavorites", () => {
 
       const { result } = renderHook(() => useFavorites());
 
-      expect(result.current.favorites).toEqual(["course-a"]);
+      // After effects run, should have localStorage data
+      await waitFor(() => {
+        expect(result.current.favorites).toEqual(["course-a"]);
+      });
       expect(result.current.favoriteDetails).toEqual([
         { id: "course-a", name: "Course A" },
       ]);
