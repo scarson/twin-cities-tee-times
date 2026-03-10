@@ -348,6 +348,122 @@ describe("GET /api/auth/google/callback", () => {
     expect(url.searchParams.get("detail")).toContain("invalid_grant");
   });
 
+  it("redirects with token_decode error when ID token is malformed", async () => {
+    const { GET } = await import("./route");
+
+    mockValidateAuth.mockResolvedValueOnce({
+      idToken: () => "not.a.valid.jwt",
+    });
+
+    const state = "bad-token-state";
+    const request = makeCallbackRequest(
+      { code: "auth-code", state },
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    const url = new URL(location);
+    expect(url.searchParams.get("error")).toBe("token_decode");
+    expect(url.searchParams.has("detail")).toBe(true);
+  });
+
+  it("redirects with missing_claims when ID token lacks sub or email", async () => {
+    const { GET } = await import("./route");
+
+    // Valid JWT structure but missing required claims
+    const idToken = makeIdToken({ name: "No Sub Or Email" });
+    mockValidateAuth.mockResolvedValueOnce({
+      idToken: () => idToken,
+    });
+
+    const state = "missing-claims-state";
+    const request = makeCallbackRequest(
+      { code: "auth-code", state },
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    expect(new URL(location).searchParams.get("error")).toBe("missing_claims");
+  });
+
+  it("redirects with user_not_found when SELECT after upsert returns null", async () => {
+    const { GET } = await import("./route");
+
+    const idToken = makeIdToken({
+      sub: "google-vanishing",
+      email: "vanish@example.com",
+      name: "Ghost User",
+    });
+    mockValidateAuth.mockResolvedValueOnce({
+      idToken: () => idToken,
+    });
+
+    // Upsert succeeds
+    mockD1.mockRun.mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
+    // SELECT returns null (should never happen, but test the guard)
+    mockD1.mockFirst.mockResolvedValueOnce(null);
+
+    const state = "vanish-state";
+    const request = makeCallbackRequest(
+      { code: "auth-code", state },
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    expect(new URL(location).searchParams.get("error")).toBe("user_not_found");
+  });
+
+  it("redirects with db_error when D1 operation fails", async () => {
+    const { GET } = await import("./route");
+
+    const idToken = makeIdToken({
+      sub: "google-db-fail",
+      email: "dbfail@example.com",
+      name: "DB Fail",
+    });
+    mockValidateAuth.mockResolvedValueOnce({
+      idToken: () => idToken,
+    });
+
+    // Upsert throws
+    mockD1.mockRun.mockRejectedValueOnce(new Error("D1_ERROR: table users has no column named oops"));
+
+    const state = "db-fail-state";
+    const request = makeCallbackRequest(
+      { code: "auth-code", state },
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    const url = new URL(location);
+    expect(url.searchParams.get("error")).toBe("db_error");
+    expect(url.searchParams.get("detail")).toContain("D1_ERROR");
+  });
+
   it("redirects with error when code param is missing (no error param either)", async () => {
     const { GET } = await import("./route");
 

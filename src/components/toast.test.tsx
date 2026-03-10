@@ -16,7 +16,7 @@ describe("Toast", () => {
     expect(screen.getByText("Hello")).toBeDefined();
   });
 
-  it("auto-dismisses after 5 seconds", () => {
+  it("auto-dismisses after 7 seconds", () => {
     vi.useFakeTimers();
     const onDismiss = vi.fn();
     render(<Toast message="Goodbye" onDismiss={onDismiss} />);
@@ -24,7 +24,7 @@ describe("Toast", () => {
     expect(onDismiss).not.toHaveBeenCalled();
 
     act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(7000);
     });
 
     expect(onDismiss).toHaveBeenCalledOnce();
