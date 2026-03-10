@@ -132,19 +132,20 @@ export async function GET(request: NextRequest) {
       .bind(tokenHash, actualUserId, expiresAt, now)
       .run();
 
-    // Enforce max sessions per user
+    // Enforce max sessions per user — delete all excess, not just one
     const countRow = await db
       .prepare("SELECT COUNT(*) as count FROM sessions WHERE user_id = ?")
       .bind(actualUserId)
       .first<{ count: number }>();
 
-    if (countRow && countRow.count > MAX_SESSIONS) {
+    const excess = (countRow?.count ?? 0) - MAX_SESSIONS;
+    if (excess > 0) {
       await db
         .prepare(
-          "DELETE FROM sessions WHERE token_hash = " +
-            "(SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at ASC LIMIT 1)"
+          "DELETE FROM sessions WHERE token_hash IN " +
+            "(SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY created_at ASC LIMIT ?)"
         )
-        .bind(actualUserId)
+        .bind(actualUserId, excess)
         .run();
     }
 

@@ -254,7 +254,7 @@ describe("GET /api/auth/google/callback", () => {
       prepareCalls.some(
         (sql: string) =>
           sql.includes("DELETE FROM sessions") &&
-          sql.includes("ORDER BY created_at ASC LIMIT 1")
+          sql.includes("ORDER BY created_at ASC LIMIT ?")
       )
     ).toBe(true);
   });
