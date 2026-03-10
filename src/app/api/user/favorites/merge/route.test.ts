@@ -144,4 +144,26 @@ describe("POST /api/user/favorites/merge", () => {
     const body = await response.json();
     expect(body).toEqual({ error: "Unauthorized" });
   });
+
+  it("returns 400 when courseIds exceeds 100 entries", async () => {
+    vi.mocked(authenticateRequest).mockResolvedValue({
+      user: { userId: "user-1", email: "test@example.com" },
+      headers: new Headers(),
+    });
+
+    const { POST } = await import("./route");
+    const courseIds = Array.from({ length: 101 }, (_, i) => `course-${i}`);
+    const request = new NextRequest(
+      "https://example.com/api/user/favorites/merge",
+      {
+        method: "POST",
+        body: JSON.stringify({ courseIds }),
+      }
+    );
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toEqual({ error: "courseIds exceeds maximum of 100" });
+  });
 });

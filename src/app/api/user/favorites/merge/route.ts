@@ -27,6 +27,15 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
+    if (courseIds.length > 100) {
+      const response = NextResponse.json(
+        { error: "courseIds exceeds maximum of 100" },
+        { status: 400 }
+      );
+      headers.forEach((value, key) => response.headers.append(key, value));
+      return response;
+    }
+
     // Count existing favorites before merge
     const before = await db
       .prepare("SELECT COUNT(*) AS count FROM user_favorites WHERE user_id = ?")
