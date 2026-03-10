@@ -64,7 +64,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Exchange auth code for tokens
-  const code = request.nextUrl.searchParams.get("code")!;
+  const code = request.nextUrl.searchParams.get("code");
+  if (!code) {
+    const redirectUrl = new URL(returnTo, request.url);
+    redirectUrl.searchParams.set("error", "auth_failed");
+    return NextResponse.redirect(redirectUrl);
+  }
   const redirectUri = `${request.nextUrl.origin}/api/auth/google/callback`;
   const google = new Google(
     env.GOOGLE_CLIENT_ID,

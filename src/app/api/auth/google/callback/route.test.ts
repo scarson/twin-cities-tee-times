@@ -258,4 +258,23 @@ describe("GET /api/auth/google/callback", () => {
       )
     ).toBe(true);
   });
+
+  it("redirects with error when code param is missing (no error param either)", async () => {
+    const { GET } = await import("./route");
+
+    const state = "no-code-state";
+    const request = makeCallbackRequest(
+      { state }, // no code, no error
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    expect(new URL(location).searchParams.get("error")).toBe("auth_failed");
+  });
 });
