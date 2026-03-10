@@ -1,17 +1,24 @@
 // ABOUTME: POST /api/user/booking-clicks — tracks when a user clicks a booking link.
-// ABOUTME: Fire-and-forget endpoint; uses INSERT OR IGNORE for idempotency.
+// ABOUTME: Uses JWT-only auth (no token rotation) because sendBeacon discards responses.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { authenticateRequest } from "@/lib/auth";
+import { verifyJWT } from "@/lib/auth";
+
+const COOKIE_SESSION = "tct-session";
 
 export async function POST(request: NextRequest) {
   const { env } = await getCloudflareContext();
   const db = env.DB;
-  const { user, headers } = await authenticateRequest(request, db, env.JWT_SECRET);
 
+  const sessionCookie = request.cookies.get(COOKIE_SESSION)?.value;
+  if (!sessionCookie) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const user = await verifyJWT(sessionCookie, env.JWT_SECRET);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+    return NextResponse.json({ ok: true });
   }
 
   try {
@@ -22,12 +29,10 @@ export async function POST(request: NextRequest) {
     };
 
     if (!courseId || !date || !time) {
-      const response = NextResponse.json(
+      return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
-      headers.forEach((value, key) => response.headers.append(key, value));
-      return response;
     }
 
     await db
@@ -38,16 +43,9 @@ export async function POST(request: NextRequest) {
       .bind(user.userId, courseId, date, time, new Date().toISOString())
       .run();
 
-    const response = NextResponse.json({ ok: true });
-    headers.forEach((value, key) => response.headers.append(key, value));
-    return response;
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("POST /api/user/booking-clicks:", err);
-    const response = NextResponse.json(
-      { error: "Failed to record click" },
-      { status: 500 }
-    );
-    headers.forEach((value, key) => response.headers.append(key, value));
-    return response;
+    return NextResponse.json({ ok: true });
   }
 }
