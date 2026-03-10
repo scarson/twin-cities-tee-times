@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   // Missing OAuth cookies
   if (!stateCookie || !codeVerifier) {
-    const redirectUrl = new URL("/?error=auth_failed", request.url);
+    const redirectUrl = new URL("/?error=missing_cookies", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -52,13 +52,13 @@ export async function GET(request: NextRequest) {
     expectedState = parsed.state;
     returnTo = validateReturnTo(parsed.returnTo);
   } catch {
-    const redirectUrl = new URL("/?error=auth_failed", request.url);
+    const redirectUrl = new URL("/?error=state_parse", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
   const stateParam = request.nextUrl.searchParams.get("state");
   if (stateParam !== expectedState) {
-    const redirectUrl = new URL("/?error=auth_failed", request.url);
+    const redirectUrl = new URL("/?error=state_mismatch", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
     const redirectUrl = new URL(returnTo, request.url);
-    redirectUrl.searchParams.set("error", "auth_failed");
+    redirectUrl.searchParams.set("error", "missing_code");
     return NextResponse.redirect(redirectUrl);
   }
   const redirectUri = `${request.nextUrl.origin}/api/auth/google/callback`;
@@ -79,9 +79,10 @@ export async function GET(request: NextRequest) {
   let tokens;
   try {
     tokens = await google.validateAuthorizationCode(code, codeVerifier);
-  } catch {
+  } catch (exchangeErr) {
     const redirectUrl = new URL(returnTo, request.url);
-    redirectUrl.searchParams.set("error", "auth_failed");
+    redirectUrl.searchParams.set("error", "code_exchange");
+    redirectUrl.searchParams.set("detail", String(exchangeErr));
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -178,7 +179,8 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("OAuth callback D1 error:", err);
     const redirectUrl = new URL(returnTo, request.url);
-    redirectUrl.searchParams.set("error", "auth_failed");
+    redirectUrl.searchParams.set("error", "db_error");
+    redirectUrl.searchParams.set("detail", String(err));
     return NextResponse.redirect(redirectUrl);
   }
 }
