@@ -228,5 +228,19 @@
       "scheduleId": "1202"
     },
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202"
+  },
+  {
+    "index": 19,
+    "id": "sd-lomas-santa-fe",
+    "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
+    "city": "Solana Beach",
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "lomas-santa-fe-executive-golf-course",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "1241"
+    },
+    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
+    "is_active": 0
   }
 ]

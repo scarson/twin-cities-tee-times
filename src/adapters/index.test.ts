@@ -17,6 +17,12 @@ describe("getAdapter", () => {
     expect(adapter!.platformId).toBe("foreup");
   });
 
+  it("returns TeeItUp adapter for 'teeitup'", () => {
+    const adapter = getAdapter("teeitup");
+    expect(adapter).toBeDefined();
+    expect(adapter!.platformId).toBe("teeitup");
+  });
+
   it("returns undefined for unknown platform", () => {
     expect(getAdapter("unknown")).toBeUndefined();
   });
