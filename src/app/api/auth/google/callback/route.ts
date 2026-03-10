@@ -162,8 +162,12 @@ export async function GET(request: NextRequest) {
     setAuthCookies(headers, jwt, refreshToken, isSecure);
 
     const response = NextResponse.redirect(redirectUrl);
-    response.cookies.set("tct-oauth-state", "", { maxAge: 0, path: "/" });
-    response.cookies.set("tct-oauth-verifier", "", { maxAge: 0, path: "/" });
+    // Clear OAuth cookies and set auth cookies via raw headers only —
+    // mixing response.cookies.set() with headers.append("Set-Cookie") can
+    // cause the auth cookies to be silently dropped during serialization.
+    const cookieSuffix = `HttpOnly; SameSite=Lax; Path=/${isSecure ? "; Secure" : ""}`;
+    response.headers.append("Set-Cookie", `tct-oauth-state=; Max-Age=0; ${cookieSuffix}`);
+    response.headers.append("Set-Cookie", `tct-oauth-verifier=; Max-Age=0; ${cookieSuffix}`);
     for (const cookie of headers.getSetCookie()) {
       response.headers.append("Set-Cookie", cookie);
     }
