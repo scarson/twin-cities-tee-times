@@ -78,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (merged > 0) {
                 showToast(`Synced ${merged} favorites from this device`);
               }
+            } else {
+              showToast("Couldn\u2019t sync favorites \u2014 they\u2019ll sync next time");
             }
           }
 
