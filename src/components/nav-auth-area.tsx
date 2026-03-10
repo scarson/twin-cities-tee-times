@@ -62,7 +62,7 @@ export function NavAuthArea() {
       </button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
           <div className="px-4 py-2">
             <div className="text-sm font-medium text-gray-900">
               {user?.name}

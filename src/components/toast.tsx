@@ -1,6 +1,6 @@
 "use client";
 // ABOUTME: Lightweight toast notification for transient messages.
-// ABOUTME: Auto-dismisses after 5 seconds, used for merge confirmations and errors.
+// ABOUTME: Auto-dismisses after 7 seconds, used for merge confirmations and errors.
 
 import { useEffect } from "react";
 
@@ -13,7 +13,7 @@ export function Toast({ message, onDismiss }: ToastProps) {
   useEffect(() => {
     if (message === null) return;
 
-    const timer = setTimeout(onDismiss, 5000);
+    const timer = setTimeout(onDismiss, 7000);
     return () => clearTimeout(timer);
   }, [message, onDismiss]);
 

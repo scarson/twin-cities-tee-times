@@ -87,10 +87,25 @@ export async function GET(request: NextRequest) {
   }
 
   // Decode ID token to get user info
-  const claims = decodeJwt(tokens.idToken());
-  const googleId = claims.sub as string;
-  const email = claims.email as string;
-  const name = (claims.name as string) || "";
+  let googleId: string;
+  let email: string;
+  let name: string;
+  try {
+    const claims = decodeJwt(tokens.idToken());
+    if (typeof claims.sub !== "string" || typeof claims.email !== "string") {
+      const redirectUrl = new URL(returnTo, request.url);
+      redirectUrl.searchParams.set("error", "missing_claims");
+      return NextResponse.redirect(redirectUrl);
+    }
+    googleId = claims.sub;
+    email = claims.email;
+    name = (claims.name as string) || "";
+  } catch (tokenErr) {
+    const redirectUrl = new URL(returnTo, request.url);
+    redirectUrl.searchParams.set("error", "token_decode");
+    redirectUrl.searchParams.set("detail", String(tokenErr));
+    return NextResponse.redirect(redirectUrl);
+  }
 
   try {
     // Upsert user
@@ -112,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     if (!userRow) {
       const redirectUrl = new URL(returnTo, request.url);
-      redirectUrl.searchParams.set("error", "auth_failed");
+      redirectUrl.searchParams.set("error", "user_not_found");
       return NextResponse.redirect(redirectUrl);
     }
 
