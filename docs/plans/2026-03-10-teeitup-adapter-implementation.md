@@ -401,7 +401,9 @@ describe("TeeItUpAdapter", () => {
 Run: `npx vitest run src/adapters/teeitup.test.ts`
 Expected: FAIL — `Cannot find module './teeitup'`
 
-**Step 3: Commit**
+**Step 3: Commit the failing tests**
+
+This is standard TDD practice — committing tests that fail because the implementation doesn't exist yet. The tests will pass after Task 3.
 
 ```bash
 git add src/adapters/teeitup.test.ts
@@ -479,7 +481,7 @@ export class TeeItUpAdapter implements PlatformAdapter {
             courseId: config.id,
             time: tt.teetime,
             price: priceInCents / 100,
-            holes: (rate.holes === 9 ? 9 : 18) as 9 | 18,
+            holes: rate.holes === 9 ? 9 : 18,
             openSlots: tt.maxPlayers,
             bookingUrl: config.bookingUrl,
           };
@@ -488,6 +490,8 @@ export class TeeItUpAdapter implements PlatformAdapter {
   }
 }
 ```
+
+Note: No `as 9 | 18` cast needed — TypeScript infers literal types from the ternary, consistent with CPS Golf and ForeUp adapters.
 
 **Step 2: Run tests to verify they pass**
 
@@ -513,28 +517,44 @@ Add the TeeItUp adapter to the adapter registry so the poller can find it.
 
 **Step 1: Update the registry**
 
-In `src/adapters/index.ts`, add the import and instance:
+In `src/adapters/index.ts`, make two edits:
 
+**Edit 1 — add import.** Find:
 ```typescript
+import { ForeUpAdapter } from "./foreup";
+```
+Replace with:
+```typescript
+import { ForeUpAdapter } from "./foreup";
 import { TeeItUpAdapter } from "./teeitup";
 ```
 
-Add to the `adapters` array:
-
+**Edit 2 — add to array.** Find:
 ```typescript
-new TeeItUpAdapter(),
+  new ForeUpAdapter(),
+];
+```
+Replace with:
+```typescript
+  new ForeUpAdapter(),
+  new TeeItUpAdapter(),
+];
 ```
 
 **Step 2: Add registry test**
 
-In `src/adapters/index.test.ts`, add a new test case after the ForeUp one:
-
+In `src/adapters/index.test.ts`, find:
 ```typescript
-it("returns TeeItUp adapter for 'teeitup'", () => {
-  const adapter = getAdapter("teeitup");
-  expect(adapter).toBeDefined();
-  expect(adapter!.platformId).toBe("teeitup");
-});
+  it("returns undefined for unknown platform", () => {
+```
+Insert this test **before** that line:
+```typescript
+  it("returns TeeItUp adapter for 'teeitup'", () => {
+    const adapter = getAdapter("teeitup");
+    expect(adapter).toBeDefined();
+    expect(adapter!.platformId).toBe("teeitup");
+  });
+
 ```
 
 **Step 3: Run all adapter tests**
@@ -563,36 +583,38 @@ Add Lomas Santa Fe to `src/config/courses.json` with `is_active: 0` (not polled 
 **Files:**
 - Modify: `src/config/courses.json`
 
-**Step 1: Read `src/config/courses.json`** to find the next available `index` value and the existing entry format.
+**Step 1: Add the entry**
 
-**Step 2: Add the entry**
-
-Add to the `courses` array (use the next sequential index):
+In `src/config/courses.json`, find the closing of the last entry (the `sd-oceanside` object). Add the new entry **before** the final `]`. The exact JSON to insert after the last `}` and before `]`:
 
 ```json
-{
-  "id": "sd-lomas-santa-fe",
-  "index": <next_index>,
-  "name": "Lomas Santa Fe Executive Golf Course",
-  "city": "Solana Beach",
-  "state": "CA",
-  "platform": "teeitup",
-  "platform_config": {
-    "alias": "lomas-santa-fe-executive-golf-course",
-    "apiBase": "https://phx-api-be-east-1b.kenna.io",
-    "facilityId": "1241"
-  },
-  "booking_url": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
-  "is_active": 0
-}
+  ,
+  {
+    "index": 19,
+    "id": "sd-lomas-santa-fe",
+    "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
+    "city": "Solana Beach",
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "lomas-santa-fe-executive-golf-course",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "1241"
+    },
+    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
+    "is_active": 0
+  }
 ```
 
-**Step 3: Run the full test suite** to verify nothing breaks
+**IMPORTANT field naming:** Use `platformConfig` and `bookingUrl` (camelCase) to match all existing entries. Do NOT use `platform_config` or `booking_url`. There is no `state` field — don't add one. Follow the name pattern of other SD test courses (e.g., `"Goat Hill Park (SD Test)"`).
+
+**Do NOT** run `npm run seed:local` — seeding is not needed for this task.
+
+**Step 2: Run the full test suite** to verify nothing breaks
 
 Run: `npm test && npx tsc --noEmit`
 Expected: All pass
 
-**Step 4: Commit**
+**Step 3: Commit**
 
 ```bash
 git add src/config/courses.json
@@ -610,6 +632,8 @@ npx tsc --noEmit && npm test && npx @opennextjs/cloudflare build
 ```
 
 Expected: Type-check passes, all tests pass, build succeeds.
+
+If the build fails for reasons **unrelated** to the adapter changes (e.g., OpenNext or Cloudflare tooling issues), flag it to Sam rather than debugging — don't let unrelated build issues block this task.
 
 **Step 2: Verify with git status**
 
