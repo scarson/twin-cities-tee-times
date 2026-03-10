@@ -140,7 +140,7 @@ describe("authenticateRequest", () => {
     const refreshToken = "valid-refresh-token";
     const tokenHash = await sha256(refreshToken);
 
-    // First query: find session by token_hash
+    // DELETE RETURNING: atomically claim session
     mockFirst.mockResolvedValueOnce({
       token_hash: tokenHash,
       user_id: "u1",
