@@ -132,7 +132,7 @@ describe("GET /api/auth/google/callback", () => {
     expect(cookies.some((c) => c.startsWith("tct-refresh="))).toBe(false);
   });
 
-  it("redirects to /?error=auth_failed on state mismatch", async () => {
+  it("redirects to /?error=state_mismatch on state mismatch", async () => {
     const { GET } = await import("./route");
 
     const request = makeCallbackRequest(
@@ -148,10 +148,10 @@ describe("GET /api/auth/google/callback", () => {
     expect([302, 307]).toContain(response.status);
     const location = response.headers.get("location")!;
     expect(new URL(location).pathname).toBe("/");
-    expect(new URL(location).searchParams.get("error")).toBe("auth_failed");
+    expect(new URL(location).searchParams.get("error")).toBe("state_mismatch");
   });
 
-  it("redirects to /?error=auth_failed when OAuth cookies are missing", async () => {
+  it("redirects to /?error=missing_cookies when OAuth cookies are missing", async () => {
     const { GET } = await import("./route");
 
     const request = makeCallbackRequest({ code: "auth-code", state: "some-state" });
@@ -161,7 +161,7 @@ describe("GET /api/auth/google/callback", () => {
     expect([302, 307]).toContain(response.status);
     const location = response.headers.get("location")!;
     expect(new URL(location).pathname).toBe("/");
-    expect(new URL(location).searchParams.get("error")).toBe("auth_failed");
+    expect(new URL(location).searchParams.get("error")).toBe("missing_cookies");
   });
 
   it("updates existing user on returning sign-in", async () => {
@@ -259,6 +259,95 @@ describe("GET /api/auth/google/callback", () => {
     ).toBe(true);
   });
 
+  it("parses state cookie encoded by response.cookies.set() (round-trip)", async () => {
+    // Simulate what the initiation route does: response.cookies.set() encodes
+    // the JSON value via cookie.serialize(). Verify the callback can parse it.
+    const { GET } = await import("./route");
+
+    const idToken = makeIdToken({
+      sub: "google-roundtrip",
+      email: "roundtrip@example.com",
+      name: "Round Trip",
+    });
+    mockValidateAuth.mockResolvedValueOnce({
+      idToken: () => idToken,
+    });
+    mockD1.mockRun.mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
+    mockD1.mockFirst.mockResolvedValueOnce({ id: "roundtrip-user" });
+    mockD1.mockRun.mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
+    mockD1.mockFirst.mockResolvedValueOnce({ count: 1 });
+
+    // Build the state cookie the same way the initiation route does:
+    // response.cookies.set() internally calls cookie.serialize() which
+    // URL-encodes the value. Extract that encoded value from Set-Cookie.
+    const { NextResponse: NR } = await import("next/server");
+    const tempResponse = new NR(null);
+    const rawJson = JSON.stringify({ state: "roundtrip-state", returnTo: "/courses/braemar" });
+    tempResponse.cookies.set("tct-oauth-state", rawJson, { httpOnly: true });
+    const setCookieHeader = tempResponse.headers.getSetCookie()
+      .find((c) => c.startsWith("tct-oauth-state="))!;
+    // Extract the value between "tct-oauth-state=" and the first ";"
+    const encodedValue = setCookieHeader.split("=").slice(1).join("=").split(";")[0];
+
+    const request = makeCallbackRequest(
+      { code: "auth-code", state: "roundtrip-state" },
+      {
+        "tct-oauth-state": encodedValue,
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    expect(location).toContain("/courses/braemar");
+    expect(location).toContain("justSignedIn=true");
+    // No error in the URL
+    expect(new URL(location).searchParams.has("error")).toBe(false);
+  });
+
+  it("redirects to /?error=state_parse when cookie contains malformed data", async () => {
+    const { GET } = await import("./route");
+
+    const request = makeCallbackRequest(
+      { code: "auth-code", state: "some-state" },
+      {
+        "tct-oauth-state": "not-valid-json-or-encoded",
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    expect(new URL(location).searchParams.get("error")).toBe("state_parse");
+  });
+
+  it("redirects with code_exchange error when token exchange fails", async () => {
+    const { GET } = await import("./route");
+
+    mockValidateAuth.mockRejectedValueOnce(new Error("invalid_grant"));
+
+    const state = "exchange-fail-state";
+    const request = makeCallbackRequest(
+      { code: "expired-code", state },
+      {
+        "tct-oauth-state": makeStateCookie(state, "/"),
+        "tct-oauth-verifier": "test-verifier",
+      }
+    );
+
+    const response = await GET(request);
+
+    expect([302, 307]).toContain(response.status);
+    const location = response.headers.get("location")!;
+    const url = new URL(location);
+    expect(url.searchParams.get("error")).toBe("code_exchange");
+    expect(url.searchParams.get("detail")).toContain("invalid_grant");
+  });
+
   it("redirects with error when code param is missing (no error param either)", async () => {
     const { GET } = await import("./route");
 
@@ -275,6 +364,6 @@ describe("GET /api/auth/google/callback", () => {
 
     expect([302, 307]).toContain(response.status);
     const location = response.headers.get("location")!;
-    expect(new URL(location).searchParams.get("error")).toBe("auth_failed");
+    expect(new URL(location).searchParams.get("error")).toBe("missing_code");
   });
 });
