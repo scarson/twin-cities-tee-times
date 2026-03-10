@@ -106,6 +106,68 @@ describe("useFavorites", () => {
       expect(result.current.isFavorite("course-a")).toBe(true);
       expect(result.current.isFavorite("course-b")).toBe(false);
     });
+
+    it("mergeFavorites adds new courses to localStorage", async () => {
+      mockedGetFavorites.mockReturnValue(["existing"]);
+      mockedGetFavoriteDetails
+        .mockReturnValueOnce([{ id: "existing", name: "Existing" }])
+        .mockReturnValue([
+          { id: "existing", name: "Existing" },
+          { id: "new-a", name: "New A" },
+          { id: "new-b", name: "New B" },
+        ]);
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favorites).toContain("existing");
+      });
+
+      await act(async () => {
+        await result.current.mergeFavorites([
+          { id: "new-a", name: "New A" },
+          { id: "new-b", name: "New B" },
+        ]);
+      });
+
+      expect(mockedSetFavorites).toHaveBeenCalled();
+      expect(result.current.favorites).toContain("new-a");
+      expect(result.current.favorites).toContain("new-b");
+      expect(result.current.favorites).toContain("existing");
+    });
+
+    it("mergeFavorites skips duplicates", async () => {
+      mockedGetFavorites.mockReturnValue(["existing"]);
+      mockedGetFavoriteDetails.mockReturnValue([
+        { id: "existing", name: "Existing" },
+      ]);
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favorites).toContain("existing");
+      });
+
+      await act(async () => {
+        await result.current.mergeFavorites([
+          { id: "existing", name: "Existing" },
+        ]);
+      });
+
+      // Should not duplicate
+      expect(result.current.favorites.filter((id: string) => id === "existing")).toHaveLength(1);
+    });
+
+    it("exposes favoritesReady as true after mount (anonymous)", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favoritesReady).toBe(true);
+      });
+    });
   });
 
   describe("logged-in mode", () => {
@@ -261,6 +323,92 @@ describe("useFavorites", () => {
 
       // localStorage should also be rolled back
       expect(mockedSetFavorites).toHaveBeenLastCalledWith([]);
+    });
+
+    it("mergeFavorites calls server merge endpoint for logged-in users", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+      // Initial server fetch
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ favorites: [] }),
+      });
+      // Merge endpoint
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ merged: 2, total: 2 }),
+      });
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith("/api/user/favorites");
+      });
+
+      await act(async () => {
+        await result.current.mergeFavorites([
+          { id: "course-a", name: "Course A" },
+          { id: "course-b", name: "Course B" },
+        ]);
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/user/favorites/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseIds: ["course-a", "course-b"] }),
+      });
+    });
+
+    it("favoritesReady is false until server fetch completes", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+
+      // Use a manually-resolved promise to control fetch timing
+      let resolveFetch!: (value: unknown) => void;
+      const fetchPromise = new Promise((resolve) => {
+        resolveFetch = resolve;
+      });
+      mockFetch.mockReturnValueOnce(fetchPromise);
+
+      const { result } = renderHook(() => useFavorites());
+
+      // Before fetch resolves, favoritesReady must still be false
+      expect(result.current.favoritesReady).toBe(false);
+
+      // Resolve the fetch
+      await act(async () => {
+        resolveFetch({
+          ok: true,
+          json: async () => ({ favorites: [] }),
+        });
+      });
+
+      // Now favoritesReady should be true
+      expect(result.current.favoritesReady).toBe(true);
+    });
+
+    it("favoritesReady becomes true even when server fetch returns non-ok", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favoritesReady).toBe(true);
+      });
+    });
+
+    it("favoritesReady becomes true when server fetch throws", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+      mockFetch.mockRejectedValueOnce(new Error("network failure"));
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favoritesReady).toBe(true);
+      });
     });
   });
 });

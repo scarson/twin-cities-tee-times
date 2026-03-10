@@ -7,11 +7,16 @@ import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
+import { ShareDialog } from "@/components/share-dialog";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
+import { decodeFavorites, buildShareUrl, resolveSharedCourses } from "@/lib/share";
+import courseCatalog from "@/config/courses.json";
 
 export default function Home() {
-  const { favorites, favoriteDetails } = useFavorites();
+  const { favorites, favoriteDetails, mergeFavorites, favoritesReady } = useFavorites();
+  const { showToast } = useAuth();
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -27,6 +32,48 @@ export default function Home() {
       favoritesInitialized.current = true;
     }
   }, [favorites]);
+
+  // Share link handling
+  const [sharedCourses, setSharedCourses] = useState<{ id: string; name: string }[]>([]);
+  const shareProcessed = useRef(false);
+
+  const stripShareParam = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("f");
+    history.replaceState({}, "", window.location.pathname + (params.toString() ? "?" + params : ""));
+  };
+
+  useEffect(() => {
+    if (shareProcessed.current || !favoritesReady) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const fParam = params.get("f");
+    if (!fParam) return;
+
+    shareProcessed.current = true;
+
+    const indices = decodeFavorites(fParam);
+    if (indices.length === 0) {
+      stripShareParam();
+      return;
+    }
+
+    const catalog = courseCatalog.map((c) => ({
+      index: c.index,
+      id: c.id,
+      name: c.name,
+    }));
+    const resolved = resolveSharedCourses(indices, catalog);
+    const newCourses = resolved.filter((c) => !favorites.includes(c.id));
+
+    if (newCourses.length === 0) {
+      showToast("You already have all these courses");
+      stripShareParam();
+      return;
+    }
+
+    setSharedCourses(newCourses);
+  }, [favoritesReady, favorites, showToast]);
 
   useEffect(() => {
     const fetchTeeTimes = async () => {
@@ -64,6 +111,36 @@ export default function Home() {
   const hasFavorites = favorites.length > 0;
   const [showFavList, setShowFavList] = useState(false);
   const favListRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async () => {
+    const indices = favorites
+      .map((id) => {
+        const course = courseCatalog.find((c) => c.id === id);
+        return course?.index ?? -1;
+      })
+      .filter((i) => i >= 0);
+
+    const url = buildShareUrl(window.location.origin + window.location.pathname, indices);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Share link copied!");
+    } catch {
+      showToast("Couldn\u2019t copy link");
+    }
+    setShowFavList(false);
+  };
+
+  const handleAcceptShare = async () => {
+    await mergeFavorites(sharedCourses);
+    showToast(`Added ${sharedCourses.length} ${sharedCourses.length === 1 ? "course" : "courses"} to favorites`);
+    setSharedCourses([]);
+    stripShareParam();
+  };
+
+  const handleCancelShare = () => {
+    setSharedCourses([]);
+    stripShareParam();
+  };
 
   useEffect(() => {
     if (!showFavList) return;
@@ -130,6 +207,13 @@ export default function Home() {
 
           {showFavList && (
             <div className="absolute left-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <button
+                onClick={handleShare}
+                className="block w-full px-4 py-1.5 text-left text-sm font-medium text-green-700 hover:bg-stone-50"
+              >
+                Share favorites
+              </button>
+              <div className="mx-2 my-1 border-t border-gray-100" />
               {favoriteDetails.map((fav) => (
                 <Link
                   key={fav.id}
@@ -147,6 +231,14 @@ export default function Home() {
       <div className="mt-4">
         <TeeTimeList teeTimes={teeTimes} loading={loading} />
       </div>
+
+      {sharedCourses.length > 0 && (
+        <ShareDialog
+          courses={sharedCourses}
+          onAccept={handleAcceptShare}
+          onCancel={handleCancelShare}
+        />
+      )}
     </main>
   );
 }
