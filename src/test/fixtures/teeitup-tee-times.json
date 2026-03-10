@@ -1,0 +1,131 @@
+[
+  {
+    "dayInfo": {
+      "dawn": "2026-03-11T13:41:00.000Z",
+      "sunrise": "2026-03-11T14:05:00.000Z",
+      "sunset": "2026-03-12T01:52:00.000Z",
+      "dusk": "2026-03-12T02:19:00.000Z"
+    },
+    "teetimes": [
+      {
+        "courseId": "54f14bc00c8ad60378b015c9",
+        "teetime": "2026-03-11T17:50:00.000Z",
+        "backNine": false,
+        "rates": [
+          {
+            "_id": -512489923,
+            "name": "Walking",
+            "externalId": "-512489923",
+            "allowedPlayers": [1],
+            "holes": 18,
+            "icons": [],
+            "tags": [],
+            "golfnow": {
+              "TTTeeTimeId": -512489923,
+              "GolfCourseId": 169060,
+              "GolfFacilityId": 1241
+            },
+            "trade": false,
+            "acceptCreditCard": false,
+            "showAsHotDeal": false,
+            "isSimulator": false,
+            "dueOnlineWalking": 0,
+            "greenFeeWalking": 3500,
+            "transactionFees": 0,
+            "showTransactionFees": false
+          }
+        ],
+        "bookedPlayers": 3,
+        "minPlayers": 1,
+        "maxPlayers": 1,
+        "players": [],
+        "source": "API-2.1",
+        "fromCache": false,
+        "rollTimeOffer": null
+      },
+      {
+        "courseId": "54f14bc00c8ad60378b015c9",
+        "teetime": "2026-03-11T23:40:00.000Z",
+        "backNine": false,
+        "rates": [
+          {
+            "_id": -512489894,
+            "name": "Walking",
+            "externalId": "-512489894",
+            "allowedPlayers": [1, 2, 3, 4],
+            "holes": 18,
+            "icons": [],
+            "tags": [],
+            "golfnow": {
+              "TTTeeTimeId": -512489894,
+              "GolfCourseId": 169060,
+              "GolfFacilityId": 1241
+            },
+            "trade": false,
+            "acceptCreditCard": false,
+            "showAsHotDeal": false,
+            "isSimulator": false,
+            "dueOnlineWalking": 3000,
+            "greenFeeWalking": 3200,
+            "transactionFees": 0,
+            "showTransactionFees": false,
+            "promotion": {
+              "discount": 0.06,
+              "greenFeeWalking": 3000
+            }
+          }
+        ],
+        "bookedPlayers": 0,
+        "minPlayers": 1,
+        "maxPlayers": 4,
+        "players": [],
+        "source": "API-2.1",
+        "fromCache": false,
+        "rollTimeOffer": null
+      },
+      {
+        "courseId": "54f14bc00c8ad60378b015c9",
+        "teetime": "2026-03-12T00:00:00.000Z",
+        "backNine": false,
+        "rates": [
+          {
+            "_id": -512489892,
+            "name": "Walking",
+            "externalId": "-512489892",
+            "allowedPlayers": [1, 2, 3, 4],
+            "holes": 18,
+            "icons": [],
+            "tags": [],
+            "golfnow": {
+              "TTTeeTimeId": -512489892,
+              "GolfCourseId": 169060,
+              "GolfFacilityId": 1241
+            },
+            "trade": false,
+            "acceptCreditCard": false,
+            "showAsHotDeal": false,
+            "isSimulator": false,
+            "dueOnlineWalking": 2400,
+            "greenFeeWalking": 2800,
+            "transactionFees": 0,
+            "showTransactionFees": false,
+            "promotion": {
+              "discount": 0.14,
+              "greenFeeWalking": 2400
+            }
+          }
+        ],
+        "bookedPlayers": 0,
+        "minPlayers": 1,
+        "maxPlayers": 4,
+        "players": [],
+        "source": "API-2.1",
+        "fromCache": false,
+        "rollTimeOffer": null
+      }
+    ],
+    "courseId": "54f14bc00c8ad60378b015c9",
+    "totalAvailableTeetimes": 3,
+    "fromCache": false
+  }
+]
