@@ -7,7 +7,6 @@ import { Google } from "arctic";
 import {
   sha256,
   createJWT,
-  setAuthCookies,
   decodeJwt,
   validateReturnTo,
   REFRESH_EXPIRY_DAYS,
@@ -156,21 +155,24 @@ export async function GET(request: NextRequest) {
     const redirectUrl = new URL(returnTo, request.url);
     redirectUrl.searchParams.set("justSignedIn", "true");
 
-    // Set auth cookies and clear OAuth cookies
+    // Set auth cookies and clear OAuth cookies via response.cookies.set() —
+    // raw headers.append("Set-Cookie") is silently stripped by OpenNext on
+    // Cloudflare Workers redirect responses.
     const isSecure = request.url.startsWith("https://");
-    const headers = new Headers();
-    setAuthCookies(headers, jwt, refreshToken, isSecure);
-
     const response = NextResponse.redirect(redirectUrl);
-    // Clear OAuth cookies and set auth cookies via raw headers only —
-    // mixing response.cookies.set() with headers.append("Set-Cookie") can
-    // cause the auth cookies to be silently dropped during serialization.
-    const cookieSuffix = `HttpOnly; SameSite=Lax; Path=/${isSecure ? "; Secure" : ""}`;
-    response.headers.append("Set-Cookie", `tct-oauth-state=; Max-Age=0; ${cookieSuffix}`);
-    response.headers.append("Set-Cookie", `tct-oauth-verifier=; Max-Age=0; ${cookieSuffix}`);
-    for (const cookie of headers.getSetCookie()) {
-      response.headers.append("Set-Cookie", cookie);
-    }
+    const baseCookieOpts = {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      secure: isSecure,
+    };
+    response.cookies.set("tct-session", jwt, { ...baseCookieOpts, maxAge: 900 });
+    response.cookies.set("tct-refresh", refreshToken, {
+      ...baseCookieOpts,
+      maxAge: REFRESH_EXPIRY_DAYS * 24 * 60 * 60,
+    });
+    response.cookies.set("tct-oauth-state", "", { ...baseCookieOpts, maxAge: 0 });
+    response.cookies.set("tct-oauth-verifier", "", { ...baseCookieOpts, maxAge: 0 });
 
     return response;
   } catch (err) {
