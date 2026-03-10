@@ -8,10 +8,14 @@ import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
+import { buildShareUrl } from "@/lib/share";
+import courseCatalog from "@/config/courses.json";
 
 export default function Home() {
   const { favorites, favoriteDetails } = useFavorites();
+  const { showToast } = useAuth();
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -64,6 +68,24 @@ export default function Home() {
   const hasFavorites = favorites.length > 0;
   const [showFavList, setShowFavList] = useState(false);
   const favListRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async () => {
+    const indices = favorites
+      .map((id) => {
+        const course = courseCatalog.find((c) => c.id === id);
+        return course?.index ?? -1;
+      })
+      .filter((i) => i >= 0);
+
+    const url = buildShareUrl(window.location.origin + window.location.pathname, indices);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Share link copied!");
+    } catch {
+      showToast("Couldn\u2019t copy link");
+    }
+    setShowFavList(false);
+  };
 
   useEffect(() => {
     if (!showFavList) return;
@@ -130,6 +152,13 @@ export default function Home() {
 
           {showFavList && (
             <div className="absolute left-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <button
+                onClick={handleShare}
+                className="block w-full px-4 py-1.5 text-left text-sm font-medium text-green-700 hover:bg-stone-50"
+              >
+                Share favorites
+              </button>
+              <div className="mx-2 my-1 border-t border-gray-100" />
               {favoriteDetails.map((fav) => (
                 <Link
                   key={fav.id}
