@@ -16,6 +16,7 @@ interface AuthContextValue {
   user: User | null;
   isLoggedIn: boolean;
   isLoading: boolean;
+  favoritesVersion: number;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   showToast: (message: string) => void;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [favoritesVersion, setFavoritesVersion] = useState(0);
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -79,9 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
 
+          setFavoritesVersion((v) => v + 1);
           const url = new URL(window.location.href);
           url.searchParams.delete("justSignedIn");
           history.replaceState({}, "", url.pathname + url.search);
+        } else {
+          setFavoritesVersion((v) => v + 1);
         }
       } catch {
         setUser(null);
@@ -116,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isLoggedIn: user !== null,
     isLoading,
+    favoritesVersion,
     signOut,
     deleteAccount,
     showToast,

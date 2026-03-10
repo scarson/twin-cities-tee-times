@@ -13,7 +13,7 @@ import {
 import type { FavoriteEntry } from "@/lib/favorites";
 
 export function useFavorites() {
-  const { isLoggedIn, showToast } = useAuth();
+  const { isLoggedIn, favoritesVersion, showToast } = useAuth();
 
   const [favorites, setFavorites] = useState<string[]>(() => localGetFavorites());
   const [favoriteDetails, setFavoriteDetails] = useState<FavoriteEntry[]>(
@@ -55,7 +55,7 @@ export function useFavorites() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, favoritesVersion]);
 
   const toggleFavorite = useCallback(
     (courseId: string, courseName?: string) => {
