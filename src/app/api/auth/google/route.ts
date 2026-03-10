@@ -30,19 +30,20 @@ export async function GET(request: NextRequest) {
   );
 
   const isSecure = request.url.startsWith("https://");
-  const cookieOpts = `HttpOnly; SameSite=Lax; Path=/; Max-Age=600${isSecure ? "; Secure" : ""}`;
-
   const stateValue = JSON.stringify({ state, returnTo });
 
   const response = NextResponse.redirect(authUrl);
-  response.headers.append(
-    "Set-Cookie",
-    `tct-oauth-state=${encodeURIComponent(stateValue)}; ${cookieOpts}`
-  );
-  response.headers.append(
-    "Set-Cookie",
-    `tct-oauth-verifier=${codeVerifier}; ${cookieOpts}`
-  );
+  // Use response.cookies.set() — raw headers.append("Set-Cookie") is
+  // silently stripped by OpenNext on Cloudflare Workers redirect responses.
+  const cookieOpts = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 600,
+    secure: isSecure,
+  };
+  response.cookies.set("tct-oauth-state", stateValue, cookieOpts);
+  response.cookies.set("tct-oauth-verifier", codeVerifier, cookieOpts);
 
   return response;
 }
