@@ -15,15 +15,24 @@
 **Batch 1:** Task 1 (course indices) — foundation, must complete first
 **Batch 2:** Task 2 (share.ts encode/decode) — depends on Task 1's index data
 **Batch 3:** Task 3 (mergeFavorites in hook) — independent of Task 2
-**Batch 4:** Tasks 4, 5 in parallel — share button (Task 4) depends on Task 2; dialog (Task 5) depends on Tasks 2 + 3
-**Batch 5:** Task 6 (integration in page.tsx) — depends on Tasks 4 + 5
+**Batch 4:** Task 4 (share button) and Task 5 (dialog component) in parallel — both create/modify independent files
+**Batch 5:** Task 6 (integration in page.tsx) — depends on Tasks 3, 4, and 5
 **Batch 6:** Task 7 (final verification)
+
+### Critical context for all subagents
+
+- **courses.json is a JSON import, NOT a D1 table.** The `index` field added in Task 1 is only in `src/config/courses.json` (the client-side catalog). Do NOT add `index` to the `CourseConfig` interface in `src/types/index.ts` — that type represents D1 rows, not the JSON catalog. The seed script (`scripts/seed.ts`) reads courses.json via `JSON.parse` and ignores extra fields, so adding `index` won't break it.
+- **`useState` and `useRef` are already imported in `page.tsx`.** Do not add duplicate imports.
+- **`useAuth` is NOT currently imported in `page.tsx`.** Task 4 adds it; Task 6 must not re-add it.
+- **The `showToast` function lives on `useAuth()`, not `useFavorites()`.** Task 4 adds `const { showToast } = useAuth()` to page.tsx; Task 6 uses it but must not re-declare it.
 
 ---
 
 ## Task 1: Add stable indices to courses.json
 
 Each course needs a permanent `index` field for bitfield encoding. Indices are assigned alphabetically by `id` for the initial batch. New courses added later will get `max + 1`.
+
+**Context for subagent:** The `index` field is ONLY for share-link encoding. It does NOT go into the D1 database or the `CourseConfig` TypeScript interface. The seed script (`scripts/seed.ts`) reads courses.json but maps only specific fields — extra fields like `index` are silently ignored.
 
 **Files:**
 - Modify: `src/config/courses.json`
@@ -166,16 +175,24 @@ describe("decodeFavorites", () => {
 });
 
 describe("buildShareUrl", () => {
-  it("builds URL with f query param", () => {
+  it("builds URL with f query param containing v1/ prefix", () => {
     const url = buildShareUrl("https://example.com/", [0, 3]);
-    expect(url).toContain("?f=v1/");
     const parsed = new URL(url);
-    expect(parsed.searchParams.has("f")).toBe(true);
+    // Use searchParams.get() which auto-decodes %2F back to /
+    const fParam = parsed.searchParams.get("f");
+    expect(fParam).toMatch(/^v1\//);
   });
 
   it("preserves existing path", () => {
     const url = buildShareUrl("https://example.com/some/path", [0]);
     expect(new URL(url).pathname).toBe("/some/path");
+  });
+
+  it("round-trips through URL encoding", () => {
+    const url = buildShareUrl("https://example.com/", [0, 3, 17]);
+    const parsed = new URL(url);
+    const decoded = decodeFavorites(parsed.searchParams.get("f")!);
+    expect(decoded).toEqual([0, 3, 17]);
   });
 });
 
@@ -332,9 +349,25 @@ git commit -m "feat: add bitfield encode/decode for sharing favorites via URL"
 
 ---
 
-## Task 3: Add mergeFavorites to useFavorites hook
+## Task 3: Add mergeFavorites and favoritesReady to useFavorites hook
 
 The hook needs a `mergeFavorites` function for bulk-adding courses. Anonymous mode writes to localStorage directly. Logged-in mode calls the existing `/api/user/favorites/merge` endpoint. Also expose a `favoritesReady` flag so consumers know when favorites have finished loading (needed to avoid the race condition on share link processing).
+
+**CRITICAL: `favoritesReady` must account for server fetch.** For logged-in users, the hook loads localStorage first, then fetches server favorites (which overwrite state). `favoritesReady` must NOT become `true` until the server fetch completes — otherwise share link deduplication runs against stale localStorage data. For anonymous users, `favoritesReady` becomes `true` once auth has resolved and we know no server fetch will happen.
+
+**IMPORTANT: Auth state is async.** At mount, `isLoggedIn` is ALWAYS `false` because the auth provider hasn't finished its `/api/auth/me` fetch. You cannot check `isLoggedIn` in the mount effect `useEffect([], [])` — it will always be false. Instead, use a separate effect that watches `isLoading` from `useAuth()`:
+- When `isLoading` becomes `false` AND `isLoggedIn` is `false` → anonymous user → set `favoritesReady = true`
+- When `isLoading` becomes `false` AND `isLoggedIn` is `true` → wait for server fetch effect to set `favoritesReady = true`
+
+**Context for subagent:** Read `src/hooks/use-favorites.ts` first. Note the existing effects:
+1. `useEffect(() => { ... }, [])` — loads localStorage (runs for all users at mount)
+2. `useEffect(() => { if (!isLoggedIn) return; ... }, [isLoggedIn, favoritesVersion])` — fetches server favorites (runs only when logged in)
+
+Currently the hook destructures: `const { isLoggedIn, favoritesVersion, showToast } = useAuth();` — you'll need to add `isLoading` to this destructuring.
+
+`favoritesReady` should be set to `true`:
+- In a NEW effect watching `[isLoading, isLoggedIn]`, when auth resolves to anonymous
+- In effect #2 (server fetch), after the fetch completes (success or failure)
 
 **Files:**
 - Modify: `src/hooks/use-favorites.ts`
@@ -342,7 +375,7 @@ The hook needs a `mergeFavorites` function for bulk-adding courses. Anonymous mo
 
 **Step 1: Write the failing tests**
 
-In `src/hooks/use-favorites.test.ts`, add these tests inside the `describe("anonymous mode")` block, after the existing `isFavorite` test:
+In `src/hooks/use-favorites.test.ts`, add these tests inside the `describe("anonymous mode")` block. Insert them after the closing `});` of the `"isFavorite returns based on current favorites state"` test (around line 108):
 
 ```typescript
     it("mergeFavorites adds new courses to localStorage", async () => {
@@ -361,8 +394,8 @@ In `src/hooks/use-favorites.test.ts`, add these tests inside the `describe("anon
         expect(result.current.favorites).toContain("existing");
       });
 
-      act(() => {
-        result.current.mergeFavorites([
+      await act(async () => {
+        await result.current.mergeFavorites([
           { id: "new-a", name: "New A" },
           { id: "new-b", name: "New B" },
         ]);
@@ -386,8 +419,8 @@ In `src/hooks/use-favorites.test.ts`, add these tests inside the `describe("anon
         expect(result.current.favorites).toContain("existing");
       });
 
-      act(() => {
-        result.current.mergeFavorites([
+      await act(async () => {
+        await result.current.mergeFavorites([
           { id: "existing", name: "Existing" },
         ]);
       });
@@ -395,9 +428,20 @@ In `src/hooks/use-favorites.test.ts`, add these tests inside the `describe("anon
       // Should not duplicate
       expect(result.current.favorites.filter((id: string) => id === "existing")).toHaveLength(1);
     });
+
+    it("exposes favoritesReady as true after mount (anonymous)", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favoritesReady).toBe(true);
+      });
+    });
 ```
 
-Add these tests inside the `describe("logged-in mode")` block, after the existing rollback test:
+Add these tests inside the `describe("logged-in mode")` block. Insert them after the closing `});` of the `"toggleFavorite rolls back and shows toast on failure"` test (around line 264):
 
 ```typescript
     it("mergeFavorites calls server merge endpoint for logged-in users", async () => {
@@ -433,14 +477,51 @@ Add these tests inside the `describe("logged-in mode")` block, after the existin
         body: JSON.stringify({ courseIds: ["course-a", "course-b"] }),
       });
     });
-```
 
-Also add a test for `favoritesReady` in the anonymous mode block:
-
-```typescript
-    it("exposes favoritesReady as true after mount", async () => {
+    it("favoritesReady is false until server fetch completes", async () => {
       mockedGetFavorites.mockReturnValue([]);
       mockedGetFavoriteDetails.mockReturnValue([]);
+
+      // Use a manually-resolved promise to control fetch timing
+      let resolveFetch!: (value: unknown) => void;
+      const fetchPromise = new Promise((resolve) => {
+        resolveFetch = resolve;
+      });
+      mockFetch.mockReturnValueOnce(fetchPromise);
+
+      const { result } = renderHook(() => useFavorites());
+
+      // Before fetch resolves, favoritesReady must still be false
+      expect(result.current.favoritesReady).toBe(false);
+
+      // Resolve the fetch
+      await act(async () => {
+        resolveFetch({
+          ok: true,
+          json: async () => ({ favorites: [] }),
+        });
+      });
+
+      // Now favoritesReady should be true
+      expect(result.current.favoritesReady).toBe(true);
+    });
+
+    it("favoritesReady becomes true even when server fetch returns non-ok", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const { result } = renderHook(() => useFavorites());
+
+      await waitFor(() => {
+        expect(result.current.favoritesReady).toBe(true);
+      });
+    });
+
+    it("favoritesReady becomes true when server fetch throws", async () => {
+      mockedGetFavorites.mockReturnValue([]);
+      mockedGetFavoriteDetails.mockReturnValue([]);
+      mockFetch.mockRejectedValueOnce(new Error("network failure"));
 
       const { result } = renderHook(() => useFavorites());
 
@@ -459,7 +540,16 @@ Expected: FAIL — `mergeFavorites` and `favoritesReady` are not returned by the
 
 In `src/hooks/use-favorites.ts`:
 
-1. Add a `favoritesReady` state. Find:
+1. Add `isLoading` to the useAuth destructuring. Find:
+```typescript
+  const { isLoggedIn, favoritesVersion, showToast } = useAuth();
+```
+Replace with:
+```typescript
+  const { isLoggedIn, isLoading, favoritesVersion, showToast } = useAuth();
+```
+
+2. Add a `favoritesReady` state. Find:
 ```typescript
   const [favoriteDetails, setFavoriteDetails] = useState<FavoriteEntry[]>([]);
 ```
@@ -468,23 +558,57 @@ Add after it:
   const [favoritesReady, setFavoritesReady] = useState(false);
 ```
 
-2. Set `favoritesReady` after localStorage load. Find:
+3. Do NOT modify the existing localStorage useEffect (`useEffect([], [])`). Leave it as-is. Add a NEW effect AFTER the localStorage effect to handle anonymous `favoritesReady`. Insert this right after the `useEffect(() => { setFavorites(...); setFavoriteDetails(...); }, []);` block:
 ```typescript
+  // Mark favorites ready once auth resolves for anonymous users
   useEffect(() => {
-    setFavorites(localGetFavorites());
-    setFavoriteDetails(localGetFavoriteDetails());
-  }, []);
-```
-Replace with:
-```typescript
-  useEffect(() => {
-    setFavorites(localGetFavorites());
-    setFavoriteDetails(localGetFavoriteDetails());
-    setFavoritesReady(true);
-  }, []);
+    if (!isLoading && !isLoggedIn) {
+      setFavoritesReady(true);
+    }
+  }, [isLoading, isLoggedIn]);
 ```
 
-3. Add the `mergeFavorites` callback. Add this after the `isFavorite` callback (before the `return` statement):
+4. Set `favoritesReady` after server fetch completes (for logged-in users). Find the existing server fetch effect — look for the `fetchServerFavorites` function. The function currently has a `try`/`catch` structure. **Add a `finally` block** to set `favoritesReady` in ALL exit paths (success, non-ok response, network error):
+
+The current code structure looks like:
+```typescript
+    async function fetchServerFavorites() {
+      try {
+        const res = await fetch("/api/user/favorites");
+        if (!res.ok || cancelled) return;
+        // ... process response ...
+        localSetFavorites(details);
+      } catch {
+        // Keep localStorage data on fetch failure
+      }
+    }
+```
+
+Add a `finally` block after the `catch`:
+```typescript
+    async function fetchServerFavorites() {
+      try {
+        const res = await fetch("/api/user/favorites");
+        if (!res.ok || cancelled) return;
+        // ... process response ...
+        localSetFavorites(details);
+      } catch {
+        // Keep localStorage data on fetch failure
+      } finally {
+        if (!cancelled) {
+          setFavoritesReady(true);
+        }
+      }
+    }
+```
+
+**Why `finally` instead of adding to both `try` and `catch`:** The existing code has `if (!res.ok || cancelled) return;` which early-returns from the try block on non-ok responses. This `return` skips any code after it in the try block but does NOT skip `finally`. So `finally` covers all three paths:
+- **Success:** try completes normally → finally runs ✓
+- **Non-ok response:** `return` exits try → finally runs ✓
+- **Network error:** catch handles it → finally runs ✓
+- **Cancelled (unmounted):** `!cancelled` guard prevents setting state on unmounted component ✓
+
+5. Add the `mergeFavorites` callback. Add this after the `isFavorite` callback (before the `return` statement):
 
 ```typescript
   const mergeFavorites = useCallback(
@@ -518,7 +642,7 @@ Replace with:
   );
 ```
 
-4. Update the return statement. Find:
+6. Update the return statement. Find:
 ```typescript
   return { favorites, favoriteDetails, toggleFavorite, isFavorite };
 ```
@@ -568,19 +692,11 @@ import { encodeFavorites, buildShareUrl } from "@/lib/share";
 import courseCatalog from "@/config/courses.json";
 ```
 
-**Step 2: Add the share handler**
+**Step 2: Add the useAuth import and hook call**
 
-In `src/app/page.tsx`, find the `useAuth` import — actually, the page doesn't import `useAuth`. The `showToast` function is available via `useFavorites` → `useAuth`. We need access to `showToast`. Find:
-```typescript
-  const { favorites, favoriteDetails } = useFavorites();
-```
-Replace with:
-```typescript
-  const { favorites, favoriteDetails } = useFavorites();
-  const { showToast } = useAuth();
-```
+`page.tsx` does NOT currently import or use `useAuth`. We need it for `showToast`. Add the import after the existing `useFavorites` import line:
 
-Also add the import. Find:
+Find:
 ```typescript
 import { useFavorites } from "@/hooks/use-favorites";
 ```
@@ -589,15 +705,25 @@ Add after it:
 import { useAuth } from "@/components/auth-provider";
 ```
 
-Then add the share handler function inside the `Home` component, after the `favListRef` declaration:
+Then add the `useAuth` call. Find:
+```typescript
+  const { favorites, favoriteDetails } = useFavorites();
+```
+Add this line immediately after it:
+```typescript
+  const { showToast } = useAuth();
+```
+
+**Step 3: Add the share handler**
+
+Add the share handler function inside the `Home` component, after the `favListRef` declaration (after `const favListRef = useRef<HTMLDivElement>(null);`):
+
 ```typescript
   const handleShare = async () => {
     const indices = favorites
       .map((id) => {
-        const course = courseCatalog.find((c: { id: string; index?: number }) => c.id === id);
-        return course && typeof (course as { index?: number }).index === "number"
-          ? (course as { index: number }).index
-          : -1;
+        const course = courseCatalog.find((c) => c.id === id);
+        return course?.index ?? -1;
       })
       .filter((i) => i >= 0);
 
@@ -612,7 +738,9 @@ Then add the share handler function inside the `Home` component, after the `favL
   };
 ```
 
-**Step 3: Add the Share button to the dropdown**
+Note: After Task 1 adds `"index"` to every course in courses.json, TypeScript infers the type from the JSON import. `course.index` and `course.id` are known types — no explicit type annotations or casts needed.
+
+**Step 4: Add the Share button to the dropdown**
 
 In `src/app/page.tsx`, find the favorites dropdown content:
 ```typescript
@@ -635,7 +763,7 @@ Replace the opening of the dropdown div to insert the Share button before the co
               {favoriteDetails.map((fav) => (
 ```
 
-**Step 4: Run tests + type-check**
+**Step 5: Run tests + type-check**
 
 Run: `npm test`
 Expected: All pass
@@ -643,7 +771,7 @@ Expected: All pass
 Run: `npx tsc --noEmit`
 Expected: No errors
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
 git add src/app/page.tsx
@@ -805,12 +933,21 @@ git commit -m "feat: add share favorites confirmation dialog component"
 
 When page.tsx detects a `?f=` query parameter, it decodes the bitfield, resolves course names from the catalog, filters out duplicates, and shows the ShareDialog. On accept, it calls `mergeFavorites`. On accept or cancel, it strips the `?f=` param.
 
+**Context for subagent:** Read `src/app/page.tsx` first. After Tasks 3 and 4 have run, the file will have:
+- `import { encodeFavorites, buildShareUrl } from "@/lib/share";` (added by Task 4)
+- `import courseCatalog from "@/config/courses.json";` (added by Task 4)
+- `import { useAuth } from "@/components/auth-provider";` (added by Task 4)
+- `const { favorites, favoriteDetails } = useFavorites();` (original, unchanged)
+- `const { showToast } = useAuth();` (added by Task 4, right after useFavorites line)
+- A `handleShare` function (added by Task 4)
+- `useState` and `useRef` are already imported from React (line 5 of original file)
+
 **Files:**
 - Modify: `src/app/page.tsx`
 
-**Step 1: Add imports**
+**Step 1: Update the share import**
 
-In `src/app/page.tsx`, find:
+Find the import that Task 4 added:
 ```typescript
 import { encodeFavorites, buildShareUrl } from "@/lib/share";
 ```
@@ -819,7 +956,9 @@ Replace with:
 import { encodeFavorites, decodeFavorites, buildShareUrl, resolveSharedCourses } from "@/lib/share";
 ```
 
-Also add the ShareDialog import. Find:
+**Step 2: Add the ShareDialog import**
+
+Find:
 ```typescript
 import { TeeTimeList } from "@/components/tee-time-list";
 ```
@@ -828,7 +967,7 @@ Add after it:
 import { ShareDialog } from "@/components/share-dialog";
 ```
 
-**Step 2: Update useFavorites destructuring**
+**Step 3: Update useFavorites destructuring**
 
 Find:
 ```typescript
@@ -839,9 +978,9 @@ Replace with:
   const { favorites, favoriteDetails, mergeFavorites, favoritesReady } = useFavorites();
 ```
 
-**Step 3: Add state and effect for share link detection**
+**Step 4: Add state and effect for share link detection**
 
-Add this state and effect after the `favoritesInitialized` effect (the one ending with `}, [favorites]`):
+Add this state and effect after the `favoritesInitialized` effect (the one ending with `}, [favorites]`). Note: `useState` and `useRef` are already imported — do NOT add duplicate imports.
 
 ```typescript
   // Share link handling
@@ -865,8 +1004,8 @@ Add this state and effect after the `favoritesInitialized` effect (the one endin
       return;
     }
 
-    const catalog = courseCatalog.map((c: { index?: number; id: string; name: string }) => ({
-      index: (c as { index: number }).index,
+    const catalog = courseCatalog.map((c) => ({
+      index: c.index,
       id: c.id,
       name: c.name,
     }));
@@ -884,9 +1023,9 @@ Add this state and effect after the `favoritesInitialized` effect (the one endin
   }, [favoritesReady, favorites, showToast]);
 ```
 
-**Step 4: Add accept/cancel handlers**
+**Step 5: Add accept/cancel handlers**
 
-Add these after the `handleShare` function:
+Add these after the `handleShare` function (which was added by Task 4):
 
 ```typescript
   const handleAcceptShare = async () => {
@@ -906,7 +1045,7 @@ Add these after the `handleShare` function:
   };
 ```
 
-**Step 5: Render the dialog**
+**Step 6: Render the dialog**
 
 In the JSX, add the dialog just before the closing `</main>` tag. Find:
 ```typescript
@@ -931,7 +1070,7 @@ Replace with:
     </main>
 ```
 
-**Step 6: Run tests + type-check**
+**Step 7: Run tests + type-check**
 
 Run: `npm test`
 Expected: All pass
@@ -939,7 +1078,7 @@ Expected: All pass
 Run: `npx tsc --noEmit`
 Expected: No errors
 
-**Step 7: Commit**
+**Step 8: Commit**
 
 ```bash
 git add src/app/page.tsx
