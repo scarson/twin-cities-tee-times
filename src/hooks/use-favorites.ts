@@ -15,10 +15,15 @@ import type { FavoriteEntry } from "@/lib/favorites";
 export function useFavorites() {
   const { isLoggedIn, favoritesVersion, showToast } = useAuth();
 
-  const [favorites, setFavorites] = useState<string[]>(() => localGetFavorites());
-  const [favoriteDetails, setFavoriteDetails] = useState<FavoriteEntry[]>(
-    () => localGetFavoriteDetails()
-  );
+  // Initialize empty for SSR hydration safety — localStorage is read in useEffect
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteDetails, setFavoriteDetails] = useState<FavoriteEntry[]>([]);
+
+  // Populate from localStorage after mount (avoids React #418 hydration mismatch)
+  useEffect(() => {
+    setFavorites(localGetFavorites());
+    setFavoriteDetails(localGetFavoriteDetails());
+  }, []);
 
   // Logged-in mode: fetch server favorites and overwrite local state + localStorage
   useEffect(() => {
