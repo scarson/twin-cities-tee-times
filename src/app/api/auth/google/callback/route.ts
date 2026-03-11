@@ -36,7 +36,17 @@ export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get("error");
   if (error) {
     const redirectUrl = new URL(returnTo, request.url);
-    return NextResponse.redirect(redirectUrl);
+    const response = NextResponse.redirect(redirectUrl);
+    const isSecure = request.url.startsWith("https://");
+    const baseCookieOpts = {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      secure: isSecure,
+    };
+    response.cookies.set("tct-oauth-state", "", { ...baseCookieOpts, maxAge: 0 });
+    response.cookies.set("tct-oauth-verifier", "", { ...baseCookieOpts, maxAge: 0 });
+    return response;
   }
 
   // Missing OAuth cookies
@@ -80,9 +90,9 @@ export async function GET(request: NextRequest) {
   try {
     tokens = await google.validateAuthorizationCode(code, codeVerifier);
   } catch (exchangeErr) {
+    console.error("OAuth code exchange failed:", exchangeErr);
     const redirectUrl = new URL(returnTo, request.url);
     redirectUrl.searchParams.set("error", "code_exchange");
-    redirectUrl.searchParams.set("detail", String(exchangeErr));
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -101,9 +111,9 @@ export async function GET(request: NextRequest) {
     email = claims.email;
     name = (claims.name as string) || "";
   } catch (tokenErr) {
+    console.error("OAuth token decode failed:", tokenErr);
     const redirectUrl = new URL(returnTo, request.url);
     redirectUrl.searchParams.set("error", "token_decode");
-    redirectUrl.searchParams.set("detail", String(tokenErr));
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -195,7 +205,6 @@ export async function GET(request: NextRequest) {
     console.error("OAuth callback D1 error:", err);
     const redirectUrl = new URL(returnTo, request.url);
     redirectUrl.searchParams.set("error", "db_error");
-    redirectUrl.searchParams.set("detail", String(err));
     return NextResponse.redirect(redirectUrl);
   }
 }

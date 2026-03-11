@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
+import { sqliteIsoNow } from "@/lib/db";
 
 describe("shouldRunThisCycle", () => {
   function makeDate(centralHour: number, minute: number): Date {
@@ -84,8 +85,28 @@ describe("runCronPoll cleanup", () => {
       sql.includes("DELETE FROM sessions")
     );
     expect(sessionCleanup).toBe(
-      "DELETE FROM sessions WHERE expires_at < datetime('now')"
+      `DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`
     );
+  });
+
+  it("uses ISO format for poll_log cleanup", async () => {
+    await runCronPoll(mockDb as unknown as D1Database);
+
+    const pollLogCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM poll_log")
+    );
+    expect(pollLogCleanup).toBe(
+      `DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`
+    );
+  });
+
+  it("uses ISO format for recent polls batch query", async () => {
+    await runCronPoll(mockDb as unknown as D1Database);
+
+    const batchQuery = preparedStatements.find(
+      (sql) => sql.includes("MAX(polled_at)") && sql.includes("poll_log")
+    );
+    expect(batchQuery).toContain(sqliteIsoNow("-24 hours"));
   });
 
   it("does not error when sessions table is empty", async () => {
@@ -237,6 +258,26 @@ describe("runCronPoll auto-active management", () => {
       (sql) => sql.includes("is_active = 0") && sql.includes("-30 days")
     );
     expect(deactivateSql).toBeDefined();
+    expect(deactivateSql).toContain(sqliteIsoNow("-30 days"));
+  });
+
+  it("does not deactivate courses with NULL last_had_tee_times", async () => {
+    const courseWithNull = {
+      ...activeCourse,
+      id: "test-null-lhtt",
+      last_had_tee_times: null,
+    };
+    const db = makeMockDb([courseWithNull]);
+    await runCronPoll(db as unknown as D1Database);
+
+    const deactivateSql = preparedStatements.find(
+      (sql) => sql.includes("is_active = 0")
+    );
+    // The deactivation SQL must require IS NOT NULL — courses with NULL
+    // last_had_tee_times have never been proven inactive and must not
+    // be deactivated.
+    expect(deactivateSql).toContain("last_had_tee_times IS NOT NULL");
+    expect(deactivateSql).not.toContain("IS NULL OR");
   });
 
   it("does not promote inactive course when poll returns error", async () => {
@@ -251,6 +292,7 @@ describe("runCronPoll auto-active management", () => {
   });
 
   it("continues probing other inactive courses after one throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const inactive2 = { ...inactiveCourse, id: "test-inactive-2", name: "Inactive 2" };
     mockedPollCourse
       .mockRejectedValueOnce(new Error("adapter crash"))
@@ -266,6 +308,10 @@ describe("runCronPoll auto-active management", () => {
       expect.objectContaining({ id: "test-inactive-2" }),
       expect.any(String)
     );
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleSpy.mock.calls[0][0]).toContain("Error probing inactive course");
+
+    consoleSpy.mockRestore();
   });
 
   it("polls active courses and probes inactive courses in the same run", async () => {
@@ -278,6 +324,71 @@ describe("runCronPoll auto-active management", () => {
     expect(mockedPollCourse).toHaveBeenCalledTimes(9);
     expect(result.courseCount).toBe(1);
     expect(result.inactiveProbeCount).toBe(2);
+  });
+
+  it("continues polling remaining dates after one date throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Make pollCourse throw on the 2nd call (date index 1), succeed on all others
+    mockedPollCourse
+      .mockResolvedValueOnce("success")  // date 0
+      .mockRejectedValueOnce(new Error("transient D1 error"))  // date 1
+      .mockResolvedValue("no_data");     // dates 2-6
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse]);
+    const result = await runCronPoll(db as unknown as D1Database);
+
+    // All 7 dates should have been attempted despite the error on date 1
+    expect(mockedPollCourse).toHaveBeenCalledTimes(7);
+    expect(result.pollCount).toBe(7);
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleSpy.mock.calls[0][0]).toContain("Error polling test-active");
+
+    consoleSpy.mockRestore();
+  });
+
+  it("logs to poll_log when pollCourse throws in active course loop", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockedPollCourse
+      .mockRejectedValueOnce(new Error("config parse failure"))
+      .mockResolvedValue("no_data");
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse]);
+    await runCronPoll(db as unknown as D1Database);
+
+    // The catch block should log the error to poll_log
+    const errorLogSql = preparedStatements.find(
+      (sql) => sql.includes("INSERT INTO poll_log") && sql.includes("error")
+    );
+    expect(errorLogSql).toBeDefined();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("continues polling other active courses after one throws on all dates", { timeout: 10000 }, async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const active2 = { ...activeCourse, id: "test-active-2", name: "Active 2" };
+
+    // First course: all dates throw. Second course: all succeed.
+    let callCount = 0;
+    mockedPollCourse.mockImplementation(async (_db, course) => {
+      callCount++;
+      if (course.id === "test-active") throw new Error("adapter crash");
+      return "no_data";
+    });
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse, active2]);
+    await runCronPoll(db as unknown as D1Database);
+
+    // Both courses should have all 7 dates attempted
+    expect(callCount).toBe(14);
+    expect(consoleSpy).toHaveBeenCalledTimes(7);
+
+    consoleSpy.mockRestore();
   });
 
   it("returns inactiveProbeCount in results", async () => {

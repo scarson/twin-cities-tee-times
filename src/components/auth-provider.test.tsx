@@ -307,6 +307,11 @@ describe("AuthProvider", () => {
           name: "Test",
         }),
     });
+    // GET /api/user/favorites (always called on justSignedIn)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ favorites: [] }),
+    });
 
     render(
       <AuthProvider>
@@ -351,6 +356,11 @@ describe("AuthProvider", () => {
           email: "test@example.com",
           name: "Test",
         }),
+    });
+    // GET /api/user/favorites (always called on justSignedIn)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ favorites: [] }),
     });
 
     render(

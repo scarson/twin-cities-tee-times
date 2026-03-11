@@ -146,6 +146,44 @@ describe("pollCourse", () => {
     expect(logPoll).toHaveBeenCalledWith(mockDb, "braemar", "2026-04-15", "no_data", 0, undefined);
   });
 
+  it("returns error even when logPoll throws in catch block", async () => {
+    const mockAdapter = {
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn().mockRejectedValue(new Error("API timeout")),
+    };
+    vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(logPoll).mockRejectedValueOnce(new Error("D1 connection lost"));
+
+    const result = await pollCourse(mockDb as any, mockCourse, "2026-04-15");
+    expect(result).toBe("error");
+  });
+
+  it("throws on malformed platform_config JSON", async () => {
+    const badCourse = { ...mockCourse, platform_config: "not-json" };
+    vi.mocked(getAdapter).mockReturnValue({
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn(),
+    });
+
+    // JSON.parse happens before the try block, so error propagates to caller
+    await expect(pollCourse(mockDb as any, badCourse, "2026-04-15")).rejects.toThrow(SyntaxError);
+  });
+
+  it("returns error when logPoll throws on success path", async () => {
+    const mockAdapter = {
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn().mockResolvedValue([]),
+    };
+    vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(undefined);
+    vi.mocked(logPoll).mockRejectedValueOnce(new Error("D1 write failed"));
+
+    // logPoll on the success path is inside the try block, so the catch
+    // block handles it and returns "error"
+    const result = await pollCourse(mockDb as any, mockCourse, "2026-04-15");
+    expect(result).toBe("error");
+  });
+
   it("logs error when adapter throws", async () => {
     const mockAdapter = {
       platformId: "foreup",

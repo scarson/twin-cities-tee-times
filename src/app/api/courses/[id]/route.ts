@@ -2,6 +2,7 @@
 // ABOUTME: Includes latest poll status from poll_log.
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
+import { sqliteIsoNow } from "@/lib/db";
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,7 @@ export async function GET(
            SELECT course_id, polled_at, status,
                   ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY polled_at DESC) as rn
            FROM poll_log
-           WHERE polled_at > datetime('now', '-24 hours')
+           WHERE polled_at > ${sqliteIsoNow("-24 hours")}
              AND status = 'success'
          ) p ON c.id = p.course_id AND p.rn = 1
          WHERE c.id = ?`

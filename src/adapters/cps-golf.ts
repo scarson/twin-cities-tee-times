@@ -64,6 +64,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     const response = await fetch(`${baseUrl}/TeeTimes?${params}`, {
       headers: { ...headers, "x-requestid": crypto.randomUUID() },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
@@ -95,6 +96,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: "client_id=onlinereswebshortlived",
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
@@ -122,6 +124,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
         "x-requestid": crypto.randomUUID(),
       },
       body: JSON.stringify({ transactionId }),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {

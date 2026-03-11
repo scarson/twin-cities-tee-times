@@ -260,6 +260,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 - **Auth uses `authenticateRequest()` utility, not Next.js middleware**: Middleware can't reliably access D1 on OpenNext/CF Workers.
 - **`.dev.vars` for local secrets**: Store `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` here for local dev. Already gitignored.
 - **Cookie prefix `tct-`**: All app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
+- **Never use `datetime()` in SQL comparisons**: SQLite's `datetime()` returns space-separated timestamps (`2026-03-11 12:00:00`), but JS `toISOString()` returns `T`-separated (`2026-03-11T12:00:00.000Z`). Lexicographic comparison between these formats is always wrong. Use `sqliteIsoNow()` from `src/lib/db.ts` instead — it returns a `strftime()` expression that produces ISO 8601 format.
 
 ## Linter Suppressions
 

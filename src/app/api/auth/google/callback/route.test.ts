@@ -345,7 +345,7 @@ describe("GET /api/auth/google/callback", () => {
     const location = response.headers.get("location")!;
     const url = new URL(location);
     expect(url.searchParams.get("error")).toBe("code_exchange");
-    expect(url.searchParams.get("detail")).toContain("invalid_grant");
+    expect(url.searchParams.has("detail")).toBe(false);
   });
 
   it("redirects with token_decode error when ID token is malformed", async () => {
@@ -370,7 +370,7 @@ describe("GET /api/auth/google/callback", () => {
     const location = response.headers.get("location")!;
     const url = new URL(location);
     expect(url.searchParams.get("error")).toBe("token_decode");
-    expect(url.searchParams.has("detail")).toBe(true);
+    expect(url.searchParams.has("detail")).toBe(false);
   });
 
   it("redirects with missing_claims when ID token lacks sub or email", async () => {
@@ -461,7 +461,7 @@ describe("GET /api/auth/google/callback", () => {
     const location = response.headers.get("location")!;
     const url = new URL(location);
     expect(url.searchParams.get("error")).toBe("db_error");
-    expect(url.searchParams.get("detail")).toContain("D1_ERROR");
+    expect(url.searchParams.has("detail")).toBe(false);
   });
 
   it("redirects with error when code param is missing (no error param either)", async () => {

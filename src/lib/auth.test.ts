@@ -62,6 +62,16 @@ describe("verifyJWT", () => {
     const result = await verifyJWT("garbage", secret);
     expect(result).toBeNull();
   });
+
+  it("rejects a JWT with alg: none", async () => {
+    const { verifyJWT } = await import("./auth");
+    const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" })).replace(/=/g, "");
+    const payload = btoa(JSON.stringify({ userId: "u1", email: "a@b.com", exp: Math.floor(Date.now() / 1000) + 3600 })).replace(/=/g, "");
+    const noneToken = `${header}.${payload}.`;
+
+    const result = await verifyJWT(noneToken, secret);
+    expect(result).toBeNull();
+  });
 });
 
 describe("validateReturnTo", () => {
@@ -243,6 +253,66 @@ describe("authenticateRequest", () => {
     const req = makeRequest({ "tct-session": "not-a-jwt" });
     const result = await authenticateRequest(req, db, secret);
     expect(result.user).toBeNull();
+  });
+
+  it("sets Secure flag on cookies when request is HTTPS", async () => {
+    const { createJWT, authenticateRequest } = await import("./auth");
+    const { db, mockFirst } = createMockD1();
+
+    vi.useFakeTimers();
+    const jwt = await createJWT({ userId: "u1", email: "a@b.com" }, secret);
+    vi.advanceTimersByTime(16 * 60 * 1000);
+
+    mockFirst.mockResolvedValueOnce({
+      user_id: "u1",
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    mockFirst.mockResolvedValueOnce({ email: "a@b.com" });
+
+    const req = makeRequest(
+      { "tct-session": jwt, "tct-refresh": "refresh-token" },
+      "https://example.com/api/test"
+    );
+    const result = await authenticateRequest(req, db, secret);
+
+    const cookies = result.headers.getSetCookie();
+    for (const cookie of cookies) {
+      expect(cookie).toContain("HttpOnly");
+      expect(cookie).toContain("SameSite=Lax");
+      expect(cookie).toContain("Secure");
+    }
+
+    vi.useRealTimers();
+  });
+
+  it("omits Secure flag on cookies when request is HTTP", async () => {
+    const { createJWT, authenticateRequest } = await import("./auth");
+    const { db, mockFirst } = createMockD1();
+
+    vi.useFakeTimers();
+    const jwt = await createJWT({ userId: "u1", email: "a@b.com" }, secret);
+    vi.advanceTimersByTime(16 * 60 * 1000);
+
+    mockFirst.mockResolvedValueOnce({
+      user_id: "u1",
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    mockFirst.mockResolvedValueOnce({ email: "a@b.com" });
+
+    const req = makeRequest(
+      { "tct-session": jwt, "tct-refresh": "refresh-token" },
+      "http://localhost:3000/api/test"
+    );
+    const result = await authenticateRequest(req, db, secret);
+
+    const cookies = result.headers.getSetCookie();
+    for (const cookie of cookies) {
+      expect(cookie).toContain("HttpOnly");
+      expect(cookie).toContain("SameSite=Lax");
+      expect(cookie).not.toContain("Secure");
+    }
+
+    vi.useRealTimers();
   });
 
   it("returns null without clearing cookies when session was already claimed (race condition)", async () => {

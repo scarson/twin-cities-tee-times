@@ -64,3 +64,21 @@ export async function logPoll(
     .bind(courseId, date, new Date().toISOString(), status, teeTimeCount, errorMessage ?? null)
     .run();
 }
+
+/**
+ * SQL fragment for ISO 8601 "now" timestamps compatible with JS toISOString().
+ *
+ * SQLite's datetime() returns "YYYY-MM-DD HH:MM:SS" (space separator) but
+ * JS toISOString() returns "YYYY-MM-DDTHH:MM:SS.sssZ" (T separator).
+ * Lexicographic comparisons between these formats produce wrong results
+ * because 'T' (ASCII 84) > ' ' (ASCII 32).
+ *
+ * This helper returns a strftime() expression that produces ISO 8601 format,
+ * ensuring correct comparisons with stored JS timestamps.
+ */
+export function sqliteIsoNow(modifier?: string): string {
+  if (modifier) {
+    return `strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '${modifier}')`;
+  }
+  return "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+}

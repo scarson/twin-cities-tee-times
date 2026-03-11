@@ -12,6 +12,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
 import { decodeFavorites, buildShareUrl, resolveSharedCourses } from "@/lib/share";
+import type { TeeTimeRow } from "@/types";
 import courseCatalog from "@/config/courses.json";
 
 export default function Home() {
@@ -20,7 +21,7 @@ export default function Home() {
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [teeTimes, setTeeTimes] = useState([]);
+  const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 
@@ -80,12 +81,16 @@ export default function Home() {
       setLoading(true);
 
       try {
+        // If filtering to favorites but none exist, show empty list
+        if (favoritesOnly && favorites.length === 0) {
+          setTeeTimes([]);
+          return;
+        }
+
         const fetches = dates.map((date) => {
           const params = new URLSearchParams({ date });
           if (favoritesOnly) {
-            if (favorites.length > 0) {
-              params.set("courses", favorites.join(","));
-            }
+            params.set("courses", favorites.join(","));
           }
           if (startTime) params.set("startTime", startTime);
           if (endTime) params.set("endTime", endTime);

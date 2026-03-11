@@ -22,7 +22,7 @@ export function shouldPollDate(
     // Offsets 2-3 (day after tomorrow + next): every 30 minutes
     return minutesSinceLastPoll >= 30;
   }
-  // Days 5-7: twice daily (roughly every 10 hours)
+  // Offsets 4-6 (5-7 days out): twice daily (roughly every 10 hours)
   return minutesSinceLastPoll >= 600;
 }
 
@@ -75,7 +75,11 @@ export async function pollCourse(
     return status;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await logPoll(db, course.id, date, "error", 0, message);
+    try {
+      await logPoll(db, course.id, date, "error", 0, message);
+    } catch (logErr) {
+      console.error(`Failed to log poll error for ${course.id}:`, logErr);
+    }
     return "error";
   }
 }

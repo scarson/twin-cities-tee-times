@@ -38,6 +38,7 @@ export class TeeItUpAdapter implements PlatformAdapter {
 
     const response = await fetch(url, {
       headers: { "x-be-alias": alias },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
