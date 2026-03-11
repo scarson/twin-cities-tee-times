@@ -106,6 +106,20 @@ describe("ForeUpAdapter", () => {
     await expect(adapter.fetchTeeTimes(mockConfig, "2026-03-15")).rejects.toThrow("HTTP 500");
   });
 
+  it("throws on malformed JSON response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("not json {{{", { status: 200 })
+    );
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-04-15")).rejects.toThrow();
+  });
+
+  it("throws on 429 rate-limited response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Rate limited", { status: 429 })
+    );
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-04-15")).rejects.toThrow("429");
+  });
+
   it("returns null price for non-numeric green_fee", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([{

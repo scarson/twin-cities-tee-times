@@ -62,6 +62,16 @@ describe("verifyJWT", () => {
     const result = await verifyJWT("garbage", secret);
     expect(result).toBeNull();
   });
+
+  it("rejects a JWT with alg: none", async () => {
+    const { verifyJWT } = await import("./auth");
+    const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" })).replace(/=/g, "");
+    const payload = btoa(JSON.stringify({ userId: "u1", email: "a@b.com", exp: Math.floor(Date.now() / 1000) + 3600 })).replace(/=/g, "");
+    const noneToken = `${header}.${payload}.`;
+
+    const result = await verifyJWT(noneToken, secret);
+    expect(result).toBeNull();
+  });
 });
 
 describe("validateReturnTo", () => {
