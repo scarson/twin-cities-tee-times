@@ -10,12 +10,13 @@
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
-	"routes": [
-		{
-			"pattern": "teetimes.scarson.io",
-			"custom_domain": true
-		}
-	],
+	// routes removed temporarily — deploy to workers.dev for CPS Golf 525 diagnosis
+	// "routes": [
+	// 	{
+	// 		"pattern": "teetimes.scarson.io",
+	// 		"custom_domain": true
+	// 	}
+	// ],
 	"triggers": {
 		"crons": [
 			"*/5 * * * *"
