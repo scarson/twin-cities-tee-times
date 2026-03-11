@@ -159,9 +159,9 @@ export class CpsGolfAdapter implements PlatformAdapter {
   }
 
   private extractGreenFee(
-    prices: Array<{ shItemCode: string; price: number }>
+    prices?: Array<{ shItemCode: string; price: number }>
   ): number | null {
-    const greenFee = prices.find((p) =>
+    const greenFee = prices?.find((p) =>
       p.shItemCode.startsWith("GreenFee")
     );
     return greenFee?.price ?? null;

@@ -215,6 +215,17 @@ describe("CpsGolfAdapter", () => {
     expect(results[0].price).toBeNull();
   });
 
+  it("returns null price when shItemPrices is absent", async () => {
+    const missingPrices = {
+      ...fixture,
+      content: [{ ...fixture.content[0], shItemPrices: undefined }],
+    };
+    mockCpsFlow(missingPrices);
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+    expect(results[0].price).toBeNull();
+  });
+
   it("returns null price when shItemPrices is empty", async () => {
     const emptyPrices = {
       ...fixture,
