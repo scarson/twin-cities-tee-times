@@ -165,7 +165,7 @@ describe("runCronPoll auto-active management", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -245,7 +245,7 @@ describe("runCronPoll auto-active management", () => {
     await runCronPoll(db as unknown as D1Database);
 
     const promotionSql = preparedStatements.find(
-      (sql) => sql.includes("is_active = 1") && sql.includes("last_had_tee_times")
+      (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
     );
     expect(promotionSql).toBeUndefined();
   });
