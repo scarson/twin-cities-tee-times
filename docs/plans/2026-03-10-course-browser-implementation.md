@@ -135,6 +135,26 @@ describe("getArea", () => {
   it("returns Other for unknown cities", () => {
     expect(getArea("Timbuktu")).toBe("Other");
   });
+
+  it("covers every city in courses.json", () => {
+    // Guard against mapping drift: new cities must be added to CITY_TO_AREA
+    const courses: { city: string }[] = require("@/config/courses.json");
+    const cities = [...new Set(courses.map((c) => c.city))];
+    for (const city of cities) {
+      expect(getArea(city)).not.toBe("Other");
+    }
+  });
+
+  it("sd- prefix correctly identifies all and only SD test courses", () => {
+    // The /courses page uses id.startsWith("sd-") to filter test courses.
+    // Verify this pattern matches exactly the San Diego courses.
+    const courses: { id: string; city: string }[] = require("@/config/courses.json");
+    for (const course of courses) {
+      const isSdId = course.id.startsWith("sd-");
+      const isSdArea = getArea(course.city) === "San Diego";
+      expect(isSdId).toBe(isSdArea);
+    }
+  });
 });
 
 describe("AREA_ORDER", () => {
@@ -326,6 +346,23 @@ describe("groupByArea", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].area).toBe("South Metro");
   });
+
+  it("returns empty array for empty input", () => {
+    expect(groupByArea([])).toEqual([]);
+  });
+
+  it("preserves extra fields on course objects", () => {
+    const courses = [
+      { name: "Braemar", city: "Edina", id: "braemar", address: "123 Main St" },
+    ];
+    const groups = groupByArea(courses);
+    expect(groups[0].courses[0]).toEqual({
+      name: "Braemar",
+      city: "Edina",
+      id: "braemar",
+      address: "123 Main St",
+    });
+  });
 });
 
 describe("mapsUrl", () => {
@@ -334,6 +371,12 @@ describe("mapsUrl", () => {
     expect(url).toBe(
       "https://www.google.com/maps/search/?api=1&query=1301%20Theodore%20Wirth%20Pkwy%2C%20Minneapolis%2C%20MN%2055422"
     );
+  });
+
+  it("encodes special characters in addresses", () => {
+    const url = mapsUrl("123 Main St #4, City & County");
+    expect(url).toContain("%23"); // # encoded
+    expect(url).toContain("%26"); // & encoded
   });
 });
 ```
@@ -374,7 +417,9 @@ function getCollapsedAreas(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(COLLAPSED_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
