@@ -242,5 +242,32 @@
     },
     "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
     "is_active": 0
+  },
+  {
+    "index": 20,
+    "id": "sd-torrey-pines",
+    "name": "Torrey Pines Golf Course (SD Test)",
+    "city": "La Jolla",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "19347",
+      "scheduleId": "1468"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19347",
+    "is_active": 0
+  },
+  {
+    "index": 21,
+    "id": "sd-coronado",
+    "name": "Coronado Golf Course (SD Test)",
+    "city": "Coronado",
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "coronado-gc-3-14-be",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "10985"
+    },
+    "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com",
+    "is_active": 0
   }
 ]
