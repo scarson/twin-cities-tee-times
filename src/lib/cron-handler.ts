@@ -1,7 +1,7 @@
 // ABOUTME: Cron polling orchestrator that runs on a 5-minute schedule.
 // ABOUTME: Controls polling frequency by time of day and polls active courses via adapters.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
-import { sqliteIsoNow } from "@/lib/db";
+import { sqliteIsoNow, logPoll } from "@/lib/db";
 // D1Database is a global type from @cloudflare/workers-types
 import type { CourseRow } from "@/types";
 
@@ -110,7 +110,13 @@ export async function runCronPoll(db: D1Database): Promise<{
                 .run();
             }
           } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
             console.error(`Error polling ${course.id} for ${dates[i]}:`, err);
+            try {
+              await logPoll(db, course.id, dates[i], "error", 0, message);
+            } catch (logErr) {
+              console.error(`Failed to log poll error for ${course.id}:`, logErr);
+            }
             pollCount++;
           }
 

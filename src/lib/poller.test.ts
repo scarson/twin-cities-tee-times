@@ -166,7 +166,7 @@ describe("pollCourse", () => {
     });
 
     // JSON.parse happens before the try block, so error propagates to caller
-    await expect(pollCourse(mockDb as any, badCourse, "2026-04-15")).rejects.toThrow();
+    await expect(pollCourse(mockDb as any, badCourse, "2026-04-15")).rejects.toThrow(SyntaxError);
   });
 
   it("returns error when logPoll throws on success path", async () => {

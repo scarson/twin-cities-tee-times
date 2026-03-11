@@ -292,6 +292,7 @@ describe("runCronPoll auto-active management", () => {
   });
 
   it("continues probing other inactive courses after one throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const inactive2 = { ...inactiveCourse, id: "test-inactive-2", name: "Inactive 2" };
     mockedPollCourse
       .mockRejectedValueOnce(new Error("adapter crash"))
@@ -307,6 +308,10 @@ describe("runCronPoll auto-active management", () => {
       expect.objectContaining({ id: "test-inactive-2" }),
       expect.any(String)
     );
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleSpy.mock.calls[0][0]).toContain("Error probing inactive course");
+
+    consoleSpy.mockRestore();
   });
 
   it("polls active courses and probes inactive courses in the same run", async () => {
@@ -322,6 +327,8 @@ describe("runCronPoll auto-active management", () => {
   });
 
   it("continues polling remaining dates after one date throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     // Make pollCourse throw on the 2nd call (date index 1), succeed on all others
     mockedPollCourse
       .mockResolvedValueOnce("success")  // date 0
@@ -335,9 +342,34 @@ describe("runCronPoll auto-active management", () => {
     // All 7 dates should have been attempted despite the error on date 1
     expect(mockedPollCourse).toHaveBeenCalledTimes(7);
     expect(result.pollCount).toBe(7);
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleSpy.mock.calls[0][0]).toContain("Error polling test-active");
+
+    consoleSpy.mockRestore();
+  });
+
+  it("logs to poll_log when pollCourse throws in active course loop", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockedPollCourse
+      .mockRejectedValueOnce(new Error("config parse failure"))
+      .mockResolvedValue("no_data");
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse]);
+    await runCronPoll(db as unknown as D1Database);
+
+    // The catch block should log the error to poll_log
+    const errorLogSql = preparedStatements.find(
+      (sql) => sql.includes("INSERT INTO poll_log") && sql.includes("error")
+    );
+    expect(errorLogSql).toBeDefined();
+
+    consoleSpy.mockRestore();
   });
 
   it("continues polling other active courses after one throws on all dates", { timeout: 10000 }, async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const active2 = { ...activeCourse, id: "test-active-2", name: "Active 2" };
 
     // First course: all dates throw. Second course: all succeed.
@@ -354,6 +386,9 @@ describe("runCronPoll auto-active management", () => {
 
     // Both courses should have all 7 dates attempted
     expect(callCount).toBe(14);
+    expect(consoleSpy).toHaveBeenCalledTimes(7);
+
+    consoleSpy.mockRestore();
   });
 
   it("returns inactiveProbeCount in results", async () => {
