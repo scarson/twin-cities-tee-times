@@ -82,20 +82,22 @@ function CourseBrowser() {
             <section key={area}>
               <button
                 onClick={() => toggleArea(area)}
-                className="flex w-full items-center gap-2 text-left"
+                className="flex w-full items-center justify-between text-left"
               >
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold lg:text-xl">
+                    {area}
+                  </h2>
+                  <span className="text-sm text-gray-400">
+                    ({courses.length})
+                  </span>
+                </div>
                 <span
-                  className={`text-xs text-gray-400 transition-transform ${
+                  className={`text-sm text-gray-900 transition-transform ${
                     isCollapsed ? "" : "rotate-90"
                   }`}
                 >
-                  ▶
-                </span>
-                <h2 className="text-lg font-semibold lg:text-xl">
-                  {area}
-                </h2>
-                <span className="text-sm text-gray-400">
-                  ({courses.length})
+                  ›
                 </span>
               </button>
 

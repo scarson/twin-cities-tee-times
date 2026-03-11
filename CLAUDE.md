@@ -122,6 +122,19 @@ When asked to do something, just do it - including obvious follow-up actions nee
 - NEVER SKIP, EVADE OR DISABLE A PRE-COMMIT HOOK
 - NEVER use `git add -A` unless you've just done a `git status` - Don't add random test files to the repo.
 
+### Keeping a clean git graph
+
+The `dev` → `main` workflow MUST produce a linear, readable history. Follow these rules:
+
+- **PRs use squash merge.** When creating PRs with `gh pr create`, add `--squash` merge preference. Remind Sam to use "Squash and merge" in GitHub when merging.
+- **After a PR merges to main, rebase dev onto main.** NEVER use `git pull origin main` or `git merge main` on the dev branch — this creates spaghetti merge commits. Instead:
+  ```bash
+  git fetch origin main
+  git rebase origin/main
+  git push --force-with-lease origin dev
+  ```
+- **NEVER merge main into dev.** The direction is always: rebase dev onto main. If there are conflicts, resolve them during the rebase.
+
 ## Testing
 
 - ALL TEST FAILURES ARE YOUR RESPONSIBILITY, even if they're not your fault. The Broken Windows theory is real.
