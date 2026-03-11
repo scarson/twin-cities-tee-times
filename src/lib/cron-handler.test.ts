@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
+import { sqliteIsoNow } from "@/lib/db";
 
 describe("shouldRunThisCycle", () => {
   function makeDate(centralHour: number, minute: number): Date {
@@ -84,8 +85,28 @@ describe("runCronPoll cleanup", () => {
       sql.includes("DELETE FROM sessions")
     );
     expect(sessionCleanup).toBe(
-      "DELETE FROM sessions WHERE expires_at < datetime('now')"
+      `DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`
     );
+  });
+
+  it("uses ISO format for poll_log cleanup", async () => {
+    await runCronPoll(mockDb as unknown as D1Database);
+
+    const pollLogCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM poll_log")
+    );
+    expect(pollLogCleanup).toBe(
+      `DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`
+    );
+  });
+
+  it("uses ISO format for recent polls batch query", async () => {
+    await runCronPoll(mockDb as unknown as D1Database);
+
+    const batchQuery = preparedStatements.find(
+      (sql) => sql.includes("MAX(polled_at)") && sql.includes("poll_log")
+    );
+    expect(batchQuery).toContain(sqliteIsoNow("-24 hours"));
   });
 
   it("does not error when sessions table is empty", async () => {
@@ -237,6 +258,26 @@ describe("runCronPoll auto-active management", () => {
       (sql) => sql.includes("is_active = 0") && sql.includes("-30 days")
     );
     expect(deactivateSql).toBeDefined();
+    expect(deactivateSql).toContain(sqliteIsoNow("-30 days"));
+  });
+
+  it("does not deactivate courses with NULL last_had_tee_times", async () => {
+    const courseWithNull = {
+      ...activeCourse,
+      id: "test-null-lhtt",
+      last_had_tee_times: null,
+    };
+    const db = makeMockDb([courseWithNull]);
+    await runCronPoll(db as unknown as D1Database);
+
+    const deactivateSql = preparedStatements.find(
+      (sql) => sql.includes("is_active = 0")
+    );
+    // The deactivation SQL must require IS NOT NULL — courses with NULL
+    // last_had_tee_times have never been proven inactive and must not
+    // be deactivated.
+    expect(deactivateSql).toContain("last_had_tee_times IS NOT NULL");
+    expect(deactivateSql).not.toContain("IS NULL OR");
   });
 
   it("does not promote inactive course when poll returns error", async () => {

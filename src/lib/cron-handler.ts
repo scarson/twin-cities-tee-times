@@ -1,6 +1,7 @@
 // ABOUTME: Cron polling orchestrator that runs on a 5-minute schedule.
 // ABOUTME: Controls polling frequency by time of day and polls active courses via adapters.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
+import { sqliteIsoNow } from "@/lib/db";
 // D1Database is a global type from @cloudflare/workers-types
 import type { CourseRow } from "@/types";
 
@@ -76,7 +77,7 @@ export async function runCronPoll(db: D1Database): Promise<{
       .prepare(
         `SELECT course_id, date, MAX(polled_at) as last_polled
          FROM poll_log
-         WHERE polled_at > datetime('now', '-24 hours')
+         WHERE polled_at > ${sqliteIsoNow("-24 hours")}
          GROUP BY course_id, date`
       )
       .all<{ course_id: string; date: string; last_polled: string }>();
@@ -159,13 +160,14 @@ export async function runCronPoll(db: D1Database): Promise<{
 
     // --- Auto-deactivate: courses with no tee times for 30 days ---
     // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
-    // so they won't match the < datetime('now', '-30 days') condition.
+    // so they won't match the stale-tee-times condition.
     try {
       const deactivated = await db
         .prepare(
           `UPDATE courses SET is_active = 0
            WHERE is_active = 1
-             AND (last_had_tee_times IS NULL OR last_had_tee_times < datetime('now', '-30 days'))`
+             AND last_had_tee_times IS NOT NULL
+             AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
         )
         .run();
       if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
@@ -178,7 +180,7 @@ export async function runCronPoll(db: D1Database): Promise<{
     // Purge poll_log entries older than 7 days to prevent unbounded growth
     try {
       await db
-        .prepare("DELETE FROM poll_log WHERE polled_at < datetime('now', '-7 days')")
+        .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
         .run();
     } catch (err) {
       console.error("poll_log cleanup error:", err);
@@ -187,7 +189,7 @@ export async function runCronPoll(db: D1Database): Promise<{
     // Remove expired sessions
     try {
       await db
-        .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+        .prepare(`DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`)
         .run();
     } catch (err) {
       console.error("session cleanup error:", err);
