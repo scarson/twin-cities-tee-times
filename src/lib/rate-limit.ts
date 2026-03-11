@@ -1,5 +1,6 @@
 // ABOUTME: Server-side rate limiting for the refresh endpoint.
 // ABOUTME: Enforces per-course cooldown and global poll rate cap using poll_log.
+import { sqliteIsoNow } from "@/lib/db";
 
 export const COURSE_COOLDOWN_SECONDS = 30;
 export const GLOBAL_MAX_PER_MINUTE = 20;
@@ -14,12 +15,12 @@ export async function checkRefreshAllowed(
 ): Promise<RateLimitResult> {
   // Per-course cooldown: any date
   // Note: COURSE_COOLDOWN_SECONDS is interpolated (not bound) because SQLite's
-  // datetime() modifier string cannot accept parameter bindings. The value is a
+  // strftime() modifier string cannot accept parameter bindings. The value is a
   // module-level constant, not user input.
   const recentPoll = await db
     .prepare(
       `SELECT polled_at FROM poll_log
-       WHERE course_id = ? AND polled_at > datetime('now', '-${COURSE_COOLDOWN_SECONDS} seconds')
+       WHERE course_id = ? AND polled_at > ${sqliteIsoNow(`-${COURSE_COOLDOWN_SECONDS} seconds`)}
        ORDER BY polled_at DESC LIMIT 1`
     )
     .bind(courseId)
@@ -33,7 +34,7 @@ export async function checkRefreshAllowed(
   const globalCount = await db
     .prepare(
       `SELECT COUNT(*) as cnt FROM poll_log
-       WHERE polled_at > datetime('now', '-60 seconds')`
+       WHERE polled_at > ${sqliteIsoNow("-60 seconds")}`
     )
     .bind()
     .first<{ cnt: number }>();

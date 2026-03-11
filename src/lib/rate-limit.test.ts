@@ -2,6 +2,7 @@
 // ABOUTME: Verifies per-course cooldown and global rate limit checks.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { checkRefreshAllowed, COURSE_COOLDOWN_SECONDS, GLOBAL_MAX_PER_MINUTE } from "./rate-limit";
+import { sqliteIsoNow } from "@/lib/db";
 
 function mockDb(results: { courseRecent: boolean; globalCount: number }) {
   const first = vi.fn().mockResolvedValue(
@@ -54,11 +55,13 @@ describe("checkRefreshAllowed", () => {
 
     // First prepare call: per-course cooldown query
     const courseQuery = db.prepare.mock.calls[0][0] as string;
-    expect(courseQuery).toContain(`-${COURSE_COOLDOWN_SECONDS} seconds`);
+    expect(courseQuery).toContain(
+      sqliteIsoNow(`-${COURSE_COOLDOWN_SECONDS} seconds`)
+    );
     expect(courseQuery).not.toContain("date =");
 
     // Second prepare call: global rate limit query
     const globalQuery = db.prepare.mock.calls[1][0] as string;
-    expect(globalQuery).toContain("-60 seconds");
+    expect(globalQuery).toContain(sqliteIsoNow("-60 seconds"));
   });
 });
