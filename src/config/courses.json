@@ -259,8 +259,7 @@
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "1241"
     },
-    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
-    "is_active": 0
+    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com"
   },
   {
     "index": 20,
@@ -274,8 +273,7 @@
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "10985"
     },
-    "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com",
-    "is_active": 0
+    "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com"
   },
   {
     "index": 21,
@@ -292,8 +290,7 @@
       "courseIds": "6",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
   },
   {
     "index": 22,
@@ -310,8 +307,7 @@
       "courseIds": "4",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
   },
   {
     "index": 23,
@@ -328,7 +324,6 @@
       "courseIds": "2",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
   }
 ]
