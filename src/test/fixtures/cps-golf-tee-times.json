@@ -1,31 +1,84 @@
 {
-  "TeeTimes": [
+  "transactionId": "f592d5d9-a82c-bd59-435b-27ab5a20e64b",
+  "isSuccess": true,
+  "content": [
     {
-      "TeeTimeId": 1001,
-      "TeeDateTime": "2026-04-15T07:00:00",
-      "GreenFee": 42.00,
-      "NumberOfOpenSlots": 4,
-      "Holes": 18,
-      "CourseId": 17,
-      "CourseName": "Championship 18"
+      "teeSheetId": 5932777,
+      "startTime": "2026-03-12T07:21:00",
+      "startingTee": 1,
+      "is18HoleOnly": true,
+      "participants": 4,
+      "courseId": 2,
+      "courseDate": "2026-03-12T00:00:00",
+      "holes": 18,
+      "siteId": 2,
+      "courseName": "Rancho Bernardo Inn",
+      "shItemPrices": [
+        {
+          "shItemCode": "GreenFee18",
+          "itemCode": "RB118001001",
+          "price": 95.0,
+          "itemDesc": "SC Resident M-Th"
+        },
+        {
+          "shItemCode": "FullCart18",
+          "itemCode": "RB1100001002",
+          "price": 15.0,
+          "itemDesc": "Cart Rental $15"
+        }
+      ],
+      "minPlayer": 1,
+      "maxPlayer": 1
     },
     {
-      "TeeTimeId": 1002,
-      "TeeDateTime": "2026-04-15T07:10:00",
-      "GreenFee": 42.00,
-      "NumberOfOpenSlots": 2,
-      "Holes": 18,
-      "CourseId": 17,
-      "CourseName": "Championship 18"
+      "teeSheetId": 5932829,
+      "startTime": "2026-03-12T15:09:00",
+      "startingTee": 1,
+      "is18HoleOnly": true,
+      "participants": 4,
+      "courseId": 2,
+      "courseDate": "2026-03-12T00:00:00",
+      "holes": 18,
+      "siteId": 2,
+      "courseName": "Rancho Bernardo Inn",
+      "shItemPrices": [
+        {
+          "shItemCode": "GreenFee18",
+          "itemCode": "RB103001003",
+          "price": 55.0,
+          "itemDesc": "Twilight M-Th"
+        },
+        {
+          "shItemCode": "FullCart18",
+          "itemCode": "RB1100001002",
+          "price": 15.0,
+          "itemDesc": "Cart Rental $15"
+        }
+      ],
+      "minPlayer": 1,
+      "maxPlayer": 1
     },
     {
-      "TeeTimeId": 1003,
-      "TeeDateTime": "2026-04-15T14:30:00",
-      "GreenFee": 30.00,
-      "NumberOfOpenSlots": 4,
-      "Holes": 9,
-      "CourseId": 17,
-      "CourseName": "Championship 18"
+      "teeSheetId": 6698755,
+      "startTime": "2026-03-12T18:00:00",
+      "startingTee": 1,
+      "is18HoleOnly": true,
+      "participants": 4,
+      "courseId": 2,
+      "courseDate": "2026-03-12T00:00:00",
+      "holes": 18,
+      "siteId": 2,
+      "courseName": "Rancho Bernardo Inn",
+      "shItemPrices": [
+        {
+          "shItemCode": "GreenFee18",
+          "itemCode": "RB106001001",
+          "price": 40.0,
+          "itemDesc": "Super Twilight M-Th"
+        }
+      ],
+      "minPlayer": 2,
+      "maxPlayer": 4
     }
   ]
 }
