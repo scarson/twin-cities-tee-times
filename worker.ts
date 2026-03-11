@@ -5,7 +5,7 @@ import { runWithCloudflareRequestContext } from "./.open-next/cloudflare/init.js
 import { handler } from "./.open-next/server-functions/default/handler.mjs";
 import { runCronPoll } from "./src/lib/cron-handler";
 
-export default {
+const worker = {
   async fetch(request: Request, env: any, ctx: any) {
     return runWithCloudflareRequestContext(request, env, ctx, async () => {
       return handler(request, env, ctx);
@@ -16,3 +16,5 @@ export default {
     ctx.waitUntil(runCronPoll(env.DB));
   },
 };
+
+export default worker;

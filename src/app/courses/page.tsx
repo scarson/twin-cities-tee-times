@@ -2,7 +2,7 @@
 // ABOUTME: Supports favoriting, collapsible area sections, and ?test=true for SD courses.
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -43,12 +43,7 @@ function CourseBrowser() {
   const searchParams = useSearchParams();
   const showTest = searchParams.get("test") === "true";
   const { toggleFavorite, isFavorite } = useFavorites();
-  const [collapsed, setCollapsed] = useState<string[]>([]);
-
-  // Load collapsed state from localStorage after mount
-  useEffect(() => {
-    setCollapsed(getCollapsedAreas());
-  }, []);
+  const [collapsed, setCollapsed] = useState<string[]>(getCollapsedAreas);
 
   const toggleArea = useCallback((area: string) => {
     setCollapsed((prev) => {
