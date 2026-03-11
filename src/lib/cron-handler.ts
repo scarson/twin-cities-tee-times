@@ -156,6 +156,8 @@ export async function runCronPoll(db: D1Database): Promise<{
   }
 
   // --- Auto-deactivate: courses with no tee times for 30 days ---
+  // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
+  // so they won't match the < datetime('now', '-30 days') condition.
   try {
     const deactivated = await db
       .prepare(

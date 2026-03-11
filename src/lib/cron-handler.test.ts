@@ -260,6 +260,12 @@ describe("runCronPoll auto-active management", () => {
 
     // First course: 1 call (throws), skips rest. Second course: 2 calls (today+tomorrow)
     expect(mockedPollCourse).toHaveBeenCalledTimes(3);
+    // Verify the second course was actually reached
+    expect(mockedPollCourse).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "test-inactive-2" }),
+      expect.any(String)
+    );
   });
 
   it("polls active courses and probes inactive courses in the same run", async () => {
