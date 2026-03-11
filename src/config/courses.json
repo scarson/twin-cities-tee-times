@@ -7,7 +7,6 @@
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolistheodorewirth",
-      "apiKey": "8ea2914e-cac2-48a7-a3e5-e0f41350bf3a",
       "courseIds": "17",
       "websiteId": "8265e495-5c83-44e5-93d8-c9e3f3a40529"
     },
@@ -268,7 +267,8 @@
       "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
       "siteId": "16",
       "terminalId": "3",
-      "courseIds": "6"
+      "courseIds": "6",
+      "timezone": "America/Los_Angeles"
     },
     "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
     "is_active": 0
@@ -284,7 +284,8 @@
       "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
       "siteId": "16",
       "terminalId": "3",
-      "courseIds": "4"
+      "courseIds": "4",
+      "timezone": "America/Los_Angeles"
     },
     "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
     "is_active": 0
@@ -300,7 +301,8 @@
       "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
       "siteId": "16",
       "terminalId": "3",
-      "courseIds": "2"
+      "courseIds": "2",
+      "timezone": "America/Los_Angeles"
     },
     "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
     "is_active": 0
