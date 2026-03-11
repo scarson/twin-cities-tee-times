@@ -162,8 +162,8 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: "client_id=onlinereswebshortlived",
-          // @ts-expect-error -- cf is a Workers-specific extension
-          cf: { cacheTtl: 0 },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cf is a Workers-specific fetch extension
+          cf: { cacheTtl: 0 } as any,
         }
       )
     );
