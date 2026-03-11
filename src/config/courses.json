@@ -269,5 +269,53 @@
     },
     "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com",
     "is_active": 0
+  },
+  {
+    "index": 22,
+    "id": "sd-encinitas-ranch",
+    "name": "Encinitas Ranch (SD Test)",
+    "city": "Encinitas",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "jcgsc5",
+      "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
+      "siteId": "16",
+      "terminalId": "3",
+      "courseIds": "6"
+    },
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "is_active": 0
+  },
+  {
+    "index": 23,
+    "id": "sd-twin-oaks",
+    "name": "Twin Oaks (SD Test)",
+    "city": "San Marcos",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "jcgsc5",
+      "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
+      "siteId": "16",
+      "terminalId": "3",
+      "courseIds": "4"
+    },
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "is_active": 0
+  },
+  {
+    "index": 24,
+    "id": "sd-rancho-bernardo-inn",
+    "name": "Rancho Bernardo Inn (SD Test)",
+    "city": "San Diego",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "jcgsc5",
+      "websiteId": "94ce5060-0b39-444f-2756-08d8d81fed21",
+      "siteId": "16",
+      "terminalId": "3",
+      "courseIds": "2"
+    },
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "is_active": 0
   }
 ]
