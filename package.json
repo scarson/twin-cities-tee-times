@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run --pass-with-no-tests",
     "test:watch": "vitest",
     "preview": "opennextjs-cloudflare build && wrangler dev",

@@ -276,7 +276,7 @@ When suppression is necessary, prefer **inline `// eslint-disable-next-line rule
 
 **Update `dev/implementation-log.md` after each commit** — record what was built, key implementation decisions, gotchas discovered, and quality check results. This is the primary mechanism for preserving context across compacted sessions.
 
-**CI runs 3 parallel jobs**: type-check (`npx tsc --noEmit`), test (`npm test`), build (`npx @opennextjs/cloudflare build`). Runs on pushes to `main` and PRs targeting `main`.
+**CI runs 4 parallel jobs**: type-check (`npx tsc --noEmit`), lint (`npm run lint`), test (`npm test`), build (`npx @opennextjs/cloudflare build`). Runs on pushes to `main` and PRs targeting `main`.
 
 ## Project Layout
 

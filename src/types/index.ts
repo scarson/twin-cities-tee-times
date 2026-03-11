@@ -34,7 +34,7 @@ export interface CourseRow {
   platform_config: string; // JSON string
   booking_url: string;
   is_active: number; // SQLite boolean
-  last_active_check: string | null;
+  last_had_tee_times: string | null;
 }
 
 /** Tee time row from D1 */

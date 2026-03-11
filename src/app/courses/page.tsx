@@ -2,7 +2,7 @@
 // ABOUTME: Supports favoriting, collapsible area sections, and ?test=true for SD courses.
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -17,7 +17,6 @@ interface CatalogCourse {
   city: string;
   address?: string;
   bookingUrl: string;
-  is_active?: number;
 }
 
 function getCollapsedAreas(): string[] {
@@ -44,12 +43,7 @@ function CourseBrowser() {
   const searchParams = useSearchParams();
   const showTest = searchParams.get("test") === "true";
   const { toggleFavorite, isFavorite } = useFavorites();
-  const [collapsed, setCollapsed] = useState<string[]>([]);
-
-  // Load collapsed state from localStorage after mount
-  useEffect(() => {
-    setCollapsed(getCollapsedAreas());
-  }, []);
+  const [collapsed, setCollapsed] = useState<string[]>(getCollapsedAreas);
 
   const toggleArea = useCallback((area: string) => {
     setCollapsed((prev) => {
@@ -114,11 +108,6 @@ function CourseBrowser() {
                             className="font-medium text-gray-900 hover:text-green-700 lg:text-lg"
                           >
                             {course.name}
-                            {course.is_active === 0 && (
-                              <span className="ml-1.5 text-xs font-normal text-gray-400">
-                                (inactive)
-                              </span>
-                            )}
                           </Link>
                           {course.address && (
                             <a

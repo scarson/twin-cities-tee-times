@@ -39,22 +39,31 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Main cron polling logic. Called by the Worker's scheduled() handler.
+ *
+ * Two-tier polling:
+ * - Active courses: full 7-date polling at dynamic frequency
+ * - Inactive courses: hourly probe of today + tomorrow to detect reopening
  */
 export async function runCronPoll(db: D1Database): Promise<{
   pollCount: number;
   courseCount: number;
+  inactiveProbeCount: number;
   skipped: boolean;
 }> {
   const now = new Date();
 
   if (!shouldRunThisCycle(now)) {
-    return { pollCount: 0, courseCount: 0, skipped: true };
+    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: true };
   }
 
+  // Fetch ALL courses (active and inactive)
   const coursesResult = await db
-    .prepare("SELECT * FROM courses WHERE is_active = 1")
+    .prepare("SELECT * FROM courses")
     .all<CourseRow>();
-  const courses = coursesResult.results;
+  const allCourses = coursesResult.results;
+
+  const activeCourses = allCourses.filter((c) => c.is_active === 1);
+  const inactiveCourses = allCourses.filter((c) => c.is_active === 0);
 
   const todayStr = now.toLocaleDateString("en-CA", {
     timeZone: "America/Chicago",
@@ -77,8 +86,10 @@ export async function runCronPoll(db: D1Database): Promise<{
   }
 
   let pollCount = 0;
+  let inactiveProbeCount = 0;
 
-  for (const course of courses) {
+  // --- Active courses: full 7-date polling at dynamic frequency ---
+  for (const course of activeCourses) {
     try {
       for (let i = 0; i < dates.length; i++) {
         const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
@@ -87,18 +98,79 @@ export async function runCronPoll(db: D1Database): Promise<{
           : Infinity;
 
         if (shouldPollDate(i, minutesSinceLast)) {
-          await pollCourse(db, course, dates[i]);
+          const status = await pollCourse(db, course, dates[i]);
           pollCount++;
 
-          // Rate limit: CPS Golf allows 5 req/sec. 250ms between requests
-          // gives ~4 req/sec with headroom. ForeUp has no known limit but
-          // being polite doesn't hurt.
+          if (status === "success") {
+            await db
+              .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
+              .bind(now.toISOString(), course.id)
+              .run();
+          }
+
           await sleep(250);
         }
       }
     } catch (err) {
       console.error(`Error polling course ${course.id}:`, err);
     }
+  }
+
+  // --- Inactive courses: hourly probe of today + tomorrow ---
+  const probeDates = dates.slice(0, 2); // today + tomorrow
+
+  for (const course of inactiveCourses) {
+    try {
+      // Check if this course was probed in the last hour
+      const lastProbed = pollTimeMap.get(`${course.id}:${probeDates[0]}`);
+      const minutesSinceProbe = lastProbed
+        ? (Date.now() - new Date(lastProbed).getTime()) / 60000
+        : Infinity;
+
+      if (minutesSinceProbe < 60) continue;
+
+      let foundTeeTimes = false;
+
+      for (const date of probeDates) {
+        const status = await pollCourse(db, course, date);
+        inactiveProbeCount++;
+
+        if (status === "success") {
+          foundTeeTimes = true;
+        }
+
+        await sleep(250);
+      }
+
+      // Auto-promote: flip to active if tee times were found
+      if (foundTeeTimes) {
+        await db
+          .prepare("UPDATE courses SET is_active = 1, last_had_tee_times = ? WHERE id = ?")
+          .bind(now.toISOString(), course.id)
+          .run();
+        console.log(`Auto-activated course ${course.id}: tee times detected`);
+      }
+    } catch (err) {
+      console.error(`Error probing inactive course ${course.id}:`, err);
+    }
+  }
+
+  // --- Auto-deactivate: courses with no tee times for 30 days ---
+  // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
+  // so they won't match the < datetime('now', '-30 days') condition.
+  try {
+    const deactivated = await db
+      .prepare(
+        `UPDATE courses SET is_active = 0
+         WHERE is_active = 1
+           AND (last_had_tee_times IS NULL OR last_had_tee_times < datetime('now', '-30 days'))`
+      )
+      .run();
+    if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
+      console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
+    }
+  } catch (err) {
+    console.error("Auto-deactivation error:", err);
   }
 
   // Purge poll_log entries older than 7 days to prevent unbounded growth
@@ -119,5 +191,5 @@ export async function runCronPoll(db: D1Database): Promise<{
     console.error("session cleanup error:", err);
   }
 
-  return { pollCount, courseCount: courses.length, skipped: false };
+  return { pollCount, courseCount: activeCourses.length, inactiveProbeCount, skipped: false };
 }

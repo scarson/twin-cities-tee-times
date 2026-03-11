@@ -23,8 +23,7 @@
     "platformConfig": {
       "subdomain": "minneapolisgrossnational"
     },
-    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb"
   },
   {
     "index": 10,
@@ -36,8 +35,7 @@
     "platformConfig": {
       "subdomain": "minneapolismeadowbrook"
     },
-    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb"
   },
   {
     "index": 3,
@@ -49,8 +47,7 @@
     "platformConfig": {
       "subdomain": "minneapoliscolumbia"
     },
-    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb"
   },
   {
     "index": 8,
@@ -62,8 +59,7 @@
     "platformConfig": {
       "subdomain": "minneapolishiawatha"
     },
-    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb"
   },
   {
     "index": 12,
@@ -75,8 +71,7 @@
     "platformConfig": {
       "subdomain": "phalen"
     },
-    "bookingUrl": "https://phalen.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://phalen.cps.golf/onlineresweb"
   },
   {
     "index": 2,
@@ -88,8 +83,7 @@
     "platformConfig": {
       "subdomain": "chaska"
     },
-    "bookingUrl": "https://chaska.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://chaska.cps.golf/onlineresweb"
   },
   {
     "index": 5,
@@ -101,8 +95,7 @@
     "platformConfig": {
       "subdomain": "edinburghusa"
     },
-    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb"
   },
   {
     "index": 11,
@@ -114,8 +107,7 @@
     "platformConfig": {
       "subdomain": "oakglen"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
   },
   {
     "index": 9,
@@ -127,8 +119,7 @@
     "platformConfig": {
       "subdomain": "highlandnationalmn"
     },
-    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
   },
   {
     "index": 4,
@@ -140,8 +131,7 @@
     "platformConfig": {
       "subdomain": "como"
     },
-    "bookingUrl": "https://como.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://como.cps.golf/onlineresweb"
   },
   {
     "index": 18,
@@ -153,8 +143,7 @@
     "platformConfig": {
       "subdomain": "victorylinksmn"
     },
-    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb"
   },
   {
     "index": 6,
@@ -166,8 +155,7 @@
     "platformConfig": {
       "subdomain": "gem"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb",
-    "is_active": 0
+    "bookingUrl": "https://gem.cps.golf/onlineresweb"
   },
   {
     "index": 0,
@@ -192,8 +180,7 @@
     "platformConfig": {
       "facilityId": "20252"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252",
-    "is_active": 0
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
   },
   {
     "index": 13,
