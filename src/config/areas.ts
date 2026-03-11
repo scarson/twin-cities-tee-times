@@ -31,12 +31,12 @@ const CITY_TO_AREA: Record<string, string> = {
 };
 
 export const AREA_ORDER = [
+  "San Diego",
   "Minneapolis",
   "St. Paul",
   "North Metro",
   "East Metro",
   "South Metro",
-  "San Diego",
 ];
 
 export function getArea(city: string): string {
