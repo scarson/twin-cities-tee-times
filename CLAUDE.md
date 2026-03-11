@@ -124,16 +124,8 @@ When asked to do something, just do it - including obvious follow-up actions nee
 
 ### Keeping a clean git graph
 
-The `dev` → `main` workflow MUST produce a linear, readable history. Follow these rules:
-
-- **PRs use squash merge.** When creating PRs with `gh pr create`, add `--squash` merge preference. Remind Sam to use "Squash and merge" in GitHub when merging.
-- **After a PR merges to main, rebase dev onto main.** NEVER use `git pull origin main` or `git merge main` on the dev branch — this creates spaghetti merge commits. Instead:
-  ```bash
-  git fetch origin main
-  git rebase origin/main
-  git push --force-with-lease origin dev
-  ```
-- **NEVER merge main into dev.** The direction is always: rebase dev onto main. If there are conflicts, resolve them during the rebase.
+- **NEVER pull or merge main into dev.** This is a solo project with a one-way `dev` → `main` flow. Main should never have commits that dev doesn't. There is no reason to sync main into dev.
+- **NEVER run `git pull origin main` or `git merge main` on the dev branch.** This creates spaghetti merge commits.
 
 ## Testing
 
