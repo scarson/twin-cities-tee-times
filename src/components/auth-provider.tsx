@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (params.get("justSignedIn") === "true") {
           const localFavorites = getFavorites();
 
+          // Merge local favorites to server if any exist
           if (localFavorites.length > 0) {
             const mergeRes = await fetch("/api/user/favorites/merge", {
               method: "POST",
@@ -61,26 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (mergeRes.ok) {
               const { merged } = (await mergeRes.json()) as { merged: number };
-
-              const favRes = await fetch("/api/user/favorites");
-              if (favRes.ok) {
-                const { favorites } = (await favRes.json()) as {
-                  favorites: { courseId: string; courseName: string }[];
-                };
-                setFavorites(
-                  favorites.map((f: { courseId: string; courseName: string }) => ({
-                    id: f.courseId,
-                    name: f.courseName,
-                  }))
-                );
-              }
-
               if (merged > 0) {
                 showToast(`Synced ${merged} favorites from this device`);
               }
             } else {
               showToast("Couldn\u2019t sync favorites \u2014 they\u2019ll sync next time");
             }
+          }
+
+          // Always sync server favorites to localStorage (covers new-device sign-in)
+          const favRes = await fetch("/api/user/favorites");
+          if (favRes.ok) {
+            const { favorites } = (await favRes.json()) as {
+              favorites: { courseId: string; courseName: string }[];
+            };
+            setFavorites(
+              favorites.map((f: { courseId: string; courseName: string }) => ({
+                id: f.courseId,
+                name: f.courseName,
+              }))
+            );
           }
 
           setFavoritesVersion((v) => v + 1);
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    setFavorites([]);
     setUser(null);
   }, []);
 
