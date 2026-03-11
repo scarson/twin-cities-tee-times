@@ -79,6 +79,15 @@ describe("datesInRange", () => {
   });
 });
 
+describe("toDateStr/fromDateStr roundtrip", () => {
+  it("roundtrips toDateStr(fromDateStr(s)) for any date", () => {
+    const dates = ["2026-01-01", "2026-03-08", "2026-06-15", "2026-11-01", "2026-12-31"];
+    for (const d of dates) {
+      expect(toDateStr(fromDateStr(d))).toBe(d);
+    }
+  });
+});
+
 describe("formatShortDate", () => {
   it("formats as short month + day", () => {
     const result = formatShortDate("2026-03-09");

@@ -36,7 +36,7 @@ export class ForeUpAdapter implements PlatformAdapter {
 
     const url = `https://foreupsoftware.com/index.php/api/booking/times?${params}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
 
     if (!response.ok) {
       throw new Error(`ForeUp API returned HTTP ${response.status}`);

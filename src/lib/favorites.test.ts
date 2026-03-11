@@ -69,6 +69,15 @@ describe("favorites", () => {
       store["tct-favorites"] = "not-json";
       expect(getFavorites()).toEqual([]);
     });
+
+    it("returns empty array when localStorage throws", () => {
+      const originalGetItem = localStorageMock.getItem;
+      localStorageMock.getItem = vi.fn(() => {
+        throw new Error("SecurityError: localStorage not available");
+      });
+      expect(getFavorites()).toEqual([]);
+      localStorageMock.getItem = originalGetItem;
+    });
   });
 
   describe("getFavoriteDetails", () => {
