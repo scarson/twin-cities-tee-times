@@ -4,6 +4,7 @@
     "id": "theodore-wirth-18",
     "name": "Theodore Wirth",
     "city": "Minneapolis",
+    "address": "1301 Theodore Wirth Pkwy, Minneapolis, MN 55422",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolistheodorewirth",
@@ -17,6 +18,7 @@
     "id": "gross-national",
     "name": "Gross National",
     "city": "Minneapolis",
+    "address": "2201 St. Anthony Blvd, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolisgrossnational"
@@ -29,6 +31,7 @@
     "id": "meadowbrook",
     "name": "Meadowbrook",
     "city": "Minneapolis",
+    "address": "201 Meadowbrook Rd, Hopkins, MN 55343",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolismeadowbrook"
@@ -41,6 +44,7 @@
     "id": "columbia",
     "name": "Columbia",
     "city": "Minneapolis",
+    "address": "3300 Central Ave NE, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapoliscolumbia"
@@ -53,6 +57,7 @@
     "id": "hiawatha",
     "name": "Hiawatha",
     "city": "Minneapolis",
+    "address": "4553 Longfellow Ave, Minneapolis, MN 55407",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolishiawatha"
@@ -65,6 +70,7 @@
     "id": "phalen",
     "name": "Phalen",
     "city": "St. Paul",
+    "address": "1615 Phalen Dr E, St. Paul, MN 55106",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "phalen"
@@ -77,6 +83,7 @@
     "id": "chaska-town-course",
     "name": "Chaska Town Course",
     "city": "Chaska",
+    "address": "3000 Town Course Dr, Chaska, MN 55318",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "chaska"
@@ -89,6 +96,7 @@
     "id": "edinburgh-usa",
     "name": "Edinburgh USA",
     "city": "Brooklyn Park",
+    "address": "8700 Edinbrook Crossing, Brooklyn Park, MN 55443",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "edinburghusa"
@@ -101,6 +109,7 @@
     "id": "oak-glen",
     "name": "Oak Glen",
     "city": "Stillwater",
+    "address": "1599 McKusick Rd N, Stillwater, MN 55082",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "oakglen"
@@ -113,6 +122,7 @@
     "id": "highland-national",
     "name": "Highland National",
     "city": "St. Paul",
+    "address": "1403 Montreal Ave, St. Paul, MN 55116",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "highlandnationalmn"
@@ -125,6 +135,7 @@
     "id": "como-park",
     "name": "Como Park",
     "city": "St. Paul",
+    "address": "1431 N Lexington Pkwy, St. Paul, MN 55103",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "como"
@@ -137,6 +148,7 @@
     "id": "victory-links",
     "name": "Victory Links",
     "city": "Blaine",
+    "address": "2010 105th Ave NE, Blaine, MN 55449",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "victorylinksmn"
@@ -149,6 +161,7 @@
     "id": "gem-lake-hills",
     "name": "Gem Lake Hills",
     "city": "White Bear Lake",
+    "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "gem"
@@ -161,6 +174,7 @@
     "id": "braemar",
     "name": "Braemar",
     "city": "Edina",
+    "address": "6364 John Harris Dr, Edina, MN 55439",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "21445",
@@ -173,6 +187,7 @@
     "id": "bunker-hills",
     "name": "Bunker Hills",
     "city": "Coon Rapids",
+    "address": "12800 Bunker Prairie Rd NW, Coon Rapids, MN 55448",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "20252"
@@ -185,6 +200,7 @@
     "id": "roseville-cedarholm",
     "name": "Roseville Cedarholm",
     "city": "Roseville",
+    "address": "2323 Hamline Ave N, Roseville, MN 55113",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "22244",
@@ -197,6 +213,7 @@
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",
     "city": "San Diego",
+    "address": "2600 Golf Course Dr, San Diego, CA 92102",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19348",
@@ -209,6 +226,7 @@
     "id": "sd-goat-hill",
     "name": "Goat Hill Park (SD Test)",
     "city": "Oceanside",
+    "address": "2323 Goat Hill Dr, Oceanside, CA 92054",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "20906",
@@ -221,6 +239,7 @@
     "id": "sd-oceanside",
     "name": "Oceanside Muni (SD Test)",
     "city": "Oceanside",
+    "address": "825 Douglas Dr, Oceanside, CA 92058",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19162",
@@ -233,6 +252,7 @@
     "id": "sd-lomas-santa-fe",
     "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
     "city": "Solana Beach",
+    "address": "1580 Sun Valley Rd, Solana Beach, CA 92075",
     "platform": "teeitup",
     "platformConfig": {
       "alias": "lomas-santa-fe-executive-golf-course",
@@ -247,6 +267,7 @@
     "id": "sd-coronado",
     "name": "Coronado Golf Course (SD Test)",
     "city": "Coronado",
+    "address": "2000 Visalia Row, Coronado, CA 92118",
     "platform": "teeitup",
     "platformConfig": {
       "alias": "coronado-gc-3-14-be",
@@ -261,6 +282,7 @@
     "id": "sd-encinitas-ranch",
     "name": "Encinitas Ranch (SD Test)",
     "city": "Encinitas",
+    "address": "1275 Quail Gardens Dr, Encinitas, CA 92024",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
@@ -278,6 +300,7 @@
     "id": "sd-twin-oaks",
     "name": "Twin Oaks (SD Test)",
     "city": "San Marcos",
+    "address": "1425 N Twin Oaks Valley Rd, San Marcos, CA 92069",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
@@ -295,6 +318,7 @@
     "id": "sd-rancho-bernardo-inn",
     "name": "Rancho Bernardo Inn (SD Test)",
     "city": "San Diego",
+    "address": "17550 Bernardo Oaks Dr, San Diego, CA 92128",
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
