@@ -84,7 +84,7 @@ function CourseBrowser() {
                 onClick={() => toggleArea(area)}
                 className="flex w-full items-center gap-2 text-left"
               >
-                <h2 className="text-lg font-semibold lg:text-xl">
+                <h2 className="text-xl font-bold lg:text-2xl">
                   {area}
                 </h2>
                 <span className="text-sm text-gray-400">
@@ -100,7 +100,7 @@ function CourseBrowser() {
               </button>
 
               {!isCollapsed && (
-                <ul className="mt-2 divide-y divide-gray-100">
+                <ul className="mt-2 divide-y divide-gray-100 pl-4">
                   {courses.map((course) => {
                     const favorited = isFavorite(course.id);
                     return (
