@@ -111,7 +111,7 @@ git commit -m "feat: update CourseRow type with last_had_tee_times"
 
 **Context:** The current seed script does `DELETE FROM tee_times; DELETE FROM poll_log; DELETE FROM courses;` then re-inserts. This is destructive — it wipes runtime state. We need to change it to UPSERT so it can run on every deploy without disrupting `is_active`, `last_had_tee_times`, `tee_times`, or `poll_log`.
 
-`courses.json` no longer has `is_active` fields (removed in a later task), but the seed script must work correctly regardless — it should never write `is_active` to the UPDATE clause.
+**Important:** At the time this task runs, `courses.json` still has `is_active` fields on some entries (they get removed in Task 4). The new seed script simply does not read or use `is_active` from the JSON — the `CourseEntry` interface omits it, so it's ignored during parsing. The script works correctly whether or not `is_active` exists in the JSON.
 
 **Step 1: Rewrite `scripts/seed.ts`**
 
@@ -206,7 +206,7 @@ git commit -m "feat: make seed script idempotent with UPSERT"
 
 **Step 1: Remove all `is_active` fields**
 
-Search for every occurrence of `"is_active"` in `src/config/courses.json` and delete the entire line (including the trailing comma on the line above if it becomes a trailing comma). There should be approximately 13 occurrences remaining (the MN CPS Golf courses, Edinburgh, Chaska, Bunker Hills).
+Search for every occurrence of `"is_active"` in `src/config/courses.json` and delete the entire line. Also fix the trailing comma: the line ABOVE each deleted `"is_active"` line will have become the last property in its object, so its trailing comma must be removed. Use `grep -c "is_active" src/config/courses.json` before and after to confirm you found and removed ALL occurrences (before: some number > 0, after: 0).
 
 After removal, every course entry should look like:
 
@@ -342,24 +342,37 @@ The existing mock setup uses `vi.mock("@/lib/poller")` and a `mockDb`. We'll ext
 Add these test cases to `src/lib/cron-handler.test.ts`. Add them after the existing `"runCronPoll cleanup"` describe block:
 
 ```typescript
+import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
+
+// ... (add this import at the top of the file, alongside the existing imports)
+
+// Access the already-mocked poller functions. The vi.mock("@/lib/poller") at line 42
+// already mocks the module. Use vi.mocked() to get typed mock references.
+const mockedPollCourse = vi.mocked(pollCourse);
+const mockedShouldPollDate = vi.mocked(shouldPollDate);
+const mockedGetPollingDates = vi.mocked(getPollingDates);
+
 describe("runCronPoll auto-active management", () => {
   let preparedStatements: string[] = [];
   let boundValues: unknown[][] = [];
-  let mockPollCourse: ReturnType<typeof vi.fn>;
 
-  // Import the mocked poller to control pollCourse behavior
-  const pollerMock = await import("@/lib/poller");
-
-  const makeMockDb = (courses: Array<{
-    id: string;
-    is_active: number;
-    last_had_tee_times: string | null;
-    platform: string;
-    platform_config: string;
-    booking_url: string;
-    name: string;
-    city: string;
-  }>) => {
+  // Helper: creates a mock D1Database that returns the given courses for
+  // "SELECT * FROM courses" and the given pollLog entries for the poll_log query.
+  // All other queries (UPDATE, DELETE) succeed silently and are tracked in
+  // preparedStatements/boundValues for assertion.
+  const makeMockDb = (
+    courses: Array<{
+      id: string;
+      is_active: number;
+      last_had_tee_times: string | null;
+      platform: string;
+      platform_config: string;
+      booking_url: string;
+      name: string;
+      city: string;
+    }>,
+    pollLog: Array<{ course_id: string; date: string; last_polled: string }> = []
+  ) => {
     preparedStatements = [];
     boundValues = [];
 
@@ -370,13 +383,17 @@ describe("runCronPoll auto-active management", () => {
           bind: vi.fn().mockImplementation((...args: unknown[]) => {
             boundValues.push(args);
             return {
-              run: vi.fn().mockResolvedValue({ success: true }),
+              run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
               all: vi.fn().mockResolvedValue({ results: [] }),
             };
           }),
-          run: vi.fn().mockResolvedValue({ success: true }),
+          run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
           all: vi.fn().mockResolvedValue({
-            results: sql.includes("FROM courses") ? courses : [],
+            results: sql.includes("FROM courses")
+              ? courses
+              : sql.includes("poll_log")
+                ? pollLog
+                : [],
           }),
         };
       }),
@@ -386,7 +403,7 @@ describe("runCronPoll auto-active management", () => {
   const activeCourse = {
     id: "test-active",
     is_active: 1,
-    last_had_tee_times: new Date().toISOString(),
+    last_had_tee_times: "2026-04-15T07:00:00.000Z",
     platform: "foreup",
     platform_config: "{}",
     booking_url: "https://example.com",
@@ -409,11 +426,10 @@ describe("runCronPoll auto-active management", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
-    // Reset poller mocks
-    mockPollCourse = pollerMock.pollCourse as ReturnType<typeof vi.fn>;
-    mockPollCourse.mockResolvedValue("no_data");
-    (pollerMock.shouldPollDate as ReturnType<typeof vi.fn>).mockReturnValue(true);
-    (pollerMock.getPollingDates as ReturnType<typeof vi.fn>).mockReturnValue([
+    // Configure poller mocks for standard behavior
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue([
       "2026-04-15",
       "2026-04-16",
       "2026-04-17",
@@ -433,13 +449,13 @@ describe("runCronPoll auto-active management", () => {
     await runCronPoll(db as unknown as D1Database);
 
     // pollCourse should be called with only today and tomorrow (2 dates)
-    expect(mockPollCourse).toHaveBeenCalledTimes(2);
-    expect(mockPollCourse.mock.calls[0][2]).toBe("2026-04-15");
-    expect(mockPollCourse.mock.calls[1][2]).toBe("2026-04-16");
+    expect(mockedPollCourse).toHaveBeenCalledTimes(2);
+    expect(mockedPollCourse.mock.calls[0][2]).toBe("2026-04-15");
+    expect(mockedPollCourse.mock.calls[1][2]).toBe("2026-04-16");
   });
 
   it("promotes inactive course to active when tee times found", async () => {
-    mockPollCourse.mockResolvedValue("success");
+    mockedPollCourse.mockResolvedValue("success");
     const db = makeMockDb([inactiveCourse]);
     await runCronPoll(db as unknown as D1Database);
 
@@ -451,38 +467,21 @@ describe("runCronPoll auto-active management", () => {
   });
 
   it("does not probe inactive courses if polled less than 1 hour ago", async () => {
-    const db = makeMockDb([inactiveCourse]);
-
-    // Mock poll_log to show a recent poll (30 min ago)
+    // Pass poll_log data showing a recent poll (30 min ago) for today's date
     const recentPoll = new Date("2026-04-15T06:30:00-05:00").toISOString();
-    db.prepare = vi.fn().mockImplementation((sql: string) => {
-      preparedStatements.push(sql);
-      return {
-        bind: vi.fn().mockImplementation((...args: unknown[]) => {
-          boundValues.push(args);
-          return {
-            run: vi.fn().mockResolvedValue({ success: true }),
-            all: vi.fn().mockResolvedValue({ results: [] }),
-          };
-        }),
-        run: vi.fn().mockResolvedValue({ success: true }),
-        all: vi.fn().mockResolvedValue({
-          results: sql.includes("FROM courses")
-            ? [inactiveCourse]
-            : sql.includes("poll_log")
-              ? [{ course_id: "test-inactive", date: "2026-04-15", last_polled: recentPoll }]
-              : [],
-        }),
-      };
-    });
+    const db = makeMockDb(
+      [inactiveCourse],
+      [{ course_id: "test-inactive", date: "2026-04-15", last_polled: recentPoll }]
+    );
 
     await runCronPoll(db as unknown as D1Database);
-    expect(mockPollCourse).not.toHaveBeenCalled();
+    expect(mockedPollCourse).not.toHaveBeenCalled();
   });
 
   it("updates last_had_tee_times when active course poll returns success", async () => {
-    mockPollCourse.mockResolvedValue("success");
-    (pollerMock.shouldPollDate as ReturnType<typeof vi.fn>).mockImplementation(
+    mockedPollCourse.mockResolvedValue("success");
+    // Only poll today (offset 0) to keep assertions simple
+    mockedShouldPollDate.mockImplementation(
       (offset: number) => offset === 0
     );
     const db = makeMockDb([activeCourse]);
@@ -510,6 +509,30 @@ describe("runCronPoll auto-active management", () => {
     expect(result).toHaveProperty("inactiveProbeCount");
   });
 });
+```
+
+**IMPORTANT for the implementer:** The test file already has `vi.mock("@/lib/poller")` at line 42, which mocks the entire module. You need to add named imports for `pollCourse`, `shouldPollDate`, and `getPollingDates` at the top of the file (alongside the existing `import { shouldRunThisCycle, runCronPoll } from "./cron-handler"`), then create the `vi.mocked()` wrappers AFTER the `vi.mock()` call. The imports will resolve to the mocked versions because `vi.mock` is hoisted.
+
+The file structure should be:
+```
+import { ... } from "vitest";
+import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
+import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";  // NEW
+
+// ... existing shouldRunThisCycle tests ...
+
+vi.mock("@/lib/poller", () => ({   // EXISTING (line 42)
+  pollCourse: vi.fn(),
+  shouldPollDate: vi.fn().mockReturnValue(false),
+  getPollingDates: vi.fn().mockReturnValue(["2026-04-15"]),
+}));
+
+const mockedPollCourse = vi.mocked(pollCourse);           // NEW
+const mockedShouldPollDate = vi.mocked(shouldPollDate);   // NEW
+const mockedGetPollingDates = vi.mocked(getPollingDates);  // NEW
+
+// ... existing cleanup tests ...
+// ... NEW auto-active tests ...
 ```
 
 **Step 2: Run the tests to verify they fail**
@@ -543,7 +566,9 @@ git commit -m "test: add failing tests for auto-active two-tier polling"
 
 **Step 1: Rewrite `runCronPoll` in `src/lib/cron-handler.ts`**
 
-Replace the `runCronPoll` function (keep `shouldRunThisCycle` and `sleep` unchanged):
+Replace ONLY the `runCronPoll` function (lines 43-123). Do NOT modify `shouldRunThisCycle` (lines 17-31) or `sleep` (lines 36-38). The imports at line 1-5 stay the same.
+
+**IMPORTANT:** The return type changes from `{ pollCount, courseCount, skipped }` to `{ pollCount, courseCount, inactiveProbeCount, skipped }`. Check `worker.ts` for any code that destructures or uses this return value — if it does, update it to handle the new `inactiveProbeCount` field. (Currently `worker.ts` likely just logs the result, so this should be a non-issue, but verify.)
 
 ```typescript
 /**
@@ -752,11 +777,9 @@ The full deploy steps should now be (in order):
 5. **Seed course catalog** ← NEW
 6. Deploy Worker
 
-**Step 2: Verify YAML syntax**
+**Step 2: Verify YAML indentation**
 
-Run: `node -e "const yaml = require('yaml'); yaml.parse(require('fs').readFileSync('.github/workflows/deploy.yml','utf-8')); console.log('Valid YAML')"`
-
-If `yaml` package is not available, just visually verify the indentation is correct (2-space indent, aligned with other steps).
+Read the file and confirm the new step has correct indentation: 6 spaces before `- name:`, matching the other steps. The `run:` and `env:` lines should also be indented to match the existing "Apply D1 migrations" step exactly.
 
 **Step 3: Commit**
 
