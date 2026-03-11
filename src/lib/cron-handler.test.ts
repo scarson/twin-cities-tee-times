@@ -280,6 +280,41 @@ describe("runCronPoll auto-active management", () => {
     expect(result.inactiveProbeCount).toBe(2);
   });
 
+  it("continues polling remaining dates after one date throws", async () => {
+    // Make pollCourse throw on the 2nd call (date index 1), succeed on all others
+    mockedPollCourse
+      .mockResolvedValueOnce("success")  // date 0
+      .mockRejectedValueOnce(new Error("transient D1 error"))  // date 1
+      .mockResolvedValue("no_data");     // dates 2-6
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse]);
+    const result = await runCronPoll(db as unknown as D1Database);
+
+    // All 7 dates should have been attempted despite the error on date 1
+    expect(mockedPollCourse).toHaveBeenCalledTimes(7);
+    expect(result.pollCount).toBe(7);
+  });
+
+  it("continues polling other active courses after one throws on all dates", { timeout: 10000 }, async () => {
+    const active2 = { ...activeCourse, id: "test-active-2", name: "Active 2" };
+
+    // First course: all dates throw. Second course: all succeed.
+    let callCount = 0;
+    mockedPollCourse.mockImplementation(async (_db, course) => {
+      callCount++;
+      if (course.id === "test-active") throw new Error("adapter crash");
+      return "no_data";
+    });
+
+    mockedShouldPollDate.mockReturnValue(true);
+    const db = makeMockDb([activeCourse, active2]);
+    await runCronPoll(db as unknown as D1Database);
+
+    // Both courses should have all 7 dates attempted
+    expect(callCount).toBe(14);
+  });
+
   it("returns inactiveProbeCount in results", async () => {
     const db = makeMockDb([inactiveCourse]);
     const result = await runCronPoll(db as unknown as D1Database);

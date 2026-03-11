@@ -91,14 +91,14 @@ export async function runCronPoll(db: D1Database): Promise<{
 
     // --- Active courses: full 7-date polling at dynamic frequency ---
     for (const course of activeCourses) {
-      try {
-        for (let i = 0; i < dates.length; i++) {
-          const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
-          const minutesSinceLast = lastPolled
-            ? (Date.now() - new Date(lastPolled).getTime()) / 60000
-            : Infinity;
+      for (let i = 0; i < dates.length; i++) {
+        const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
+        const minutesSinceLast = lastPolled
+          ? (Date.now() - new Date(lastPolled).getTime()) / 60000
+          : Infinity;
 
-          if (shouldPollDate(i, minutesSinceLast)) {
+        if (shouldPollDate(i, minutesSinceLast)) {
+          try {
             const status = await pollCourse(db, course, dates[i]);
             pollCount++;
 
@@ -108,12 +108,13 @@ export async function runCronPoll(db: D1Database): Promise<{
                 .bind(now.toISOString(), course.id)
                 .run();
             }
-
-            await sleep(250);
+          } catch (err) {
+            console.error(`Error polling ${course.id} for ${dates[i]}:`, err);
+            pollCount++;
           }
+
+          await sleep(250);
         }
-      } catch (err) {
-        console.error(`Error polling course ${course.id}:`, err);
       }
     }
 
