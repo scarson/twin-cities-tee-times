@@ -75,7 +75,11 @@ export async function pollCourse(
     return status;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await logPoll(db, course.id, date, "error", 0, message);
+    try {
+      await logPoll(db, course.id, date, "error", 0, message);
+    } catch (logErr) {
+      console.error(`Failed to log poll error for ${course.id}:`, logErr);
+    }
     return "error";
   }
 }
