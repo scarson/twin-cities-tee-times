@@ -199,7 +199,7 @@ describe("runCronPoll auto-active management", () => {
     await runCronPoll(db as unknown as D1Database);
 
     const promotionSql = preparedStatements.find(
-      (sql) => sql.includes("is_active = 1") && sql.includes("last_had_tee_times")
+      (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
     );
     expect(promotionSql).toBeDefined();
   });
