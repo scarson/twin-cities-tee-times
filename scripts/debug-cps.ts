@@ -48,7 +48,7 @@ async function main() {
     console.log("Body:", await tokenRes.text());
     return;
   }
-  const tokenData = await tokenRes.json();
+  const tokenData: { access_token: string } = await tokenRes.json();
   const token = tokenData.access_token;
   console.log(`Token: ${token.substring(0, 20)}...`);
 
@@ -111,14 +111,16 @@ async function main() {
   });
   console.log(`Tee times response: ${ttRes.status} ${ttRes.statusText}`);
 
-  const ttData = await ttRes.json();
+  const ttData = await ttRes.json() as {
+    content?: Array<{ startTime: string; holes: number; maxPlayer: number; shItemPrices?: Array<{ shItemCode: string; price: number }> }>;
+  };
   console.log(`\nFull response:`);
   console.log(JSON.stringify(ttData, null, 2));
 
   if (Array.isArray(ttData.content)) {
     console.log(`\n=== ${ttData.content.length} tee times found ===`);
     for (const tt of ttData.content) {
-      console.log(`  ${tt.startTime} | ${tt.holes}h | ${tt.maxPlayer} slots | ${JSON.stringify(tt.shItemPrices?.map((p: { shItemCode: string; price: number }) => `${p.shItemCode}: $${p.price}`))}`);
+      console.log(`  ${tt.startTime} | ${tt.holes}h | ${tt.maxPlayer} slots | ${JSON.stringify(tt.shItemPrices?.map((p) => `${p.shItemCode}: $${p.price}`))}`);
     }
   } else {
     console.log("\n=== content is NOT an array ===");
