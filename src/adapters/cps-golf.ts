@@ -63,7 +63,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     });
 
     const response = await fetch(`${baseUrl}/TeeTimes?${params}`, {
-      headers,
+      headers: { ...headers, "x-requestid": crypto.randomUUID() },
     });
 
     if (!response.ok) {
@@ -80,7 +80,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
       .filter((tt) => tt.maxPlayer > 0)
       .map((tt) => ({
         courseId: config.id,
-        time: tt.startTime,
+        time: tt.startTime, // already ISO 8601 from CPS API
         price: this.extractGreenFee(tt.shItemPrices),
         holes: tt.holes === 9 ? 9 : 18,
         openSlots: tt.maxPlayer,
@@ -119,11 +119,17 @@ export class CpsGolfAdapter implements PlatformAdapter {
       headers: {
         ...headers,
         "Content-Type": "application/json",
+        "x-requestid": crypto.randomUUID(),
       },
       body: JSON.stringify({ transactionId }),
     });
 
     if (!response.ok) {
+      throw new Error("CPS Golf transaction registration failed");
+    }
+
+    const result: boolean = await response.json();
+    if (!result) {
       throw new Error("CPS Golf transaction registration failed");
     }
 
@@ -149,7 +155,6 @@ export class CpsGolfAdapter implements PlatformAdapter {
       "x-ismobile": "false",
       "x-timezone-offset": String(this.getTimezoneOffset(timezone)),
       "x-timezoneid": timezone,
-      "x-requestid": crypto.randomUUID(),
     };
   }
 

@@ -89,6 +89,16 @@ describe("CpsGolfAdapter", () => {
     expect(results[2].openSlots).toBe(4); // maxPlayer: 4
   });
 
+  it("maps 9-hole tee times correctly", async () => {
+    mockCpsFlow({
+      ...fixture,
+      content: [{ ...fixture.content[0], holes: 9 }],
+    });
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+    expect(results[0].holes).toBe(9);
+  });
+
   it("gets bearer token then registers transaction before querying", async () => {
     const fetchSpy = mockCpsFlow(fixture);
 
@@ -230,6 +240,18 @@ describe("CpsGolfAdapter", () => {
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(tokenResponse.clone())
       .mockResolvedValueOnce(new Response("Error", { status: 500 }));
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+    ).rejects.toThrow("transaction registration failed");
+  });
+
+  it("throws when RegisterTransactionId returns false", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(tokenResponse.clone())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(false), { status: 200 })
+      );
 
     await expect(
       adapter.fetchTeeTimes(mockConfig, "2026-03-12")
