@@ -503,6 +503,41 @@ describe("runCronPoll auto-active management", () => {
     expect(deactivateSql).toBeDefined();
   });
 
+  it("does not promote inactive course when poll returns error", async () => {
+    mockedPollCourse.mockResolvedValue("error");
+    const db = makeMockDb([inactiveCourse]);
+    await runCronPoll(db as unknown as D1Database);
+
+    const promotionSql = preparedStatements.find(
+      (sql) => sql.includes("is_active = 1") && sql.includes("last_had_tee_times")
+    );
+    expect(promotionSql).toBeUndefined();
+  });
+
+  it("continues probing other inactive courses after one throws", async () => {
+    const inactive2 = { ...inactiveCourse, id: "test-inactive-2", name: "Inactive 2" };
+    mockedPollCourse
+      .mockRejectedValueOnce(new Error("adapter crash"))
+      .mockResolvedValue("no_data");
+    const db = makeMockDb([inactiveCourse, inactive2]);
+    await runCronPoll(db as unknown as D1Database);
+
+    // First course: 1 call (throws), skips rest. Second course: 2 calls (today+tomorrow)
+    expect(mockedPollCourse).toHaveBeenCalledTimes(3);
+  });
+
+  it("polls active courses and probes inactive courses in the same run", async () => {
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedPollCourse.mockResolvedValue("no_data");
+    const db = makeMockDb([activeCourse, inactiveCourse]);
+    const result = await runCronPoll(db as unknown as D1Database);
+
+    // Active: 7 dates, Inactive: 2 dates = 9 total calls
+    expect(mockedPollCourse).toHaveBeenCalledTimes(9);
+    expect(result.courseCount).toBe(1); // only active counted
+    expect(result.inactiveProbeCount).toBe(2);
+  });
+
   it("returns inactiveProbeCount in results", async () => {
     const db = makeMockDb([inactiveCourse]);
     const result = await runCronPoll(db as unknown as D1Database);
