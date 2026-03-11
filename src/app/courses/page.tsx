@@ -17,7 +17,6 @@ interface CatalogCourse {
   city: string;
   address?: string;
   bookingUrl: string;
-  is_active?: number;
 }
 
 function getCollapsedAreas(): string[] {
@@ -114,11 +113,6 @@ function CourseBrowser() {
                             className="font-medium text-gray-900 hover:text-green-700 lg:text-lg"
                           >
                             {course.name}
-                            {course.is_active === 0 && (
-                              <span className="ml-1.5 text-xs font-normal text-gray-400">
-                                (inactive)
-                              </span>
-                            )}
                           </Link>
                           {course.address && (
                             <a
