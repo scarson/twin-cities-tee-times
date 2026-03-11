@@ -2,7 +2,7 @@
 // ABOUTME: React context provider for authentication state.
 // ABOUTME: Manages login detection, post-login merge, sign-out, and account deletion.
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
 import { getFavorites, setFavorites } from "@/lib/favorites";
 import { Toast } from "./toast";
 
@@ -119,15 +119,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [showToast]);
 
-  const contextValue: AuthContextValue = {
-    user,
-    isLoggedIn: user !== null,
-    isLoading,
-    favoritesVersion,
-    signOut,
-    deleteAccount,
-    showToast,
-  };
+  const contextValue = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isLoggedIn: user !== null,
+      isLoading,
+      favoritesVersion,
+      signOut,
+      deleteAccount,
+      showToast,
+    }),
+    [user, isLoading, favoritesVersion, signOut, deleteAccount, showToast]
+  );
 
   return (
     <AuthContext.Provider value={contextValue}>

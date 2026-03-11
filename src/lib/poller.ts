@@ -22,7 +22,7 @@ export function shouldPollDate(
     // Offsets 2-3 (day after tomorrow + next): every 30 minutes
     return minutesSinceLastPoll >= 30;
   }
-  // Days 5-7: twice daily (roughly every 10 hours)
+  // Offsets 4-6 (5-7 days out): twice daily (roughly every 10 hours)
   return minutesSinceLastPoll >= 600;
 }
 

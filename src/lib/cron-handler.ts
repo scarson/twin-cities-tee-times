@@ -56,140 +56,145 @@ export async function runCronPoll(db: D1Database): Promise<{
     return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: true };
   }
 
-  // Fetch ALL courses (active and inactive)
-  const coursesResult = await db
-    .prepare("SELECT * FROM courses")
-    .all<CourseRow>();
-  const allCourses = coursesResult.results;
+  try {
+    // Fetch ALL courses (active and inactive)
+    const coursesResult = await db
+      .prepare("SELECT * FROM courses")
+      .all<CourseRow>();
+    const allCourses = coursesResult.results;
 
-  const activeCourses = allCourses.filter((c) => c.is_active === 1);
-  const inactiveCourses = allCourses.filter((c) => c.is_active === 0);
+    const activeCourses = allCourses.filter((c) => c.is_active === 1);
+    const inactiveCourses = allCourses.filter((c) => c.is_active === 0);
 
-  const todayStr = now.toLocaleDateString("en-CA", {
-    timeZone: "America/Chicago",
-  }); // YYYY-MM-DD
-  const dates = getPollingDates(todayStr);
+    const todayStr = now.toLocaleDateString("en-CA", {
+      timeZone: "America/Chicago",
+    }); // YYYY-MM-DD
+    const dates = getPollingDates(todayStr);
 
-  // Batch-fetch the most recent poll time for every course+date combo (one query)
-  const recentPolls = await db
-    .prepare(
-      `SELECT course_id, date, MAX(polled_at) as last_polled
-       FROM poll_log
-       WHERE polled_at > datetime('now', '-24 hours')
-       GROUP BY course_id, date`
-    )
-    .all<{ course_id: string; date: string; last_polled: string }>();
+    // Batch-fetch the most recent poll time for every course+date combo (one query)
+    const recentPolls = await db
+      .prepare(
+        `SELECT course_id, date, MAX(polled_at) as last_polled
+         FROM poll_log
+         WHERE polled_at > datetime('now', '-24 hours')
+         GROUP BY course_id, date`
+      )
+      .all<{ course_id: string; date: string; last_polled: string }>();
 
-  const pollTimeMap = new Map<string, string>();
-  for (const row of recentPolls.results) {
-    pollTimeMap.set(`${row.course_id}:${row.date}`, row.last_polled);
-  }
+    const pollTimeMap = new Map<string, string>();
+    for (const row of recentPolls.results) {
+      pollTimeMap.set(`${row.course_id}:${row.date}`, row.last_polled);
+    }
 
-  let pollCount = 0;
-  let inactiveProbeCount = 0;
+    let pollCount = 0;
+    let inactiveProbeCount = 0;
 
-  // --- Active courses: full 7-date polling at dynamic frequency ---
-  for (const course of activeCourses) {
-    try {
-      for (let i = 0; i < dates.length; i++) {
-        const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
-        const minutesSinceLast = lastPolled
-          ? (Date.now() - new Date(lastPolled).getTime()) / 60000
+    // --- Active courses: full 7-date polling at dynamic frequency ---
+    for (const course of activeCourses) {
+      try {
+        for (let i = 0; i < dates.length; i++) {
+          const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
+          const minutesSinceLast = lastPolled
+            ? (Date.now() - new Date(lastPolled).getTime()) / 60000
+            : Infinity;
+
+          if (shouldPollDate(i, minutesSinceLast)) {
+            const status = await pollCourse(db, course, dates[i]);
+            pollCount++;
+
+            if (status === "success") {
+              await db
+                .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
+                .bind(now.toISOString(), course.id)
+                .run();
+            }
+
+            await sleep(250);
+          }
+        }
+      } catch (err) {
+        console.error(`Error polling course ${course.id}:`, err);
+      }
+    }
+
+    // --- Inactive courses: hourly probe of today + tomorrow ---
+    const probeDates = dates.slice(0, 2); // today + tomorrow
+
+    for (const course of inactiveCourses) {
+      try {
+        // Check if this course was probed in the last hour
+        const lastProbed = pollTimeMap.get(`${course.id}:${probeDates[0]}`);
+        const minutesSinceProbe = lastProbed
+          ? (Date.now() - new Date(lastProbed).getTime()) / 60000
           : Infinity;
 
-        if (shouldPollDate(i, minutesSinceLast)) {
-          const status = await pollCourse(db, course, dates[i]);
-          pollCount++;
+        if (minutesSinceProbe < 60) continue;
+
+        let foundTeeTimes = false;
+
+        for (const date of probeDates) {
+          const status = await pollCourse(db, course, date);
+          inactiveProbeCount++;
 
           if (status === "success") {
-            await db
-              .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
-              .bind(now.toISOString(), course.id)
-              .run();
+            foundTeeTimes = true;
           }
 
           await sleep(250);
         }
-      }
-    } catch (err) {
-      console.error(`Error polling course ${course.id}:`, err);
-    }
-  }
 
-  // --- Inactive courses: hourly probe of today + tomorrow ---
-  const probeDates = dates.slice(0, 2); // today + tomorrow
-
-  for (const course of inactiveCourses) {
-    try {
-      // Check if this course was probed in the last hour
-      const lastProbed = pollTimeMap.get(`${course.id}:${probeDates[0]}`);
-      const minutesSinceProbe = lastProbed
-        ? (Date.now() - new Date(lastProbed).getTime()) / 60000
-        : Infinity;
-
-      if (minutesSinceProbe < 60) continue;
-
-      let foundTeeTimes = false;
-
-      for (const date of probeDates) {
-        const status = await pollCourse(db, course, date);
-        inactiveProbeCount++;
-
-        if (status === "success") {
-          foundTeeTimes = true;
+        // Auto-promote: flip to active if tee times were found
+        if (foundTeeTimes) {
+          await db
+            .prepare("UPDATE courses SET is_active = 1, last_had_tee_times = ? WHERE id = ?")
+            .bind(now.toISOString(), course.id)
+            .run();
+          console.log(`Auto-activated course ${course.id}: tee times detected`);
         }
-
-        await sleep(250);
+      } catch (err) {
+        console.error(`Error probing inactive course ${course.id}:`, err);
       }
+    }
 
-      // Auto-promote: flip to active if tee times were found
-      if (foundTeeTimes) {
-        await db
-          .prepare("UPDATE courses SET is_active = 1, last_had_tee_times = ? WHERE id = ?")
-          .bind(now.toISOString(), course.id)
-          .run();
-        console.log(`Auto-activated course ${course.id}: tee times detected`);
+    // --- Auto-deactivate: courses with no tee times for 30 days ---
+    // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
+    // so they won't match the < datetime('now', '-30 days') condition.
+    try {
+      const deactivated = await db
+        .prepare(
+          `UPDATE courses SET is_active = 0
+           WHERE is_active = 1
+             AND (last_had_tee_times IS NULL OR last_had_tee_times < datetime('now', '-30 days'))`
+        )
+        .run();
+      if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
+        console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
       }
     } catch (err) {
-      console.error(`Error probing inactive course ${course.id}:`, err);
+      console.error("Auto-deactivation error:", err);
     }
-  }
 
-  // --- Auto-deactivate: courses with no tee times for 30 days ---
-  // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
-  // so they won't match the < datetime('now', '-30 days') condition.
-  try {
-    const deactivated = await db
-      .prepare(
-        `UPDATE courses SET is_active = 0
-         WHERE is_active = 1
-           AND (last_had_tee_times IS NULL OR last_had_tee_times < datetime('now', '-30 days'))`
-      )
-      .run();
-    if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
-      console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
+    // Purge poll_log entries older than 7 days to prevent unbounded growth
+    try {
+      await db
+        .prepare("DELETE FROM poll_log WHERE polled_at < datetime('now', '-7 days')")
+        .run();
+    } catch (err) {
+      console.error("poll_log cleanup error:", err);
     }
-  } catch (err) {
-    console.error("Auto-deactivation error:", err);
-  }
 
-  // Purge poll_log entries older than 7 days to prevent unbounded growth
-  try {
-    await db
-      .prepare("DELETE FROM poll_log WHERE polled_at < datetime('now', '-7 days')")
-      .run();
-  } catch (err) {
-    console.error("poll_log cleanup error:", err);
-  }
+    // Remove expired sessions
+    try {
+      await db
+        .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+        .run();
+    } catch (err) {
+      console.error("session cleanup error:", err);
+    }
 
-  // Remove expired sessions
-  try {
-    await db
-      .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
-      .run();
+    return { pollCount, courseCount: activeCourses.length, inactiveProbeCount, skipped: false };
   } catch (err) {
-    console.error("session cleanup error:", err);
+    console.error("Cron poll fatal error:", err);
+    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: false };
   }
-
-  return { pollCount, courseCount: activeCourses.length, inactiveProbeCount, skipped: false };
 }
