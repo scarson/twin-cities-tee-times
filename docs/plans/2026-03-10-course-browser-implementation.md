@@ -63,12 +63,17 @@ Example of what one entry should look like after the change:
 }
 ```
 
-**Step 2: Run tests to verify nothing broke**
+**Step 2: Verify all 24 courses have addresses**
+
+Run: `node -e "const c = require('./src/config/courses.json'); const missing = c.filter(x => !x.address); console.log(missing.length ? 'MISSING: ' + missing.map(x => x.id).join(', ') : 'All ' + c.length + ' courses have addresses')"`
+Expected: `All 24 courses have addresses`
+
+**Step 3: Run tests to verify nothing broke**
 
 Run: `npm test`
 Expected: All tests pass (address is a new field, no existing code reads it yet)
 
-**Step 3: Commit**
+**Step 4: Commit**
 
 ```bash
 git add src/config/courses.json
@@ -108,6 +113,10 @@ describe("getArea", () => {
 
   it("maps Edina to South Metro", () => {
     expect(getArea("Edina")).toBe("South Metro");
+  });
+
+  it("maps Hopkins to South Metro", () => {
+    expect(getArea("Hopkins")).toBe("South Metro");
   });
 
   it("maps Stillwater to East Metro", () => {
@@ -226,7 +235,115 @@ git commit -m "feat: add city-to-area mapping for course browser"
 
 This is a client component because it uses `useFavorites` (which depends on `useAuth` context) and `useSearchParams`.
 
-**Step 1: Create the page component**
+**Step 1: Add `groupByArea` and `mapsUrl` to areas.ts**
+
+Before creating the page, add these two functions to the **bottom** of `src/config/areas.ts` (created in Task 2). The page will import them.
+
+Add to `src/config/areas.ts`:
+
+```typescript
+/** Group courses by area, returning entries in AREA_ORDER then "Other" */
+export function groupByArea<T extends { name: string; city: string }>(
+  courses: T[]
+): { area: string; courses: T[] }[] {
+  const groups = new Map<string, T[]>();
+
+  for (const course of courses) {
+    const area = getArea(course.city);
+    const list = groups.get(area) ?? [];
+    list.push(course);
+    groups.set(area, list);
+  }
+
+  for (const list of groups.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const result: { area: string; courses: T[] }[] = [];
+  for (const area of AREA_ORDER) {
+    const list = groups.get(area);
+    if (list) result.push({ area, courses: list });
+  }
+  const other = groups.get("Other");
+  if (other) result.push({ area: "Other", courses: other });
+
+  return result;
+}
+
+export function mapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+```
+
+**Step 2: Add tests for groupByArea and mapsUrl**
+
+Add these tests to `src/config/areas.test.ts`. Update the import at the top to include the new exports:
+
+```typescript
+import { getArea, AREA_ORDER, groupByArea, mapsUrl } from "./areas";
+```
+
+Add these test blocks after the existing ones:
+
+```typescript
+describe("groupByArea", () => {
+  const courses = [
+    { name: "Braemar", city: "Edina" },
+    { name: "Theodore Wirth", city: "Minneapolis" },
+    { name: "Columbia", city: "Minneapolis" },
+    { name: "Phalen", city: "St. Paul" },
+  ];
+
+  it("groups courses by area", () => {
+    const groups = groupByArea(courses);
+    expect(groups.map((g) => g.area)).toEqual([
+      "Minneapolis",
+      "St. Paul",
+      "South Metro",
+    ]);
+  });
+
+  it("sorts courses alphabetically within each group", () => {
+    const groups = groupByArea(courses);
+    const mpls = groups.find((g) => g.area === "Minneapolis")!;
+    expect(mpls.courses.map((c) => c.name)).toEqual([
+      "Columbia",
+      "Theodore Wirth",
+    ]);
+  });
+
+  it("puts unmapped cities in Other at the end", () => {
+    const withUnknown = [...courses, { name: "Far Away", city: "Timbuktu" }];
+    const groups = groupByArea(withUnknown);
+    const last = groups[groups.length - 1];
+    expect(last.area).toBe("Other");
+    expect(last.courses[0].name).toBe("Far Away");
+  });
+
+  it("omits areas with no courses", () => {
+    const just = [{ name: "Braemar", city: "Edina" }];
+    const groups = groupByArea(just);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].area).toBe("South Metro");
+  });
+});
+
+describe("mapsUrl", () => {
+  it("builds a Google Maps search URL from an address", () => {
+    const url = mapsUrl("1301 Theodore Wirth Pkwy, Minneapolis, MN 55422");
+    expect(url).toBe(
+      "https://www.google.com/maps/search/?api=1&query=1301%20Theodore%20Wirth%20Pkwy%2C%20Minneapolis%2C%20MN%2055422"
+    );
+  });
+});
+```
+
+**Step 3: Run tests to verify they pass**
+
+Run: `npx vitest run src/config/areas.test.ts`
+Expected: All pass (existing + new tests)
+
+**Step 4: Create the page component**
 
 Create `src/app/courses/page.tsx`:
 
@@ -239,7 +356,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useFavorites } from "@/hooks/use-favorites";
-import { getArea, AREA_ORDER } from "@/config/areas";
+import { groupByArea, mapsUrl } from "@/config/areas";
 import courseCatalog from "@/config/courses.json";
 
 const COLLAPSED_KEY = "tct-collapsed-areas";
@@ -269,41 +386,6 @@ function saveCollapsedAreas(areas: string[]) {
   } catch {
     // localStorage unavailable
   }
-}
-
-function mapsUrl(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-}
-
-/** Group courses by area, returning entries in AREA_ORDER */
-function groupByArea(
-  courses: CatalogCourse[]
-): { area: string; courses: CatalogCourse[] }[] {
-  const groups = new Map<string, CatalogCourse[]>();
-
-  for (const course of courses) {
-    const area = getArea(course.city);
-    const list = groups.get(area) ?? [];
-    list.push(course);
-    groups.set(area, list);
-  }
-
-  // Sort courses alphabetically within each group
-  for (const list of groups.values()) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  // Return in AREA_ORDER, then any remaining ("Other")
-  const result: { area: string; courses: CatalogCourse[] }[] = [];
-  for (const area of AREA_ORDER) {
-    const list = groups.get(area);
-    if (list) result.push({ area, courses: list });
-  }
-  // Add "Other" if any unmapped cities exist
-  const other = groups.get("Other");
-  if (other) result.push({ area: "Other", courses: other });
-
-  return result;
 }
 
 function CourseBrowser() {
@@ -446,23 +528,17 @@ Key implementation notes:
 - `useSearchParams()` requires a Suspense boundary (Next.js App Router requirement for client components). The `CoursesPage` wrapper provides this.
 - `CatalogCourse` is a local interface — we read from `courses.json` which has more fields than `CourseConfig`, but we only use what we need.
 - Collapsed state initializes empty (for SSR safety), then reads from localStorage in `useEffect`.
-- The `groupByArea` function is pure and testable (extracted from the component).
+- `groupByArea` and `mapsUrl` are imported from `@/config/areas` (added in Steps 1-2 above), NOT defined locally.
 
-**Step 2: Verify the page renders**
-
-Run: `npm run dev`
-Navigate to: `http://localhost:3000/courses`
-Expected: Page shows courses grouped by area. SD test courses hidden. Append `?test=true` to see them.
-
-**Step 3: Run full test suite**
+**Step 5: Run full test suite**
 
 Run: `npm test`
-Expected: All pass (no new tests yet for the page — this is a UI component; we test the data logic in areas.test.ts)
+Expected: All pass
 
-**Step 4: Commit**
+**Step 6: Commit**
 
 ```bash
-git add src/app/courses/page.tsx
+git add src/app/courses/page.tsx src/config/areas.ts src/config/areas.test.ts
 git commit -m "feat: add /courses browser page with area grouping"
 ```
 
@@ -562,8 +638,8 @@ Expected: Clean
 
 **Step 3: Production build**
 
-Run: `npx next build`
-Expected: Builds successfully
+Run: `npm run build`
+Expected: Builds successfully (this runs OpenNext/Cloudflare build, not plain `next build`)
 
 **Step 4: Manual verification checklist**
 
