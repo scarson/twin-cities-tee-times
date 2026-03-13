@@ -1,0 +1,8 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cps-diag",
+	"compatibility_date": "2025-04-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "worker.ts"
+	// No custom domain — deploys to cps-diag.<subdomain>.workers.dev
+}
