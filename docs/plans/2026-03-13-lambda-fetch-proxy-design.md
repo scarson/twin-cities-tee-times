@@ -222,7 +222,7 @@ New steps added to `.github/workflows/deploy.yml` before "Deploy Worker":
 - name: Configure AWS credentials
   uses: aws-actions/configure-aws-credentials@v4
   with:
-    role-to-arn: ${{ secrets.AWS_ROLE_ARN }}
+    role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
     aws-region: us-west-2
 
 - name: Deploy Lambda proxy
