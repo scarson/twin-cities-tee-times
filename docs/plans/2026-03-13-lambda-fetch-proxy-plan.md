@@ -1,0 +1,927 @@
+# Lambda Fetch Proxy Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Route CPS Golf API requests through an AWS Lambda proxy to bypass Cloudflare Workers' TLS fingerprint rejection (HTTP 525).
+
+**Architecture:** Generic HTTPS forward proxy on AWS Lambda with IAM SigV4 auth. Worker signs requests via `aws4fetch`, Lambda forwards to `*.cps.golf`, responses flow back through the Worker's existing `poll_log` observability path.
+
+**Tech Stack:** AWS Lambda (Node.js 22), `aws4fetch` (SigV4 signing), GitHub Actions with OIDC federation (`aws-actions/configure-aws-credentials` + `aws-actions/aws-lambda-deploy`).
+
+**Design doc:** `docs/plans/2026-03-13-lambda-fetch-proxy-design.md`
+
+---
+
+### Task 1: Install `aws4fetch` dependency
+
+**Files:**
+- Modify: `package.json`
+
+**Step 1: Install the package**
+
+Run: `npm install aws4fetch`
+
+**Step 2: Verify installation**
+
+Run: `npm ls aws4fetch`
+Expected: `aws4fetch@x.x.x` listed
+
+**Step 3: Commit**
+
+```bash
+git add package.json package-lock.json
+git commit -m "chore: add aws4fetch for SigV4 Lambda proxy signing"
+```
+
+---
+
+### Task 2: Create the Lambda function
+
+**Files:**
+- Create: `lambda/fetch-proxy/index.mjs`
+
+**Step 1: Write the Lambda handler**
+
+```javascript
+// ABOUTME: Generic HTTPS forward proxy for AWS Lambda.
+// ABOUTME: Validates domain allowlist, forwards requests, returns structured responses.
+const ALLOWED_HOSTS = [".cps.golf"];
+
+export const handler = async (event) => {
+  try {
+    const { url, method = "GET", headers = {}, body } = JSON.parse(event.body);
+
+    const hostname = new URL(url).hostname;
+    if (!ALLOWED_HOSTS.some((suffix) => hostname.endsWith(suffix))) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ proxyError: true, message: `Host not allowed: ${hostname}`, url }),
+      };
+    }
+
+    const upstream = await fetch(url, {
+      method,
+      headers,
+      body: body ?? undefined,
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const respBody = await upstream.text();
+    const respHeaders = Object.fromEntries(upstream.headers.entries());
+
+    return {
+      statusCode: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: upstream.status, headers: respHeaders, body: respBody }),
+    };
+  } catch (err) {
+    const parsed = (() => { try { return JSON.parse(event.body); } catch { return {}; } })();
+    return {
+      statusCode: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        proxyError: true,
+        message: err.message ?? String(err),
+        url: parsed.url ?? "unknown",
+      }),
+    };
+  }
+};
+```
+
+**Step 2: Commit**
+
+```bash
+git add lambda/fetch-proxy/index.mjs
+git commit -m "feat: add Lambda fetch proxy handler with domain allowlist"
+```
+
+---
+
+### Task 3: Write `proxyFetch` — failing tests first
+
+**Files:**
+- Create: `src/lib/proxy-fetch.test.ts`
+- Create: `src/lib/proxy-fetch.ts`
+
+**Step 1: Write the failing tests**
+
+```typescript
+// ABOUTME: Tests for the SigV4-signed Lambda proxy fetch helper.
+// ABOUTME: Covers request signing, response deserialization, proxy errors, and fallback.
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { proxyFetch } from "./proxy-fetch";
+
+// Mock aws4fetch
+vi.mock("aws4fetch", () => ({
+  AwsClient: vi.fn().mockImplementation(() => ({
+    fetch: vi.fn(),
+  })),
+}));
+
+import { AwsClient } from "aws4fetch";
+
+const proxyConfig = {
+  proxyUrl: "https://abc123.lambda-url.us-west-2.on.aws/",
+  accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+  secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+};
+
+describe("proxyFetch", () => {
+  let mockAwsFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAwsFetch = vi.fn();
+    vi.mocked(AwsClient).mockImplementation(() => ({ fetch: mockAwsFetch }) as any);
+  });
+
+  it("sends signed POST to Lambda with request description", async () => {
+    mockAwsFetch.mockResolvedValue(
+      new Response(JSON.stringify({ status: 200, headers: {}, body: '{"ok":true}' }))
+    );
+
+    const result = await proxyFetch(
+      { url: "https://test.cps.golf/api", method: "GET", headers: { "x-test": "1" } },
+      proxyConfig
+    );
+
+    expect(mockAwsFetch).toHaveBeenCalledOnce();
+    const [url, opts] = mockAwsFetch.mock.calls[0];
+    expect(url).toBe(proxyConfig.proxyUrl);
+    expect(opts.method).toBe("POST");
+    expect(JSON.parse(opts.body)).toEqual({
+      url: "https://test.cps.golf/api",
+      method: "GET",
+      headers: { "x-test": "1" },
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toBe('{"ok":true}');
+  });
+
+  it("includes body in request description when provided", async () => {
+    mockAwsFetch.mockResolvedValue(
+      new Response(JSON.stringify({ status: 200, headers: {}, body: "" }))
+    );
+
+    await proxyFetch(
+      { url: "https://x.cps.golf/token", method: "POST", headers: {}, body: "client_id=foo" },
+      proxyConfig
+    );
+
+    const sent = JSON.parse(mockAwsFetch.mock.calls[0][1].body);
+    expect(sent.body).toBe("client_id=foo");
+  });
+
+  it("throws on proxyError response", async () => {
+    mockAwsFetch.mockResolvedValue(
+      new Response(JSON.stringify({ proxyError: true, message: "Host not allowed", url: "https://evil.com" }))
+    );
+
+    await expect(
+      proxyFetch({ url: "https://evil.com", method: "GET", headers: {} }, proxyConfig)
+    ).rejects.toThrow("Proxy: Host not allowed");
+  });
+
+  it("throws when Lambda returns non-OK HTTP status", async () => {
+    mockAwsFetch.mockResolvedValue(new Response("Forbidden", { status: 403 }));
+
+    await expect(
+      proxyFetch({ url: "https://x.cps.golf/api", method: "GET", headers: {} }, proxyConfig)
+    ).rejects.toThrow("Proxy HTTP 403");
+  });
+
+  it("throws when Lambda fetch fails (network error)", async () => {
+    mockAwsFetch.mockRejectedValue(new Error("fetch failed"));
+
+    await expect(
+      proxyFetch({ url: "https://x.cps.golf/api", method: "GET", headers: {} }, proxyConfig)
+    ).rejects.toThrow("fetch failed");
+  });
+});
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run: `npx vitest run src/lib/proxy-fetch.test.ts`
+Expected: FAIL — module `./proxy-fetch` not found
+
+**Step 3: Write the implementation**
+
+```typescript
+// ABOUTME: SigV4-signed fetch helper that routes requests through the Lambda proxy.
+// ABOUTME: Signs requests with aws4fetch, deserializes proxy responses, handles errors.
+import { AwsClient } from "aws4fetch";
+
+export interface ProxyRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: string;
+}
+
+export interface ProxyConfig {
+  proxyUrl: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}
+
+export interface ProxyResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
+export async function proxyFetch(
+  request: ProxyRequest,
+  config: ProxyConfig
+): Promise<ProxyResponse> {
+  const aws = new AwsClient({
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    service: "lambda",
+    region: "us-west-2",
+  });
+
+  const payload: Record<string, unknown> = {
+    url: request.url,
+    method: request.method,
+    headers: request.headers,
+  };
+  if (request.body !== undefined) {
+    payload.body = request.body;
+  }
+
+  const response = await aws.fetch(config.proxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Proxy HTTP ${response.status}`);
+  }
+
+  const data = await response.json() as ProxyResponse & { proxyError?: boolean; message?: string };
+
+  if (data.proxyError) {
+    throw new Error(`Proxy: ${data.message}`);
+  }
+
+  return { status: data.status, headers: data.headers, body: data.body };
+}
+```
+
+**Step 4: Run tests to verify they pass**
+
+Run: `npx vitest run src/lib/proxy-fetch.test.ts`
+Expected: All 5 tests PASS
+
+**Step 5: Commit**
+
+```bash
+git add src/lib/proxy-fetch.ts src/lib/proxy-fetch.test.ts
+git commit -m "feat: add proxyFetch helper with SigV4 signing and tests"
+```
+
+---
+
+### Task 4: Add env bindings for proxy config
+
+**Files:**
+- Modify: `env.d.ts`
+
+**Step 1: Add the three optional bindings**
+
+In `env.d.ts`, add after `JWT_SECRET`:
+
+```typescript
+  FETCH_PROXY_URL?: string;
+  AWS_ACCESS_KEY_ID?: string;
+  AWS_SECRET_ACCESS_KEY?: string;
+```
+
+**Step 2: Type-check**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 3: Commit**
+
+```bash
+git add env.d.ts
+git commit -m "feat: add FETCH_PROXY_URL and AWS credential env bindings"
+```
+
+---
+
+### Task 5: Thread `env` through PlatformAdapter → poller → cron-handler
+
+This is the plumbing task. We need `env` to flow from `worker.ts` → `runCronPoll` → `pollCourse` → `adapter.fetchTeeTimes`, and similarly from the refresh route.
+
+**Files:**
+- Modify: `src/types/index.ts` (PlatformAdapter interface)
+- Modify: `src/lib/poller.ts` (pollCourse signature)
+- Modify: `src/lib/cron-handler.ts` (runCronPoll signature)
+- Modify: `worker.ts` (pass full env)
+- Modify: `src/app/api/courses/[id]/refresh/route.ts` (pass env)
+- Modify: `src/lib/poller.test.ts` (update mock calls)
+- Modify: `src/lib/cron-handler.test.ts` (if it exists — update mock calls)
+- Modify: `src/adapters/cps-golf.test.ts` (update calls)
+- Modify: `src/adapters/foreup.ts` (add ignored env param)
+- Modify: `src/adapters/teeitup.ts` (add ignored env param)
+
+**Step 1: Update PlatformAdapter interface**
+
+In `src/types/index.ts`, change:
+```typescript
+fetchTeeTimes(config: CourseConfig, date: string): Promise<TeeTime[]>;
+```
+to:
+```typescript
+fetchTeeTimes(config: CourseConfig, date: string, env?: CloudflareEnv): Promise<TeeTime[]>;
+```
+
+**Step 2: Update ForeUp adapter signature**
+
+In `src/adapters/foreup.ts`, change:
+```typescript
+  async fetchTeeTimes(
+    config: CourseConfig,
+    date: string
+  ): Promise<TeeTime[]> {
+```
+to:
+```typescript
+  async fetchTeeTimes(
+    config: CourseConfig,
+    date: string,
+    _env?: CloudflareEnv
+  ): Promise<TeeTime[]> {
+```
+
+**Step 3: Update TeeItUp adapter signature**
+
+In `src/adapters/teeitup.ts`, change:
+```typescript
+  async fetchTeeTimes(
+    config: CourseConfig,
+    date: string
+  ): Promise<TeeTime[]> {
+```
+to:
+```typescript
+  async fetchTeeTimes(
+    config: CourseConfig,
+    date: string,
+    _env?: CloudflareEnv
+  ): Promise<TeeTime[]> {
+```
+
+**Step 4: Update `pollCourse` signature**
+
+In `src/lib/poller.ts`, change:
+```typescript
+export async function pollCourse(
+  db: D1Database,
+  course: CourseRow,
+  date: string
+): Promise<"success" | "no_data" | "error"> {
+```
+to:
+```typescript
+export async function pollCourse(
+  db: D1Database,
+  course: CourseRow,
+  date: string,
+  env?: CloudflareEnv
+): Promise<"success" | "no_data" | "error"> {
+```
+
+And change line 66:
+```typescript
+    const teeTimes = await adapter.fetchTeeTimes(config, date);
+```
+to:
+```typescript
+    const teeTimes = await adapter.fetchTeeTimes(config, date, env);
+```
+
+**Step 5: Update `runCronPoll` signature**
+
+In `src/lib/cron-handler.ts`, change:
+```typescript
+export async function runCronPoll(db: D1Database): Promise<{
+```
+to:
+```typescript
+export async function runCronPoll(env: CloudflareEnv): Promise<{
+```
+
+Add `const db = env.DB;` as the first line of the function body.
+
+Then update both `pollCourse` calls to pass `env`:
+- Line 103: `await pollCourse(db, course, dates[i])` → `await pollCourse(db, course, dates[i], env)`
+- Line 144: `await pollCourse(db, course, date)` → `await pollCourse(db, course, date, env)`
+
+**Step 6: Update `worker.ts`**
+
+Change line 16:
+```typescript
+    ctx.waitUntil(runCronPoll(env.DB));
+```
+to:
+```typescript
+    ctx.waitUntil(runCronPoll(env));
+```
+
+**Step 7: Update refresh route**
+
+In `src/app/api/courses/[id]/refresh/route.ts`, change line 49:
+```typescript
+    const result = await pollCourse(db, course, date);
+```
+to:
+```typescript
+    const result = await pollCourse(db, course, date, env);
+```
+
+**Step 8: Update tests**
+
+In `src/lib/poller.test.ts`, update all `pollCourse` calls to include the optional `env` param (or leave it omitted since it's optional — no change needed).
+
+In `src/adapters/cps-golf.test.ts`, no change needed — `fetchTeeTimes(config, date)` still works since `env` is optional.
+
+Check for `src/lib/cron-handler.test.ts` — if it exists, update `runCronPoll(mockDb)` calls to `runCronPoll(mockEnv)` where `mockEnv = { DB: mockDb }`.
+
+**Step 9: Run all tests**
+
+Run: `npm test`
+Expected: All tests pass
+
+**Step 10: Type-check**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 11: Commit**
+
+```bash
+git add src/types/index.ts src/lib/poller.ts src/lib/cron-handler.ts worker.ts \
+  src/app/api/courses/\[id\]/refresh/route.ts src/adapters/foreup.ts src/adapters/teeitup.ts \
+  src/lib/poller.test.ts
+git commit -m "refactor: thread env through poller chain for proxy config access"
+```
+
+---
+
+### Task 6: Wire CPS adapter to use `proxyFetch`
+
+**Files:**
+- Modify: `src/adapters/cps-golf.ts`
+- Modify: `src/adapters/cps-golf.test.ts`
+
+**Step 1: Write failing test — CPS adapter uses proxy when env has proxy config**
+
+Add to `src/adapters/cps-golf.test.ts`:
+
+```typescript
+import { proxyFetch } from "@/lib/proxy-fetch";
+
+vi.mock("@/lib/proxy-fetch", () => ({
+  proxyFetch: vi.fn(),
+}));
+```
+
+And add this test:
+
+```typescript
+  describe("proxy mode", () => {
+    const proxyEnv = {
+      DB: {} as any,
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      JWT_SECRET: "",
+      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      AWS_ACCESS_KEY_ID: "AKID",
+      AWS_SECRET_ACCESS_KEY: "SECRET",
+    } satisfies CloudflareEnv;
+
+    beforeEach(() => {
+      vi.mocked(proxyFetch)
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify({ access_token: "proxy-token", expires_in: 600 }),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(true),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(fixture),
+        });
+    });
+
+    it("routes all three CPS requests through proxyFetch", async () => {
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12", proxyEnv);
+
+      expect(proxyFetch).toHaveBeenCalledTimes(3);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(results).toHaveLength(3);
+    });
+
+    it("falls back to direct fetch when proxy env is not set", async () => {
+      mockCpsFlow(fixture);
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+
+      expect(proxyFetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+    });
+  });
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run: `npx vitest run src/adapters/cps-golf.test.ts`
+Expected: FAIL — proxy tests fail because CPS adapter doesn't use proxyFetch yet
+
+**Step 3: Modify the CPS adapter**
+
+In `src/adapters/cps-golf.ts`:
+
+Add import:
+```typescript
+import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
+```
+
+Update `fetchTeeTimes` signature:
+```typescript
+  async fetchTeeTimes(
+    config: CourseConfig,
+    date: string,
+    env?: CloudflareEnv
+  ): Promise<TeeTime[]> {
+```
+
+Add a private helper method to the class:
+```typescript
+  private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
+    if (env?.FETCH_PROXY_URL && env?.AWS_ACCESS_KEY_ID && env?.AWS_SECRET_ACCESS_KEY) {
+      return {
+        proxyUrl: env.FETCH_PROXY_URL,
+        accessKeyId: env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+    return null;
+  }
+```
+
+Add a private helper to abstract fetch vs proxy:
+```typescript
+  private async doFetch(
+    url: string,
+    init: RequestInit,
+    proxy: ProxyConfig | null
+  ): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
+    if (proxy) {
+      const result = await proxyFetch(
+        {
+          url,
+          method: init.method ?? "GET",
+          headers: init.headers as Record<string, string>,
+          body: init.body as string | undefined,
+        },
+        proxy
+      );
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        json: () => Promise.resolve(JSON.parse(result.body)),
+      };
+    }
+    const response = await fetch(url, init);
+    return { ok: response.ok, status: response.status, json: () => response.json() };
+  }
+```
+
+Update `fetchTeeTimes` to get proxy config and pass to internal methods:
+```typescript
+    const proxy = this.getProxyConfig(env);
+    const token = await this.getToken(subdomain, proxy);
+    // ...
+    const transactionId = await this.registerTransaction(baseUrl, token, headers, proxy);
+    // ...
+    const response = await this.doFetch(`${baseUrl}/TeeTimes?${params}`, {
+      headers: { ...headers, "x-requestid": crypto.randomUUID() },
+      signal: AbortSignal.timeout(10000),
+    }, proxy);
+```
+
+Update `getToken` to accept and use proxy:
+```typescript
+  private async getToken(subdomain: string, proxy: ProxyConfig | null): Promise<string> {
+    const url = `https://${subdomain}.cps.golf/identityapi/myconnect/token/short`;
+    const response = await this.doFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "client_id=onlinereswebshortlived",
+      signal: AbortSignal.timeout(10000),
+    }, proxy);
+    // ... rest unchanged
+  }
+```
+
+Update `registerTransaction` to accept and use proxy:
+```typescript
+  private async registerTransaction(
+    baseUrl: string,
+    token: string,
+    headers: Record<string, string>,
+    proxy: ProxyConfig | null
+  ): Promise<string> {
+    const transactionId = crypto.randomUUID();
+    const response = await this.doFetch(`${baseUrl}/RegisterTransactionId`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json", "x-requestid": crypto.randomUUID() },
+      body: JSON.stringify({ transactionId }),
+      signal: AbortSignal.timeout(10000),
+    }, proxy);
+    // ... rest unchanged
+  }
+```
+
+Note: When using `doFetch` with proxy mode, the `signal` in `init` is ignored (Lambda has its own 10s timeout). This is acceptable — the proxy's 12s timeout in `proxyFetch` covers it.
+
+**Step 4: Run tests to verify they pass**
+
+Run: `npx vitest run src/adapters/cps-golf.test.ts`
+Expected: All tests PASS (existing + new proxy tests)
+
+**Step 5: Run full test suite**
+
+Run: `npm test`
+Expected: All tests pass
+
+**Step 6: Type-check**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 7: Commit**
+
+```bash
+git add src/adapters/cps-golf.ts src/adapters/cps-golf.test.ts
+git commit -m "feat: route CPS Golf requests through Lambda proxy when configured"
+```
+
+---
+
+### Task 7: Update deploy workflow for Lambda + OIDC
+
+**Files:**
+- Modify: `.github/workflows/deploy.yml`
+
+**Step 1: Add permissions and Lambda deploy steps**
+
+Update permissions block:
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Add two steps before "Deploy Worker":
+
+```yaml
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Deploy Lambda proxy
+        uses: aws-actions/aws-lambda-deploy@v1
+        with:
+          function-name: tee-times-fetch-proxy
+          code-artifacts-dir: lambda/fetch-proxy
+          handler: index.handler
+          runtime: nodejs22.x
+          timeout: 15
+          memory-size: 128
+```
+
+**Step 2: Commit**
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "ci: add Lambda proxy deploy with OIDC auth to deploy workflow"
+```
+
+---
+
+### Task 8: Restore custom domain and clean up diagnostics
+
+**Files:**
+- Modify: `wrangler.jsonc` (uncomment routes)
+- Delete: `scripts/diag-worker/` (directory)
+- Delete: `scripts/diag-cps-tls.ts`
+- Delete: `scripts/diag-cps-lambda.mjs`
+- Delete: `scripts/diag-cps-lambda.zip` (if present)
+
+**Step 1: Restore custom domain route in `wrangler.jsonc`**
+
+Uncomment the routes block, removing the temporary comment:
+```jsonc
+	"routes": [
+		{
+			"pattern": "teetimes.scarson.io",
+			"custom_domain": true
+		}
+	],
+```
+
+Remove the comment `// routes removed temporarily — deploy to workers.dev for CPS Golf 525 diagnosis`.
+
+**Step 2: Delete diagnostic files**
+
+```bash
+rm -rf scripts/diag-worker/
+rm -f scripts/diag-cps-tls.ts scripts/diag-cps-lambda.mjs scripts/diag-cps-lambda.zip
+```
+
+**Step 3: Verify build**
+
+Run: `npx tsc --noEmit && npm test`
+Expected: Clean type-check and all tests pass
+
+**Step 4: Commit**
+
+```bash
+git add -u wrangler.jsonc scripts/
+git commit -m "chore: restore custom domain route and remove diagnostic scripts"
+```
+
+---
+
+### Task 9: Manual AWS setup (one-time)
+
+These steps are done manually in the AWS Console or CLI. They must be completed before the first deploy.
+
+**Step 1: Create OIDC identity provider**
+
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
+```
+
+**Step 2: Create deploy role trust policy**
+
+Save as `/tmp/trust-policy.json`:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Federated": "arn:aws:iam::ACCOUNT_ID::oidc-provider/token.actions.githubusercontent.com" },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+        "token.actions.githubusercontent.com:sub": "repo:scarson/twin-cities-tee-times:ref:refs/heads/main"
+      }
+    }
+  }]
+}
+```
+
+```bash
+aws iam create-role \
+  --role-name github-actions-tee-times-deploy \
+  --assume-role-policy-document file:///tmp/trust-policy.json
+```
+
+**Step 3: Attach deploy permissions**
+
+Save as `/tmp/lambda-deploy-policy.json`:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:GetFunction",
+      "lambda:CreateFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:PutFunctionConcurrency"
+    ],
+    "Resource": "arn:aws:lambda:us-west-2:ACCOUNT_ID:function:tee-times-fetch-proxy"
+  }]
+}
+```
+
+```bash
+aws iam put-role-policy \
+  --role-name github-actions-tee-times-deploy \
+  --policy-name lambda-deploy \
+  --policy-document file:///tmp/lambda-deploy-policy.json
+```
+
+**Step 4: Create invoker IAM user**
+
+```bash
+aws iam create-user --user-name tee-times-lambda-invoker
+aws iam put-user-policy --user-name tee-times-lambda-invoker \
+  --policy-name invoke-proxy \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunctionUrl",
+      "Resource": "arn:aws:lambda:us-west-2:ACCOUNT_ID:function:tee-times-fetch-proxy"
+    }]
+  }'
+aws iam create-access-key --user-name tee-times-lambda-invoker
+```
+
+**Step 5: Create the Lambda function (first time)**
+
+```bash
+cd lambda/fetch-proxy && zip -j proxy.zip index.mjs && cd ../..
+aws lambda create-function \
+  --function-name tee-times-fetch-proxy \
+  --runtime nodejs22.x \
+  --handler index.handler \
+  --role arn:aws:iam::ACCOUNT_ID::role/lambda-basic-execution \
+  --zip-file fileb://lambda/fetch-proxy/proxy.zip \
+  --timeout 15 \
+  --memory-size 128
+
+aws lambda put-function-concurrency \
+  --function-name tee-times-fetch-proxy \
+  --reserved-concurrent-executions 5
+
+aws lambda create-function-url-config \
+  --function-name tee-times-fetch-proxy \
+  --auth-type AWS_IAM
+```
+
+**Step 6: Store secrets**
+
+```bash
+# Cloudflare Worker secrets (use the Function URL from step 5 output)
+npx wrangler secret put FETCH_PROXY_URL
+npx wrangler secret put AWS_ACCESS_KEY_ID
+npx wrangler secret put AWS_SECRET_ACCESS_KEY
+
+# GitHub secret (use the role ARN from step 2)
+gh secret set AWS_ROLE_ARN
+```
+
+**Step 7: Clean up diagnostic Lambda**
+
+```bash
+aws lambda delete-function --function-name cps-diag
+```
+
+---
+
+### Task 10: Deploy and verify
+
+**Step 1: Push to main and verify CI/CD**
+
+Merge PR (or push to main). Watch GitHub Actions deploy workflow — it should:
+1. Run tests
+2. Build OpenNext
+3. Apply D1 migrations
+4. Seed courses
+5. **Deploy Lambda proxy** (new)
+6. Deploy Worker
+
+**Step 2: Verify CPS Golf works in production**
+
+Wait 5 minutes for the cron to fire, then:
+
+```bash
+npx wrangler d1 execute tee-times-db --remote --command="SELECT course_id, status, error_message FROM poll_log WHERE course_id LIKE 'tc-%' AND polled_at > datetime('now', '-10 minutes') ORDER BY polled_at DESC LIMIT 20"
+```
+
+Expected: CPS Golf courses show `status = 'success'` instead of `error` with HTTP 525.
+
+**Step 3: Verify non-CPS courses still work**
+
+```bash
+npx wrangler d1 execute tee-times-db --remote --command="SELECT course_id, status FROM poll_log WHERE course_id IN ('sd-balboa-park', 'sd-keller') AND polled_at > datetime('now', '-10 minutes') ORDER BY polled_at DESC LIMIT 10"
+```
+
+Expected: ForeUp and TeeItUp courses still `success` (direct fetch, no proxy).
