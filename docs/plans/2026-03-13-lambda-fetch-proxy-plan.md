@@ -642,6 +642,27 @@ Add this test `describe` block INSIDE the existing outer `describe("CpsGolfAdapt
       expect(fetch).toHaveBeenCalledTimes(3);
       expect(results).toHaveLength(3);
     });
+
+    it("warns and falls back to direct fetch on partial proxy config", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      mockCpsFlow(fixture);
+
+      const partialEnv = {
+        ...proxyEnv,
+        AWS_SECRET_ACCESS_KEY: undefined,
+      } as unknown as CloudflareEnv;
+
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12", partialEnv);
+
+      expect(consoleSpy).toHaveBeenCalledOnce();
+      expect(consoleSpy.mock.calls[0][0]).toContain("Partial proxy config");
+      expect(consoleSpy.mock.calls[0][0]).toContain("AWS_SECRET_ACCESS_KEY");
+      expect(proxyFetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+
+      consoleSpy.mockRestore();
+    });
   });
 ```
 
@@ -792,13 +813,24 @@ import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
 ```typescript
   private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
-    if (env?.FETCH_PROXY_URL && env?.AWS_ACCESS_KEY_ID && env?.AWS_SECRET_ACCESS_KEY) {
+    const hasUrl = !!env?.FETCH_PROXY_URL;
+    const hasKey = !!env?.AWS_ACCESS_KEY_ID;
+    const hasSecret = !!env?.AWS_SECRET_ACCESS_KEY;
+
+    if (hasUrl && hasKey && hasSecret) {
       return {
-        proxyUrl: env.FETCH_PROXY_URL,
-        accessKeyId: env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+        proxyUrl: env.FETCH_PROXY_URL!,
+        accessKeyId: env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
       };
     }
+
+    if (hasUrl || hasKey || hasSecret) {
+      const present = [hasUrl && "FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const missing = [!hasUrl && "FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      console.warn(`Partial proxy config: have ${present.join(", ")} but missing ${missing.join(", ")} — falling back to direct fetch`);
+    }
+
     return null;
   }
 
@@ -931,9 +963,9 @@ git commit -m "ci: add Lambda proxy deploy with OIDC auth to deploy workflow"
 - Delete: `scripts/diag-cps-lambda.mjs`
 - Delete: `scripts/diag-cps-lambda.zip`
 
-**Step 1: Restore custom domain route in `wrangler.jsonc`**
+**Step 1: Verify custom domain route in `wrangler.jsonc`**
 
-Remove the comment `// routes removed temporarily — deploy to workers.dev for CPS Golf 525 diagnosis` and uncomment the routes block. The area around the `triggers` key should look like:
+> **Already done.** The routes block was restored in commit `39efd7c`. Verify the file already has the uncommented routes — do NOT modify it. The area around `triggers` should already look like:
 
 ```jsonc
 	"routes": [
