@@ -205,6 +205,20 @@ describe("proxyFetch", () => {
       proxyFetch({ url: "https://x.cps.golf/api", method: "GET", headers: {} }, proxyConfig)
     ).rejects.toThrow("fetch failed");
   });
+
+  it("sets 12s timeout on the Lambda call", async () => {
+    mockAwsFetch.mockResolvedValue(
+      new Response(JSON.stringify({ status: 200, headers: {}, body: "{}" }))
+    );
+
+    await proxyFetch(
+      { url: "https://x.cps.golf/api", method: "GET", headers: {} },
+      proxyConfig
+    );
+
+    const opts = mockAwsFetch.mock.calls[0][1];
+    expect(opts.signal).toBeInstanceOf(AbortSignal);
+  });
 });
 ```
 
@@ -285,7 +299,7 @@ export async function proxyFetch(
 **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run src/lib/proxy-fetch.test.ts`
-Expected: All 5 tests PASS
+Expected: All 6 tests PASS
 
 **Step 5: Commit**
 
@@ -510,7 +524,7 @@ const db = makeMockDb([...]);
 await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 ```
 
-**Apply this to ALL `runCronPoll(` calls in the file.** There are approximately 12 calls. Find and replace every one.
+**Apply this to ALL `runCronPoll(` calls in the file.** There are exactly 17 calls. Find and replace every one.
 
 **Category B — `pollCourse` argument matchers**: One assertion checks `pollCourse` was called with specific arguments using `toHaveBeenCalledWith`. After this refactor, `pollCourse` now receives 4 arguments (db, course, date, env) instead of 3. `toHaveBeenCalledWith` requires ALL args to match.
 
