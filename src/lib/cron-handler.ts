@@ -45,7 +45,7 @@ function sleep(ms: number): Promise<void> {
  * - Active courses: full 7-date polling at dynamic frequency
  * - Inactive courses: hourly probe of today + tomorrow to detect reopening
  */
-export async function runCronPoll(db: D1Database): Promise<{
+export async function runCronPoll(env: CloudflareEnv): Promise<{
   pollCount: number;
   courseCount: number;
   inactiveProbeCount: number;
@@ -58,6 +58,8 @@ export async function runCronPoll(db: D1Database): Promise<{
   }
 
   try {
+    const db = env.DB;
+
     // Fetch ALL courses (active and inactive)
     const coursesResult = await db
       .prepare("SELECT * FROM courses")
@@ -100,7 +102,7 @@ export async function runCronPoll(db: D1Database): Promise<{
 
         if (shouldPollDate(i, minutesSinceLast)) {
           try {
-            const status = await pollCourse(db, course, dates[i]);
+            const status = await pollCourse(db, course, dates[i], env);
             pollCount++;
 
             if (status === "success") {
@@ -141,7 +143,7 @@ export async function runCronPoll(db: D1Database): Promise<{
         let foundTeeTimes = false;
 
         for (const date of probeDates) {
-          const status = await pollCourse(db, course, date);
+          const status = await pollCourse(db, course, date, env);
           inactiveProbeCount++;
 
           if (status === "success") {

@@ -46,7 +46,7 @@ export async function POST(
   }
 
   try {
-    const result = await pollCourse(db, course, date);
+    const result = await pollCourse(db, course, date, env);
 
     if (result === "error") {
       return NextResponse.json(

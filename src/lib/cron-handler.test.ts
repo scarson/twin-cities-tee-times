@@ -79,7 +79,7 @@ describe("runCronPoll cleanup", () => {
   });
 
   it("deletes expired sessions during cron run", async () => {
-    await runCronPoll(mockDb as unknown as D1Database);
+    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
 
     const sessionCleanup = preparedStatements.find((sql) =>
       sql.includes("DELETE FROM sessions")
@@ -90,7 +90,7 @@ describe("runCronPoll cleanup", () => {
   });
 
   it("uses ISO format for poll_log cleanup", async () => {
-    await runCronPoll(mockDb as unknown as D1Database);
+    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
 
     const pollLogCleanup = preparedStatements.find((sql) =>
       sql.includes("DELETE FROM poll_log")
@@ -101,7 +101,7 @@ describe("runCronPoll cleanup", () => {
   });
 
   it("uses ISO format for recent polls batch query", async () => {
-    await runCronPoll(mockDb as unknown as D1Database);
+    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
 
     const batchQuery = preparedStatements.find(
       (sql) => sql.includes("MAX(polled_at)") && sql.includes("poll_log")
@@ -113,7 +113,7 @@ describe("runCronPoll cleanup", () => {
     // The mock already returns { success: true } for .run(), simulating an
     // empty table where DELETE affects zero rows. Verify no exception thrown.
     await expect(
-      runCronPoll(mockDb as unknown as D1Database)
+      runCronPoll({ DB: mockDb } as unknown as CloudflareEnv)
     ).resolves.not.toThrow();
   });
 });
@@ -207,7 +207,7 @@ describe("runCronPoll auto-active management", () => {
 
   it("probes inactive courses with today and tomorrow only", async () => {
     const db = makeMockDb([inactiveCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     expect(mockedPollCourse).toHaveBeenCalledTimes(2);
     expect(mockedPollCourse.mock.calls[0][2]).toBe("2026-04-15");
@@ -217,7 +217,7 @@ describe("runCronPoll auto-active management", () => {
   it("promotes inactive course to active when tee times found", async () => {
     mockedPollCourse.mockResolvedValue("success");
     const db = makeMockDb([inactiveCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     const promotionSql = preparedStatements.find(
       (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
@@ -232,7 +232,7 @@ describe("runCronPoll auto-active management", () => {
       [{ course_id: "test-inactive", date: "2026-04-15", last_polled: recentPoll }]
     );
 
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
     expect(mockedPollCourse).not.toHaveBeenCalled();
   });
 
@@ -242,7 +242,7 @@ describe("runCronPoll auto-active management", () => {
       (offset: number) => offset === 0
     );
     const db = makeMockDb([activeCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     const updateSql = preparedStatements.find(
       (sql) => sql.includes("last_had_tee_times") && !sql.includes("is_active = 0")
@@ -252,7 +252,7 @@ describe("runCronPoll auto-active management", () => {
 
   it("deactivates courses with no tee times for 30 days", async () => {
     const db = makeMockDb([activeCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     const deactivateSql = preparedStatements.find(
       (sql) => sql.includes("is_active = 0") && sql.includes("-30 days")
@@ -268,7 +268,7 @@ describe("runCronPoll auto-active management", () => {
       last_had_tee_times: null,
     };
     const db = makeMockDb([courseWithNull]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     const deactivateSql = preparedStatements.find(
       (sql) => sql.includes("is_active = 0")
@@ -283,7 +283,7 @@ describe("runCronPoll auto-active management", () => {
   it("does not promote inactive course when poll returns error", async () => {
     mockedPollCourse.mockResolvedValue("error");
     const db = makeMockDb([inactiveCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     const promotionSql = preparedStatements.find(
       (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
@@ -298,7 +298,7 @@ describe("runCronPoll auto-active management", () => {
       .mockRejectedValueOnce(new Error("adapter crash"))
       .mockResolvedValue("no_data");
     const db = makeMockDb([inactiveCourse, inactive2]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     // First course: 1 call (throws), skips rest. Second course: 2 calls (today+tomorrow)
     expect(mockedPollCourse).toHaveBeenCalledTimes(3);
@@ -306,7 +306,8 @@ describe("runCronPoll auto-active management", () => {
     expect(mockedPollCourse).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ id: "test-inactive-2" }),
-      expect.any(String)
+      expect.any(String),
+      expect.anything()
     );
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     expect(consoleSpy.mock.calls[0][0]).toContain("Error probing inactive course");
@@ -318,7 +319,7 @@ describe("runCronPoll auto-active management", () => {
     mockedShouldPollDate.mockReturnValue(true);
     mockedPollCourse.mockResolvedValue("no_data");
     const db = makeMockDb([activeCourse, inactiveCourse]);
-    const result = await runCronPoll(db as unknown as D1Database);
+    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     // Active: 7 dates, Inactive: 2 dates = 9 total calls
     expect(mockedPollCourse).toHaveBeenCalledTimes(9);
@@ -337,7 +338,7 @@ describe("runCronPoll auto-active management", () => {
 
     mockedShouldPollDate.mockReturnValue(true);
     const db = makeMockDb([activeCourse]);
-    const result = await runCronPoll(db as unknown as D1Database);
+    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     // All 7 dates should have been attempted despite the error on date 1
     expect(mockedPollCourse).toHaveBeenCalledTimes(7);
@@ -357,7 +358,7 @@ describe("runCronPoll auto-active management", () => {
 
     mockedShouldPollDate.mockReturnValue(true);
     const db = makeMockDb([activeCourse]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     // The catch block should log the error to poll_log
     const errorLogSql = preparedStatements.find(
@@ -382,7 +383,7 @@ describe("runCronPoll auto-active management", () => {
 
     mockedShouldPollDate.mockReturnValue(true);
     const db = makeMockDb([activeCourse, active2]);
-    await runCronPoll(db as unknown as D1Database);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
     // Both courses should have all 7 dates attempted
     expect(callCount).toBe(14);
@@ -393,7 +394,7 @@ describe("runCronPoll auto-active management", () => {
 
   it("returns inactiveProbeCount in results", async () => {
     const db = makeMockDb([inactiveCourse]);
-    const result = await runCronPoll(db as unknown as D1Database);
+    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
     expect(result).toHaveProperty("inactiveProbeCount");
   });
 });

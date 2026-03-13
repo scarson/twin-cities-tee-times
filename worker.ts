@@ -13,7 +13,7 @@ const worker = {
   },
 
   async scheduled(event: any, env: any, ctx: any) {
-    ctx.waitUntil(runCronPoll(env.DB));
+    ctx.waitUntil(runCronPoll(env));
   },
 };
 

@@ -15,7 +15,8 @@ export class ForeUpAdapter implements PlatformAdapter {
 
   async fetchTeeTimes(
     config: CourseConfig,
-    date: string
+    date: string,
+    _env?: CloudflareEnv
   ): Promise<TeeTime[]> {
     const { scheduleId } = config.platformConfig;
 

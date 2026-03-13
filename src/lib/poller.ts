@@ -45,7 +45,8 @@ export function getPollingDates(todayStr: string): string[] {
 export async function pollCourse(
   db: D1Database,
   course: CourseRow,
-  date: string
+  date: string,
+  env?: CloudflareEnv
 ): Promise<"success" | "no_data" | "error"> {
   const adapter = getAdapter(course.platform);
 
@@ -63,7 +64,7 @@ export async function pollCourse(
   };
 
   try {
-    const teeTimes = await adapter.fetchTeeTimes(config, date);
+    const teeTimes = await adapter.fetchTeeTimes(config, date, env);
     const now = new Date().toISOString();
 
     // Always upsert — when empty, this deletes stale rows so we don't
