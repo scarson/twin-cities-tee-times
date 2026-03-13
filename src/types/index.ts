@@ -12,7 +12,7 @@ export interface CourseConfig {
 /** A single available tee time */
 export interface TeeTime {
   courseId: string;
-  time: string; // ISO 8601
+  time: string; // ISO 8601 local time (no Z suffix) — adapters convert UTC to course timezone
   price: number | null;
   holes: 9 | 18;
   openSlots: number;

@@ -28,7 +28,7 @@ export class TeeItUpAdapter implements PlatformAdapter {
     config: CourseConfig,
     date: string
   ): Promise<TeeTime[]> {
-    const { alias, apiBase, facilityId } = config.platformConfig;
+    const { alias, apiBase, facilityId, timezone } = config.platformConfig;
 
     if (!alias) throw new Error("Missing alias in platformConfig");
     if (!apiBase) throw new Error("Missing apiBase in platformConfig");
@@ -56,7 +56,7 @@ export class TeeItUpAdapter implements PlatformAdapter {
 
           return {
             courseId: config.id,
-            time: tt.teetime,
+            time: this.toLocalIso(tt.teetime, timezone ?? "America/Chicago"),
             price: priceInCents / 100,
             holes: rate.holes === 9 ? 9 : 18,
             openSlots: tt.maxPlayers,
@@ -64,5 +64,25 @@ export class TeeItUpAdapter implements PlatformAdapter {
           };
         })
     );
+  }
+
+  /** Convert UTC ISO timestamp to local ISO (no Z suffix) */
+  private toLocalIso(timestamp: string, timezone: string): string {
+    if (!timestamp.endsWith("Z")) return timestamp;
+
+    const date = new Date(timestamp);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date);
+
+    const get = (type: string) => parts.find((p) => p.type === type)!.value;
+    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`;
   }
 }

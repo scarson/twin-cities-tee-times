@@ -28,7 +28,7 @@ describe("TeeItUpAdapter", () => {
     expect(adapter.platformId).toBe("teeitup");
   });
 
-  it("parses tee times from API response", async () => {
+  it("converts UTC tee times to local timezone (default Central)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
@@ -36,14 +36,20 @@ describe("TeeItUpAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
 
     expect(results).toHaveLength(3);
+    // Fixture dates are March 11 2026 — CDT (UTC-5) is in effect (DST starts March 8)
+    // 17:50 UTC → 12:50 CDT
     expect(results[0]).toEqual({
       courseId: "keller",
-      time: "2026-03-11T17:50:00.000Z",
+      time: "2026-03-11T12:50:00",
       price: 35,
       holes: 18,
       openSlots: 1,
       bookingUrl: "https://ramsey-county-golf.book.teeitup.com",
     });
+    // 23:40 UTC → 18:40 CDT
+    expect(results[1].time).toBe("2026-03-11T18:40:00");
+    // 00:00 UTC Mar 12 → 19:00 CDT Mar 11 (date boundary crossing)
+    expect(results[2].time).toBe("2026-03-11T19:00:00");
   });
 
   it("uses promo price when promotion exists", async () => {
@@ -189,6 +195,45 @@ describe("TeeItUpAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
     expect(results).toHaveLength(1);
+  });
+
+  it("uses per-course timezone when specified", async () => {
+    const pacificConfig: CourseConfig = {
+      ...mockConfig,
+      id: "sd-lomas",
+      platformConfig: {
+        ...mockConfig.platformConfig,
+        timezone: "America/Los_Angeles",
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(fixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(pacificConfig, "2026-03-11");
+
+    // PDT (UTC-7) in effect — 17:50 UTC → 10:50 PDT
+    expect(results[0].time).toBe("2026-03-11T10:50:00");
+    // 23:40 UTC → 16:40 PDT
+    expect(results[1].time).toBe("2026-03-11T16:40:00");
+    // 00:00 UTC Mar 12 → 17:00 PDT Mar 11
+    expect(results[2].time).toBe("2026-03-11T17:00:00");
+  });
+
+  it("passes through non-UTC timestamps unchanged", async () => {
+    const localTimeFixture = [{
+      teetimes: [{
+        ...fixture[0].teetimes[0],
+        teetime: "2026-03-11T12:50:00",
+      }],
+    }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(localTimeFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
+
+    expect(results[0].time).toBe("2026-03-11T12:50:00");
   });
 
   it("skips trade rates and uses first non-trade rate", async () => {
