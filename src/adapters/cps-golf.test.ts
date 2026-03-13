@@ -1,6 +1,12 @@
 // ABOUTME: Tests for the CPS Golf adapter.
 // ABOUTME: Covers v5 auth flow (token + transaction), response parsing, and error handling.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { proxyFetch } from "@/lib/proxy-fetch";
+
+vi.mock("@/lib/proxy-fetch", () => ({
+  proxyFetch: vi.fn(),
+}));
+
 import { CpsGolfAdapter } from "./cps-golf";
 import type { CourseConfig } from "@/types";
 import fixture from "@/test/fixtures/cps-golf-tee-times.json";
@@ -47,6 +53,7 @@ describe("CpsGolfAdapter", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(proxyFetch).mockReset();
   });
 
   it("has the correct platformId", () => {
@@ -309,5 +316,79 @@ describe("CpsGolfAdapter", () => {
     // "Thu Mar 12 2026" URL-encoded
     expect(ttUrl).toMatch(/searchDate=\w{3}\+\w{3}\+\d{2}\+\d{4}/);
     expect(ttUrl).not.toContain("%2C"); // no commas
+  });
+
+  describe("proxy mode", () => {
+    const proxyEnv = {
+      DB: {} as any,
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      JWT_SECRET: "",
+      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      AWS_ACCESS_KEY_ID: "AKID",
+      AWS_SECRET_ACCESS_KEY: "SECRET",
+    } satisfies CloudflareEnv;
+
+    beforeEach(() => {
+      // Must spy on fetch to assert it wasn't called in proxy mode
+      vi.spyOn(globalThis, "fetch");
+
+      // Mock the 3-call proxy chain: token → register → tee times
+      // These MUST match the adapter's call order exactly
+      vi.mocked(proxyFetch)
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify({ access_token: "proxy-token", expires_in: 600 }),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(true),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(fixture),
+        });
+    });
+
+    it("routes all three CPS requests through proxyFetch", async () => {
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12", proxyEnv);
+
+      expect(proxyFetch).toHaveBeenCalledTimes(3);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(results).toHaveLength(3);
+    });
+
+    it("falls back to direct fetch when proxy env is not set", async () => {
+      mockCpsFlow(fixture);
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+
+      expect(proxyFetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+    });
+
+    it("warns and falls back to direct fetch on partial proxy config", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      mockCpsFlow(fixture);
+
+      const partialEnv = {
+        ...proxyEnv,
+        AWS_SECRET_ACCESS_KEY: undefined,
+      } as unknown as CloudflareEnv;
+
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12", partialEnv);
+
+      expect(consoleSpy).toHaveBeenCalledOnce();
+      expect(consoleSpy.mock.calls[0][0]).toContain("Partial proxy config");
+      expect(consoleSpy.mock.calls[0][0]).toContain("AWS_SECRET_ACCESS_KEY");
+      expect(proxyFetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+
+      consoleSpy.mockRestore();
+    });
   });
 });

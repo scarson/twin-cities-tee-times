@@ -1,6 +1,7 @@
 // ABOUTME: CPS Golf (Club Prophet) platform adapter for fetching tee times.
 // ABOUTME: Handles v5 OAuth2 auth flow, transaction registration, and response parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
 interface CpsV5TeeTime {
   startTime: string;
@@ -23,7 +24,8 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
   async fetchTeeTimes(
     config: CourseConfig,
-    date: string
+    date: string,
+    env?: CloudflareEnv
   ): Promise<TeeTime[]> {
     const { subdomain } = config.platformConfig;
 
@@ -34,12 +36,14 @@ export class CpsGolfAdapter implements PlatformAdapter {
     const baseUrl = `https://${subdomain}.cps.golf/onlineres/onlineapi/api/v1/onlinereservation`;
     const timezone = config.platformConfig.timezone ?? "America/Chicago";
 
-    const token = await this.getToken(subdomain);
+    const proxy = this.getProxyConfig(env);
+    const token = await this.getToken(subdomain, proxy);
     const headers = this.buildHeaders(config, token, timezone);
     const transactionId = await this.registerTransaction(
       baseUrl,
       token,
-      headers
+      headers,
+      proxy
     );
 
     const searchDate = this.formatCpsDate(date, timezone);
@@ -62,10 +66,10 @@ export class CpsGolfAdapter implements PlatformAdapter {
       searchType: "1",
     });
 
-    const response = await fetch(`${baseUrl}/TeeTimes?${params}`, {
+    const response = await this.doFetch(`${baseUrl}/TeeTimes?${params}`, {
+      method: "GET",
       headers: { ...headers, "x-requestid": crypto.randomUUID() },
-      signal: AbortSignal.timeout(10000),
-    });
+    }, proxy);
 
     if (!response.ok) {
       throw new Error(`CPS Golf API returned HTTP ${response.status}`);
@@ -89,15 +93,14 @@ export class CpsGolfAdapter implements PlatformAdapter {
       }));
   }
 
-  private async getToken(subdomain: string): Promise<string> {
+  private async getToken(subdomain: string, proxy: ProxyConfig | null): Promise<string> {
     const url = `https://${subdomain}.cps.golf/identityapi/myconnect/token/short`;
 
-    const response = await fetch(url, {
+    const response = await this.doFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: "client_id=onlinereswebshortlived",
-      signal: AbortSignal.timeout(10000),
-    });
+    }, proxy);
 
     if (!response.ok) {
       throw new Error(
@@ -112,11 +115,12 @@ export class CpsGolfAdapter implements PlatformAdapter {
   private async registerTransaction(
     baseUrl: string,
     token: string,
-    headers: Record<string, string>
+    headers: Record<string, string>,
+    proxy: ProxyConfig | null
   ): Promise<string> {
     const transactionId = crypto.randomUUID();
 
-    const response = await fetch(`${baseUrl}/RegisterTransactionId`, {
+    const response = await this.doFetch(`${baseUrl}/RegisterTransactionId`, {
       method: "POST",
       headers: {
         ...headers,
@@ -124,8 +128,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
         "x-requestid": crypto.randomUUID(),
       },
       body: JSON.stringify({ transactionId }),
-      signal: AbortSignal.timeout(10000),
-    });
+    }, proxy);
 
     if (!response.ok) {
       throw new Error("CPS Golf transaction registration failed");
@@ -137,6 +140,67 @@ export class CpsGolfAdapter implements PlatformAdapter {
     }
 
     return transactionId;
+  }
+
+  private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
+    const hasUrl = !!env?.FETCH_PROXY_URL;
+    const hasKey = !!env?.AWS_ACCESS_KEY_ID;
+    const hasSecret = !!env?.AWS_SECRET_ACCESS_KEY;
+
+    if (hasUrl && hasKey && hasSecret) {
+      return {
+        proxyUrl: env.FETCH_PROXY_URL!,
+        accessKeyId: env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
+      };
+    }
+
+    if (hasUrl || hasKey || hasSecret) {
+      const present = [hasUrl && "FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const missing = [!hasUrl && "FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      console.warn(`Partial proxy config: have ${present.join(", ")} but missing ${missing.join(", ")} — falling back to direct fetch`);
+    }
+
+    return null;
+  }
+
+  /**
+   * Fetch via proxy or direct. In proxy mode, the request goes through
+   * the Lambda proxy (which has its own 10s upstream timeout). In direct
+   * mode, it's a standard fetch with a 10s AbortSignal timeout.
+   *
+   * The `signal` property from RequestInit is intentionally NOT forwarded
+   * to the proxy path — the Lambda proxy has its own timeout layering.
+   * Do NOT "fix" this by adding signal support to proxyFetch.
+   */
+  private async doFetch(
+    url: string,
+    init: { method: string; headers: Record<string, string>; body?: string },
+    proxy: ProxyConfig | null
+  ): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
+    if (proxy) {
+      const result = await proxyFetch(
+        {
+          url,
+          method: init.method,
+          headers: init.headers,
+          body: init.body,
+        },
+        proxy
+      );
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        json: () => Promise.resolve(JSON.parse(result.body)),
+      };
+    }
+    const response = await fetch(url, {
+      method: init.method,
+      headers: init.headers,
+      body: init.body,
+      signal: AbortSignal.timeout(10000),
+    });
+    return { ok: response.ok, status: response.status, json: () => response.json() };
   }
 
   private buildHeaders(
