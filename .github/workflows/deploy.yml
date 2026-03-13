@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   deploy:
@@ -41,6 +42,22 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Deploy Lambda proxy
+        uses: aws-actions/aws-lambda-deploy@v1
+        with:
+          function-name: tee-times-fetch-proxy
+          code-artifacts-dir: lambda/fetch-proxy
+          handler: index.handler
+          runtime: nodejs22.x
+          timeout: 15
+          memory-size: 128
+
       - name: Deploy Worker
         run: npx wrangler deploy
         env:
