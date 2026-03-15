@@ -22,7 +22,7 @@ export interface TeeTime {
 /** Platform adapter interface — each booking platform implements this */
 export interface PlatformAdapter {
   platformId: string;
-  fetchTeeTimes(config: CourseConfig, date: string): Promise<TeeTime[]>;
+  fetchTeeTimes(config: CourseConfig, date: string, env?: CloudflareEnv): Promise<TeeTime[]>;
 }
 
 /** Course row from D1 */

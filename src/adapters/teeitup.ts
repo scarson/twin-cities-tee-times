@@ -26,7 +26,8 @@ export class TeeItUpAdapter implements PlatformAdapter {
 
   async fetchTeeTimes(
     config: CourseConfig,
-    date: string
+    date: string,
+    _env?: CloudflareEnv
   ): Promise<TeeTime[]> {
     const { alias, apiBase, facilityId, timezone } = config.platformConfig;
 
