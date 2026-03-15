@@ -124,6 +124,7 @@ When asked to do something, just do it - including obvious follow-up actions nee
 
 ### Keeping a clean git graph
 
+- **No local `main` branch.** Always use `origin/main` when comparing against or targeting main. Fetch before comparing (`git fetch origin main`).
 - **NEVER pull or merge main into dev.** This is a solo project with a one-way `dev` → `main` flow. Main should never have commits that dev doesn't. There is no reason to sync main into dev.
 - **NEVER run `git pull origin main` or `git merge main` on the dev branch.** This creates spaghetti merge commits.
 
