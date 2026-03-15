@@ -320,7 +320,7 @@ git commit -m "feat: add proxyFetch helper with SigV4 signing and tests"
 In `env.d.ts`, add these three lines after `JWT_SECRET: string;`:
 
 ```typescript
-  FETCH_PROXY_URL?: string;
+  AWS_FETCH_PROXY_URL?: string;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
 ```
@@ -335,7 +335,7 @@ interface CloudflareEnv {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   JWT_SECRET: string;
-  FETCH_PROXY_URL?: string;
+  AWS_FETCH_PROXY_URL?: string;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
 }
@@ -352,7 +352,7 @@ Expected: No errors
 
 ```bash
 git add env.d.ts
-git commit -m "feat: add FETCH_PROXY_URL and AWS credential env bindings"
+git commit -m "feat: add AWS_FETCH_PROXY_URL and AWS credential env bindings"
 ```
 
 ---
@@ -597,7 +597,7 @@ Add this test `describe` block INSIDE the existing outer `describe("CpsGolfAdapt
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
       JWT_SECRET: "",
-      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      AWS_FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
       AWS_ACCESS_KEY_ID: "AKID",
       AWS_SECRET_ACCESS_KEY: "SECRET",
     } satisfies CloudflareEnv;
@@ -813,21 +813,21 @@ import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
 ```typescript
   private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
-    const hasUrl = !!env?.FETCH_PROXY_URL;
+    const hasUrl = !!env?.AWS_FETCH_PROXY_URL;
     const hasKey = !!env?.AWS_ACCESS_KEY_ID;
     const hasSecret = !!env?.AWS_SECRET_ACCESS_KEY;
 
     if (hasUrl && hasKey && hasSecret) {
       return {
-        proxyUrl: env.FETCH_PROXY_URL!,
+        proxyUrl: env.AWS_FETCH_PROXY_URL!,
         accessKeyId: env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
       };
     }
 
     if (hasUrl || hasKey || hasSecret) {
-      const present = [hasUrl && "FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
-      const missing = [!hasUrl && "FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const present = [hasUrl && "AWS_FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const missing = [!hasUrl && "AWS_FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
       console.warn(`Partial proxy config: have ${present.join(", ")} but missing ${missing.join(", ")} — falling back to direct fetch`);
     }
 
@@ -927,7 +927,7 @@ Add these two steps BEFORE the existing "Deploy Worker" step (and AFTER "Seed co
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-west-2
 
       - name: Deploy Lambda proxy
@@ -1090,16 +1090,25 @@ aws iam put-role-policy \
 
 ```bash
 aws iam create-user --user-name tee-times-lambda-invoker
+```
+
+Save the following as `invoke-proxy-policy.json` (replace `ACCOUNT_ID` with your actual account ID):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "lambda:InvokeFunctionUrl",
+    "Resource": "arn:aws:lambda:us-west-2:ACCOUNT_ID:function:tee-times-fetch-proxy"
+  }]
+}
+```
+
+```bash
 aws iam put-user-policy --user-name tee-times-lambda-invoker \
   --policy-name invoke-proxy \
-  --policy-document '{
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": "lambda:InvokeFunctionUrl",
-      "Resource": "arn:aws:lambda:us-west-2:ACCOUNT_ID:function:tee-times-fetch-proxy"
-    }]
-  }'
+  --policy-document file://tmp/invoke-proxy-policy.json
 aws iam create-access-key --user-name tee-times-lambda-invoker
 ```
 
@@ -1129,12 +1138,12 @@ aws lambda create-function-url-config \
 
 ```bash
 # Cloudflare Worker secrets (use the Function URL from step 6 output)
-npx wrangler secret put FETCH_PROXY_URL
+npx wrangler secret put AWS_FETCH_PROXY_URL
 npx wrangler secret put AWS_ACCESS_KEY_ID
 npx wrangler secret put AWS_SECRET_ACCESS_KEY
 
 # GitHub secret (use the role ARN from step 3 output)
-gh secret set AWS_ROLE_ARN
+gh secret set AWS_DEPLOY_ROLE_ARN
 ```
 
 **Step 8: Clean up diagnostic Lambda**

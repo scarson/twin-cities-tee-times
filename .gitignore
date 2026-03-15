@@ -11,6 +11,9 @@ out/
 # Wrangler
 .wrangler/
 
+# AWS
+.aws/
+
 # Environment
 .env
 .env.local
