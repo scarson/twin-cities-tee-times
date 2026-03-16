@@ -35,6 +35,12 @@ export function Nav() {
           >
             Courses
           </Link>
+          <Link
+            href="/about"
+            className="text-sm font-medium text-gray-300 hover:text-white lg:text-base"
+          >
+            About
+          </Link>
         </div>
         <NavAuthArea />
       </div>
