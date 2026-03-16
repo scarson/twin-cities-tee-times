@@ -24,7 +24,7 @@ export async function GET(
                   ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY polled_at DESC) as rn
            FROM poll_log
            WHERE polled_at > ${sqliteIsoNow("-24 hours")}
-             AND status = 'success'
+             AND status IN ('success', 'no_data')
          ) p ON c.id = p.course_id AND p.rn = 1
          WHERE c.id = ?`
       )
