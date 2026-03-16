@@ -24,8 +24,12 @@ export class ForeUpAdapter implements PlatformAdapter {
       throw new Error("Missing scheduleId in platformConfig");
     }
 
+    // ForeUp API expects MM-DD-YYYY date format
+    const [y, m, d] = date.split("-");
+    const foreupDate = `${m}-${d}-${y}`;
+
     const params = new URLSearchParams({
-      date,
+      date: foreupDate,
       time: "all",
       holes: "0",
       players: "0",
