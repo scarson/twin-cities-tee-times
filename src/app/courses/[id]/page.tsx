@@ -67,7 +67,7 @@ export default function CoursePage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && (
-        <CourseHeader course={course} dates={dates} onRefreshed={() => fetchData(false)} />
+        <CourseHeader course={course} dates={dates} teeTimes={teeTimes} onRefreshed={() => fetchData(false)} />
       )}
 
       <div className="mt-4">

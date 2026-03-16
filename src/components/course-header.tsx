@@ -15,14 +15,14 @@ interface CourseHeaderProps {
     last_polled: string | null;
   };
   dates: string[];
+  teeTimes: { fetched_at: string }[];
   onRefreshed: () => void;
 }
 
-export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) {
+export function CourseHeader({ course, dates, teeTimes, onRefreshed }: CourseHeaderProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
   const [coolingDown, setCoolingDown] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
@@ -55,7 +55,6 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
       if (failed.length > 0) {
         console.error(`Refresh failed for ${failed.length}/${responses.length} dates`);
       }
-      setLastRefreshedAt(new Date().toISOString());
       onRefreshed();
       setCoolingDown(true);
       cooldownTimer.current = setTimeout(() => setCoolingDown(false), 30_000);
@@ -64,7 +63,14 @@ export function CourseHeader({ course, dates, onRefreshed }: CourseHeaderProps) 
     }
   };
 
-  const displayTimestamp = lastRefreshedAt ?? course.last_polled;
+  // Derive "Last updated" from the oldest fetched_at in the displayed tee times,
+  // falling back to the last successful poll timestamp from the DB.
+  const oldestFetchedAt = teeTimes.length > 0
+    ? teeTimes.reduce((oldest, tt) =>
+        tt.fetched_at < oldest ? tt.fetched_at : oldest,
+      teeTimes[0].fetched_at)
+    : null;
+  const displayTimestamp = oldestFetchedAt ?? course.last_polled;
 
   return (
     <div className="flex items-start justify-between gap-3">
