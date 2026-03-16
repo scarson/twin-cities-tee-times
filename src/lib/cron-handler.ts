@@ -1,15 +1,17 @@
-// ABOUTME: Cron polling orchestrator that runs on a 5-minute schedule.
-// ABOUTME: Controls polling frequency by time of day and polls active courses via adapters.
+// ABOUTME: Cron polling orchestrator that distributes courses across 5 batched invocations.
+// ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 import { sqliteIsoNow, logPoll } from "@/lib/db";
-// D1Database is a global type from @cloudflare/workers-types
+import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
+const SUBREQUEST_BUDGET = 45; // 50 limit minus 5 headroom
+
 /**
- * Determine whether this 5-minute cron invocation should actually poll,
+ * Determine whether this cron invocation should actually poll,
  * based on current Central Time hour.
  *
- * Cron fires every 5 min. Effective intervals:
+ * Each batch fires every 5 min (staggered by 1 min). Effective intervals:
  * - 5am–10am CT: every 5 min (every invocation)
  * - 10am–2pm CT: every 10 min
  * - 2pm–8pm CT: every 15 min
@@ -31,9 +33,6 @@ export function shouldRunThisCycle(now: Date): boolean {
   return minute < 5; // 8pm–5am: once per hour
 }
 
-/**
- * Sleep helper for rate limiting between API calls.
- */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -41,40 +40,51 @@ function sleep(ms: number): Promise<void> {
 /**
  * Main cron polling logic. Called by the Worker's scheduled() handler.
  *
- * Two-tier polling:
- * - Active courses: full 7-date polling at dynamic frequency
- * - Inactive courses: hourly probe of today + tomorrow to detect reopening
+ * Each invocation processes one batch of courses (determined by cronExpression).
+ * Courses are assigned to batches via weighted bin-packing (CPS=3, others=1).
+ * Loop order is date-outer, course-inner to prioritize today for all courses.
+ * A subrequest budget tracker prevents exceeding the 50-per-invocation limit.
+ *
+ * Housekeeping (cleanup, auto-deactivation) runs only in batch 0.
  */
-export async function runCronPoll(env: CloudflareEnv): Promise<{
+export async function runCronPoll(
+  env: CloudflareEnv,
+  cronExpression: string
+): Promise<{
   pollCount: number;
   courseCount: number;
   inactiveProbeCount: number;
   skipped: boolean;
+  batchIndex: number;
+  budgetExhausted: boolean;
 }> {
+  const batchIndex = cronToBatchIndex(cronExpression);
   const now = new Date();
 
   if (!shouldRunThisCycle(now)) {
-    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: true };
+    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: true, batchIndex, budgetExhausted: false };
   }
 
   try {
     const db = env.DB;
 
-    // Fetch ALL courses (active and inactive)
+    // Fetch ALL courses and assign to batches
     const coursesResult = await db
       .prepare("SELECT * FROM courses")
       .all<CourseRow>();
     const allCourses = coursesResult.results;
+    const batches = assignBatches(allCourses);
+    const batchCourses = batches[batchIndex];
 
-    const activeCourses = allCourses.filter((c) => c.is_active === 1);
-    const inactiveCourses = allCourses.filter((c) => c.is_active === 0);
+    const activeCourses = batchCourses.filter((c) => c.is_active === 1);
+    const inactiveCourses = batchCourses.filter((c) => c.is_active === 0);
 
     const todayStr = now.toLocaleDateString("en-CA", {
       timeZone: "America/Chicago",
     }); // YYYY-MM-DD
     const dates = getPollingDates(todayStr);
 
-    // Batch-fetch the most recent poll time for every course+date combo (one query)
+    // Batch-fetch the most recent poll time for every course+date combo
     const recentPolls = await db
       .prepare(
         `SELECT course_id, date, MAX(polled_at) as last_polled
@@ -91,48 +101,62 @@ export async function runCronPoll(env: CloudflareEnv): Promise<{
 
     let pollCount = 0;
     let inactiveProbeCount = 0;
+    let budget = SUBREQUEST_BUDGET;
+    let budgetExhausted = false;
 
-    // --- Active courses: full 7-date polling at dynamic frequency ---
-    for (const course of activeCourses) {
-      for (let i = 0; i < dates.length; i++) {
+    // --- Active courses: date-outer, course-inner ---
+    for (let i = 0; i < dates.length && !budgetExhausted; i++) {
+      for (const course of activeCourses) {
         const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
         const minutesSinceLast = lastPolled
           ? (Date.now() - new Date(lastPolled).getTime()) / 60000
           : Infinity;
 
-        if (shouldPollDate(i, minutesSinceLast)) {
-          try {
-            const status = await pollCourse(db, course, dates[i], env);
-            pollCount++;
+        if (!shouldPollDate(i, minutesSinceLast)) continue;
 
-            if (status === "success") {
-              await db
-                .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
-                .bind(now.toISOString(), course.id)
-                .run();
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            console.error(`Error polling ${course.id} for ${dates[i]}:`, err);
-            try {
-              await logPoll(db, course.id, dates[i], "error", 0, message);
-            } catch (logErr) {
-              console.error(`Failed to log poll error for ${course.id}:`, logErr);
-            }
-            pollCount++;
-          }
-
-          await sleep(250);
+        const weight = platformWeight(course.platform);
+        if (budget < weight) {
+          budgetExhausted = true;
+          console.warn(
+            `Batch ${batchIndex}: subrequest budget exhausted (${SUBREQUEST_BUDGET - budget}/${SUBREQUEST_BUDGET} used), skipping remaining polls`
+          );
+          break;
         }
+
+        try {
+          const status = await pollCourse(db, course, dates[i], env);
+          pollCount++;
+          budget -= weight;
+
+          if (status === "success") {
+            await db
+              .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
+              .bind(now.toISOString(), course.id)
+              .run();
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`Error polling ${course.id} for ${dates[i]}:`, err);
+          try {
+            await logPoll(db, course.id, dates[i], "error", 0, message);
+          } catch (logErr) {
+            console.error(`Failed to log poll error for ${course.id}:`, logErr);
+          }
+          pollCount++;
+          budget -= weight;
+        }
+
+        await sleep(250);
       }
     }
 
     // --- Inactive courses: hourly probe of today + tomorrow ---
-    const probeDates = dates.slice(0, 2); // today + tomorrow
+    const probeDates = dates.slice(0, 2);
 
     for (const course of inactiveCourses) {
+      if (budgetExhausted) break;
+
       try {
-        // Check if this course was probed in the last hour
         const lastProbed = pollTimeMap.get(`${course.id}:${probeDates[0]}`);
         const minutesSinceProbe = lastProbed
           ? (Date.now() - new Date(lastProbed).getTime()) / 60000
@@ -143,17 +167,32 @@ export async function runCronPoll(env: CloudflareEnv): Promise<{
         let foundTeeTimes = false;
 
         for (const date of probeDates) {
-          const status = await pollCourse(db, course, date, env);
-          inactiveProbeCount++;
+          const weight = platformWeight(course.platform);
+          if (budget < weight) {
+            budgetExhausted = true;
+            console.warn(
+              `Batch ${batchIndex}: subrequest budget exhausted during inactive probing`
+            );
+            break;
+          }
 
-          if (status === "success") {
-            foundTeeTimes = true;
+          try {
+            const status = await pollCourse(db, course, date, env);
+            inactiveProbeCount++;
+            budget -= weight;
+
+            if (status === "success") {
+              foundTeeTimes = true;
+            }
+          } catch (probeErr) {
+            console.error(`Error probing inactive course ${course.id} for ${date}:`, probeErr);
+            inactiveProbeCount++;
+            budget -= weight;
           }
 
           await sleep(250);
         }
 
-        // Auto-promote: flip to active if tee times were found
         if (foundTeeTimes) {
           await db
             .prepare("UPDATE courses SET is_active = 1, last_had_tee_times = ? WHERE id = ?")
@@ -166,46 +205,51 @@ export async function runCronPoll(env: CloudflareEnv): Promise<{
       }
     }
 
-    // --- Auto-deactivate: courses with no tee times for 30 days ---
-    // Safe after auto-promote: just-promoted courses have fresh last_had_tee_times,
-    // so they won't match the stale-tee-times condition.
-    try {
-      const deactivated = await db
-        .prepare(
-          `UPDATE courses SET is_active = 0
-           WHERE is_active = 1
-             AND last_had_tee_times IS NOT NULL
-             AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
-        )
-        .run();
-      if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
-        console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
+    // --- Housekeeping: batch 0 only ---
+    if (batchIndex === 0) {
+      try {
+        const deactivated = await db
+          .prepare(
+            `UPDATE courses SET is_active = 0
+             WHERE is_active = 1
+               AND last_had_tee_times IS NOT NULL
+               AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
+          )
+          .run();
+        if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
+          console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
+        }
+      } catch (err) {
+        console.error("Auto-deactivation error:", err);
       }
-    } catch (err) {
-      console.error("Auto-deactivation error:", err);
+
+      try {
+        await db
+          .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
+          .run();
+      } catch (err) {
+        console.error("poll_log cleanup error:", err);
+      }
+
+      try {
+        await db
+          .prepare(`DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`)
+          .run();
+      } catch (err) {
+        console.error("session cleanup error:", err);
+      }
     }
 
-    // Purge poll_log entries older than 7 days to prevent unbounded growth
-    try {
-      await db
-        .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
-        .run();
-    } catch (err) {
-      console.error("poll_log cleanup error:", err);
-    }
-
-    // Remove expired sessions
-    try {
-      await db
-        .prepare(`DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`)
-        .run();
-    } catch (err) {
-      console.error("session cleanup error:", err);
-    }
-
-    return { pollCount, courseCount: activeCourses.length, inactiveProbeCount, skipped: false };
+    return {
+      pollCount,
+      courseCount: activeCourses.length,
+      inactiveProbeCount,
+      skipped: false,
+      batchIndex,
+      budgetExhausted,
+    };
   } catch (err) {
     console.error("Cron poll fatal error:", err);
-    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: false };
+    return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: false, batchIndex, budgetExhausted: false };
   }
 }
