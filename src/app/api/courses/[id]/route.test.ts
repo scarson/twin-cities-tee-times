@@ -62,4 +62,11 @@ describe("GET /api/courses/[id]", () => {
     const sql = db.prepare.mock.calls[0][0];
     expect(sql).toContain("-24 hours");
   });
+
+  it("query includes no_data status in poll_log filter", async () => {
+    mockFirst.mockResolvedValueOnce({ id: "braemar" });
+    await GET(new Request("http://localhost"), makeParams("braemar"));
+    const sql = db.prepare.mock.calls[0][0] as string;
+    expect(sql).toContain("no_data");
+  });
 });
