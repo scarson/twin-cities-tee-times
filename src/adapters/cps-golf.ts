@@ -143,21 +143,21 @@ export class CpsGolfAdapter implements PlatformAdapter {
   }
 
   private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
-    const hasUrl = !!env?.FETCH_PROXY_URL;
+    const hasUrl = !!env?.AWS_FETCH_PROXY_URL;
     const hasKey = !!env?.AWS_ACCESS_KEY_ID;
     const hasSecret = !!env?.AWS_SECRET_ACCESS_KEY;
 
     if (hasUrl && hasKey && hasSecret) {
       return {
-        proxyUrl: env.FETCH_PROXY_URL!,
+        proxyUrl: env.AWS_FETCH_PROXY_URL!,
         accessKeyId: env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
       };
     }
 
     if (hasUrl || hasKey || hasSecret) {
-      const present = [hasUrl && "FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
-      const missing = [!hasUrl && "FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const present = [hasUrl && "AWS_FETCH_PROXY_URL", hasKey && "AWS_ACCESS_KEY_ID", hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
+      const missing = [!hasUrl && "AWS_FETCH_PROXY_URL", !hasKey && "AWS_ACCESS_KEY_ID", !hasSecret && "AWS_SECRET_ACCESS_KEY"].filter(Boolean);
       console.warn(`Partial proxy config: have ${present.join(", ")} but missing ${missing.join(", ")} — falling back to direct fetch`);
     }
 
