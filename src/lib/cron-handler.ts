@@ -176,12 +176,18 @@ export async function runCronPoll(
             break;
           }
 
-          const status = await pollCourse(db, course, date, env);
-          inactiveProbeCount++;
-          budget -= weight;
+          try {
+            const status = await pollCourse(db, course, date, env);
+            inactiveProbeCount++;
+            budget -= weight;
 
-          if (status === "success") {
-            foundTeeTimes = true;
+            if (status === "success") {
+              foundTeeTimes = true;
+            }
+          } catch (probeErr) {
+            console.error(`Error probing inactive course ${course.id} for ${date}:`, probeErr);
+            inactiveProbeCount++;
+            budget -= weight;
           }
 
           await sleep(250);

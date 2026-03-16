@@ -674,4 +674,30 @@ describe("runCronPoll active/inactive polling", () => {
 
     consoleSpy.mockRestore();
   });
+
+  it("decrements budget on inactive probe error (subrequests still consumed)", { timeout: 15000 }, async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    // 50 inactive CPS courses → 10 per batch, weight 3 each.
+    // Budget 45 / weight 3 = 15 polls max. 10 courses × 2 dates = 20 needed.
+    const courses = Array.from({ length: 50 }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf", { is_active: 0 })
+    );
+
+    mockedPollCourse.mockRejectedValue(new Error("adapter crash"));
+
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    // Budget should be exhausted even though all probes errored
+    expect(result.budgetExhausted).toBe(true);
+    expect(result.inactiveProbeCount).toBeLessThan(20);
+
+    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });
