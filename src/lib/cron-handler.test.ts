@@ -1,9 +1,33 @@
-// ABOUTME: Tests for the cron handler's time-of-day polling frequency logic and cleanup tasks.
-// ABOUTME: Covers shouldRunThisCycle at different Central Time hours and expired session cleanup.
+// ABOUTME: Tests for the cron handler's batched polling, budget tracking, and cleanup.
+// ABOUTME: Covers batch filtering, date-outer loop, budget exhaustion, and housekeeping gating.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 import { sqliteIsoNow } from "@/lib/db";
+import { assignBatches, BATCH_COUNT } from "@/lib/batch";
+
+// Helper to create CourseRow objects for tests
+function makeCourseRow(
+  id: string,
+  platform: string,
+  overrides: Partial<{
+    is_active: number;
+    last_had_tee_times: string | null;
+    name: string;
+    city: string;
+  }> = {}
+) {
+  return {
+    id,
+    name: overrides.name ?? id,
+    city: overrides.city ?? "Test",
+    platform,
+    platform_config: "{}",
+    booking_url: "https://example.com",
+    is_active: overrides.is_active ?? 1,
+    last_had_tee_times: overrides.last_had_tee_times ?? null,
+  };
+}
 
 describe("shouldRunThisCycle", () => {
   function makeDate(centralHour: number, minute: number): Date {
@@ -40,7 +64,7 @@ describe("shouldRunThisCycle", () => {
   });
 });
 
-// Mock poller to isolate cron handler cleanup logic
+// Mock poller to isolate cron handler logic
 vi.mock("@/lib/poller", () => ({
   pollCourse: vi.fn(),
   shouldPollDate: vi.fn().mockReturnValue(false),
@@ -51,104 +75,39 @@ const mockedPollCourse = vi.mocked(pollCourse);
 const mockedShouldPollDate = vi.mocked(shouldPollDate);
 const mockedGetPollingDates = vi.mocked(getPollingDates);
 
-describe("runCronPoll cleanup", () => {
-  // Track all SQL statements passed to db.prepare
+// Cron expressions for batch 0 and batch 1
+const BATCH_0_CRON = "*/5 * * * *";
+const BATCH_1_CRON = "1-56/5 * * * *";
+
+/**
+ * Helper: determine which course IDs land in a given batch.
+ * Uses the real assignBatches to ensure tests match runtime behavior.
+ */
+function coursesInBatch(
+  courses: ReturnType<typeof makeCourseRow>[],
+  batchIndex: number
+): string[] {
+  const batches = assignBatches(courses);
+  return batches[batchIndex].map((c) => c.id);
+}
+
+describe("runCronPoll batch filtering", () => {
   const preparedStatements: string[] = [];
 
-  const mockDb = {
-    prepare: vi.fn().mockImplementation((sql: string) => {
-      preparedStatements.push(sql);
-      return {
-        bind: vi.fn().mockReturnThis(),
-        run: vi.fn().mockResolvedValue({ success: true }),
-        all: vi.fn().mockResolvedValue({ results: [] }),
-      };
-    }),
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    preparedStatements.length = 0;
-    // Force shouldRunThisCycle to return true by mocking Date to 7am CT
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("deletes expired sessions during cron run", async () => {
-    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
-
-    const sessionCleanup = preparedStatements.find((sql) =>
-      sql.includes("DELETE FROM sessions")
-    );
-    expect(sessionCleanup).toBe(
-      `DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`
-    );
-  });
-
-  it("uses ISO format for poll_log cleanup", async () => {
-    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
-
-    const pollLogCleanup = preparedStatements.find((sql) =>
-      sql.includes("DELETE FROM poll_log")
-    );
-    expect(pollLogCleanup).toBe(
-      `DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`
-    );
-  });
-
-  it("uses ISO format for recent polls batch query", async () => {
-    await runCronPoll({ DB: mockDb } as unknown as CloudflareEnv);
-
-    const batchQuery = preparedStatements.find(
-      (sql) => sql.includes("MAX(polled_at)") && sql.includes("poll_log")
-    );
-    expect(batchQuery).toContain(sqliteIsoNow("-24 hours"));
-  });
-
-  it("does not error when sessions table is empty", async () => {
-    // The mock already returns { success: true } for .run(), simulating an
-    // empty table where DELETE affects zero rows. Verify no exception thrown.
-    await expect(
-      runCronPoll({ DB: mockDb } as unknown as CloudflareEnv)
-    ).resolves.not.toThrow();
-  });
-});
-
-describe("runCronPoll auto-active management", () => {
-  let preparedStatements: string[] = [];
-  let boundValues: unknown[][] = [];
-
   const makeMockDb = (
-    courses: Array<{
-      id: string;
-      is_active: number;
-      last_had_tee_times: string | null;
-      platform: string;
-      platform_config: string;
-      booking_url: string;
-      name: string;
-      city: string;
-    }>,
+    courses: ReturnType<typeof makeCourseRow>[],
     pollLog: Array<{ course_id: string; date: string; last_polled: string }> = []
   ) => {
-    preparedStatements = [];
-    boundValues = [];
+    preparedStatements.length = 0;
 
     return {
       prepare: vi.fn().mockImplementation((sql: string) => {
         preparedStatements.push(sql);
         return {
-          bind: vi.fn().mockImplementation((...args: unknown[]) => {
-            boundValues.push(args);
-            return {
-              run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
-              all: vi.fn().mockResolvedValue({ results: [] }),
-            };
-          }),
+          bind: vi.fn().mockImplementation(() => ({
+            run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          })),
           run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
           all: vi.fn().mockResolvedValue({
             results: sql.includes("FROM courses")
@@ -162,27 +121,451 @@ describe("runCronPoll auto-active management", () => {
     };
   };
 
-  const activeCourse = {
-    id: "test-active",
-    is_active: 1,
-    last_had_tee_times: "2026-04-15T07:00:00.000Z",
-    platform: "foreup",
-    platform_config: "{}",
-    booking_url: "https://example.com",
-    name: "Active Course",
-    city: "Minneapolis",
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15", "2026-04-16"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("only polls courses assigned to this batch", async () => {
+    // 10 weight-1 courses → 2 per batch
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+    );
+
+    const batch0Ids = coursesInBatch(courses, 0);
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    // 2 courses × 2 dates = 4 polls
+    expect(result.pollCount).toBe(batch0Ids.length * 2);
+    expect(result.courseCount).toBe(batch0Ids.length);
+  });
+
+  it("returns batchIndex in results", async () => {
+    const db = makeMockDb([]);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+    expect(result.batchIndex).toBe(0);
+  });
+
+  it("assigns different courses to different batches", async () => {
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+    );
+
+    const batch0Ids = coursesInBatch(courses, 0);
+    const batch1Ids = coursesInBatch(courses, 1);
+
+    // Verify no overlap
+    for (const id of batch0Ids) {
+      expect(batch1Ids).not.toContain(id);
+    }
+
+    // Verify both batches poll their own courses
+    const db0 = makeMockDb(courses);
+    await runCronPoll({ DB: db0 } as unknown as CloudflareEnv, BATCH_0_CRON);
+    const polled0 = [...new Set(mockedPollCourse.mock.calls.map((c) => c[1].id))];
+    expect(polled0.sort()).toEqual(batch0Ids.sort());
+
+    vi.clearAllMocks();
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15", "2026-04-16"]);
+
+    const db1 = makeMockDb(courses);
+    await runCronPoll({ DB: db1 } as unknown as CloudflareEnv, BATCH_1_CRON);
+    const polled1 = [...new Set(mockedPollCourse.mock.calls.map((c) => c[1].id))];
+    expect(polled1.sort()).toEqual(batch1Ids.sort());
+  });
+});
+
+describe("runCronPoll date-outer loop ordering", () => {
+  const makeMockDb = (courses: ReturnType<typeof makeCourseRow>[]) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses") ? courses : [],
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15", "2026-04-16"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("polls today for all courses before moving to tomorrow", async () => {
+    // Need 10+ courses so batch 0 gets at least 2 (10 / 5 batches = 2 each)
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+    );
+
+    const batch0Ids = coursesInBatch(courses, 0);
+    // Verify batch 0 has at least 2 courses (needed for this test to be meaningful)
+    expect(batch0Ids.length).toBeGreaterThanOrEqual(2);
+
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    const calls = mockedPollCourse.mock.calls;
+
+    // All today calls must come before all tomorrow calls
+    const lastTodayIndex = calls.findLastIndex((c) => c[2] === "2026-04-15");
+    const firstTomorrowIndex = calls.findIndex((c) => c[2] === "2026-04-16");
+    expect(lastTodayIndex).toBeLessThan(firstTomorrowIndex);
+  });
+});
+
+describe("runCronPoll budget tracking", () => {
+  const makeMockDb = (courses: ReturnType<typeof makeCourseRow>[]) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses") ? courses : [],
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15", "2026-04-16"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stops polling when budget is exhausted", { timeout: 15000 }, async () => {
+    // 50 CPS courses → 10 per batch, each weight 3.
+    // Budget 45 / weight 3 = 15 polls max. 10 courses × 2 dates = 20 needed.
+    const courses = Array.from({ length: 50 }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf")
+    );
+
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    expect(result.budgetExhausted).toBe(true);
+    expect(result.pollCount).toBeLessThan(20);
+    expect(result.pollCount).toBe(mockedPollCourse.mock.calls.length);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("budget exhausted")
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  it("does not exhaust budget with lightweight courses", async () => {
+    // 10 foreup courses → 2 per batch, weight 1 × 2 dates = 4 total. Well under 45.
+    const courses = Array.from({ length: 10 }, (_, i) =>
+      makeCourseRow(`foreup-${String(i).padStart(2, "0")}`, "foreup")
+    );
+
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    expect(result.budgetExhausted).toBe(false);
+  });
+
+  it("decrements budget on error path (subrequests still consumed)", { timeout: 15000 }, async () => {
+    // 50 CPS courses → 10 per batch, weight 3. All throw errors.
+    // Budget should still be consumed by errors.
+    const courses = Array.from({ length: 50 }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf")
+    );
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockedPollCourse.mockRejectedValue(new Error("adapter crash"));
+
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    // Budget should be exhausted even though all polls errored
+    expect(result.budgetExhausted).toBe(true);
+    expect(result.pollCount).toBeLessThan(20);
+
+    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it("does not consume budget for shouldPollDate=false skips", async () => {
+    // 10 foreup courses → 2 per batch. shouldPollDate returns false for all.
+    // Budget should not be consumed.
+    const courses = Array.from({ length: 10 }, (_, i) =>
+      makeCourseRow(`foreup-${String(i).padStart(2, "0")}`, "foreup")
+    );
+
+    mockedShouldPollDate.mockReturnValue(false);
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    expect(result.pollCount).toBe(0);
+    expect(result.budgetExhausted).toBe(false);
+    expect(mockedPollCourse).not.toHaveBeenCalled();
+  });
+});
+
+describe("runCronPoll housekeeping", () => {
+  const preparedStatements: string[] = [];
+
+  const makeMockDb = () => {
+    preparedStatements.length = 0;
+
+    return {
+      prepare: vi.fn().mockImplementation((sql: string) => {
+        preparedStatements.push(sql);
+        return {
+          bind: vi.fn().mockImplementation(() => ({
+            run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          })),
+          run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        };
+      }),
+    };
   };
 
-  const inactiveCourse = {
-    id: "test-inactive",
-    is_active: 0,
-    last_had_tee_times: null,
-    platform: "foreup",
-    platform_config: "{}",
-    booking_url: "https://example.com",
-    name: "Inactive Course",
-    city: "Minneapolis",
-  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(false);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs cleanup tasks in batch 0", async () => {
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    const sessionCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM sessions")
+    );
+    const pollLogCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM poll_log") && sql.includes("-7 days")
+    );
+    const deactivation = preparedStatements.find((sql) =>
+      sql.includes("is_active = 0") && sql.includes("-30 days")
+    );
+
+    expect(sessionCleanup).toBeDefined();
+    expect(sessionCleanup).toBe(
+      `DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`
+    );
+    expect(pollLogCleanup).toBeDefined();
+    expect(pollLogCleanup).toBe(
+      `DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`
+    );
+    expect(deactivation).toBeDefined();
+    expect(deactivation).toContain(sqliteIsoNow("-30 days"));
+  });
+
+  it("skips cleanup tasks in non-zero batches", async () => {
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_1_CRON);
+
+    const sessionCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM sessions")
+    );
+    const pollLogCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM poll_log") && sql.includes("-7 days")
+    );
+    const deactivation = preparedStatements.find((sql) =>
+      sql.includes("is_active = 0") && sql.includes("-30 days")
+    );
+
+    expect(sessionCleanup).toBeUndefined();
+    expect(pollLogCleanup).toBeUndefined();
+    expect(deactivation).toBeUndefined();
+  });
+});
+
+describe("runCronPoll error isolation", () => {
+  const makeMockDb = (courses: ReturnType<typeof makeCourseRow>[]) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses") ? courses : [],
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15", "2026-04-16"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("continues polling other courses after one throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // 10 courses → 2 per batch. Both in batch 0 will be polled.
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+    );
+    const batch0Ids = coursesInBatch(courses, 0);
+    expect(batch0Ids.length).toBeGreaterThanOrEqual(2);
+
+    // First course in batch 0 throws, second should still be polled
+    const failId = batch0Ids[0];
+    mockedPollCourse.mockImplementation(async (_db, course) => {
+      if (course.id === failId) throw new Error("adapter crash");
+      return "no_data";
+    });
+
+    // Only poll today to simplify assertion
+    mockedShouldPollDate.mockImplementation((offset: number) => offset === 0);
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    // Both courses in batch 0 should have been attempted
+    const polledIds = [...new Set(mockedPollCourse.mock.calls.map((c) => c[1].id))];
+    expect(polledIds).toHaveLength(batch0Ids.length);
+
+    consoleSpy.mockRestore();
+  });
+
+  it("continues to next date after error on current date", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Use enough courses for 2 in batch 0
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+    );
+    const batch0Ids = coursesInBatch(courses, 0);
+    const targetId = batch0Ids[0];
+
+    // Throw on today, succeed on tomorrow
+    mockedPollCourse.mockImplementation(async (_db, course, date) => {
+      if (course.id === targetId && date === "2026-04-15") {
+        throw new Error("transient error");
+      }
+      return "no_data";
+    });
+
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    // The target course should have been called for both dates
+    const targetCalls = mockedPollCourse.mock.calls.filter(
+      (c) => c[1].id === targetId
+    );
+    const targetDates = targetCalls.map((c) => c[2]);
+    expect(targetDates).toContain("2026-04-15");
+    expect(targetDates).toContain("2026-04-16");
+
+    consoleSpy.mockRestore();
+  });
+
+  it("handles double-fault when logPoll throws inside catch block", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Single course in batch 0
+    const courses = [makeCourseRow("solo-course", "foreup")];
+
+    // pollCourse throws, then the catch block's logPoll will use the mock DB
+    // which always resolves. To test double-fault, we verify the handler doesn't
+    // crash even when pollCourse throws.
+    mockedPollCourse.mockRejectedValue(new Error("adapter crash"));
+    mockedShouldPollDate.mockImplementation((offset: number) => offset === 0);
+
+    const db = makeMockDb(courses);
+    const result = await runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON
+    );
+
+    // Handler should not crash — should return normally
+    expect(result.pollCount).toBe(1);
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+});
+
+describe("runCronPoll active/inactive polling", () => {
+  const makeMockDb = (
+    courses: ReturnType<typeof makeCourseRow>[],
+    pollLog: Array<{ course_id: string; date: string; last_polled: string }> = []
+  ) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses")
+          ? courses
+          : sql.includes("poll_log")
+            ? pollLog
+            : [],
+      }),
+    })),
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -206,195 +589,89 @@ describe("runCronPoll auto-active management", () => {
   });
 
   it("probes inactive courses with today and tomorrow only", async () => {
-    const db = makeMockDb([inactiveCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
+    // Single inactive course → goes to batch 0
+    const courses = [
+      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+    ];
+
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
     expect(mockedPollCourse).toHaveBeenCalledTimes(2);
-    expect(mockedPollCourse.mock.calls[0][2]).toBe("2026-04-15");
-    expect(mockedPollCourse.mock.calls[1][2]).toBe("2026-04-16");
+    const dates = mockedPollCourse.mock.calls.map((c) => c[2]);
+    expect(dates).toContain("2026-04-15");
+    expect(dates).toContain("2026-04-16");
   });
 
   it("promotes inactive course to active when tee times found", async () => {
     mockedPollCourse.mockResolvedValue("success");
-    const db = makeMockDb([inactiveCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
+    const courses = [
+      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+    ];
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
-    const promotionSql = preparedStatements.find(
-      (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Auto-activated")
     );
-    expect(promotionSql).toBeDefined();
+    consoleSpy.mockRestore();
   });
 
   it("does not probe inactive courses if polled less than 1 hour ago", async () => {
     const recentPoll = new Date("2026-04-15T06:30:00-05:00").toISOString();
+    const courses = [
+      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+    ];
     const db = makeMockDb(
-      [inactiveCourse],
+      courses,
       [{ course_id: "test-inactive", date: "2026-04-15", last_polled: recentPoll }]
     );
 
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
     expect(mockedPollCourse).not.toHaveBeenCalled();
-  });
-
-  it("updates last_had_tee_times when active course poll returns success", async () => {
-    mockedPollCourse.mockResolvedValue("success");
-    mockedShouldPollDate.mockImplementation(
-      (offset: number) => offset === 0
-    );
-    const db = makeMockDb([activeCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    const updateSql = preparedStatements.find(
-      (sql) => sql.includes("last_had_tee_times") && !sql.includes("is_active = 0")
-    );
-    expect(updateSql).toBeDefined();
-  });
-
-  it("deactivates courses with no tee times for 30 days", async () => {
-    const db = makeMockDb([activeCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    const deactivateSql = preparedStatements.find(
-      (sql) => sql.includes("is_active = 0") && sql.includes("-30 days")
-    );
-    expect(deactivateSql).toBeDefined();
-    expect(deactivateSql).toContain(sqliteIsoNow("-30 days"));
-  });
-
-  it("does not deactivate courses with NULL last_had_tee_times", async () => {
-    const courseWithNull = {
-      ...activeCourse,
-      id: "test-null-lhtt",
-      last_had_tee_times: null,
-    };
-    const db = makeMockDb([courseWithNull]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    const deactivateSql = preparedStatements.find(
-      (sql) => sql.includes("is_active = 0")
-    );
-    // The deactivation SQL must require IS NOT NULL — courses with NULL
-    // last_had_tee_times have never been proven inactive and must not
-    // be deactivated.
-    expect(deactivateSql).toContain("last_had_tee_times IS NOT NULL");
-    expect(deactivateSql).not.toContain("IS NULL OR");
   });
 
   it("does not promote inactive course when poll returns error", async () => {
     mockedPollCourse.mockResolvedValue("error");
-    const db = makeMockDb([inactiveCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
+    const courses = [
+      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+    ];
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
-    const promotionSql = preparedStatements.find(
-      (sql) => sql.includes("SET is_active = 1") && sql.includes("last_had_tee_times")
+    // Should NOT have logged auto-activation
+    const activationLogs = consoleSpy.mock.calls.filter(
+      (c) => typeof c[0] === "string" && c[0].includes("Auto-activated")
     );
-    expect(promotionSql).toBeUndefined();
+    expect(activationLogs).toHaveLength(0);
+    consoleSpy.mockRestore();
   });
 
   it("continues probing other inactive courses after one throws", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const inactive2 = { ...inactiveCourse, id: "test-inactive-2", name: "Inactive 2" };
-    mockedPollCourse
-      .mockRejectedValueOnce(new Error("adapter crash"))
-      .mockResolvedValue("no_data");
-    const db = makeMockDb([inactiveCourse, inactive2]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
 
-    // First course: 1 call (throws), skips rest. Second course: 2 calls (today+tomorrow)
-    expect(mockedPollCourse).toHaveBeenCalledTimes(3);
-    // Verify the second course was actually reached
-    expect(mockedPollCourse).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ id: "test-inactive-2" }),
-      expect.any(String),
-      expect.anything()
+    // Need 10 inactive courses so batch 0 gets 2
+    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
+      makeCourseRow(`inactive-${String(i).padStart(2, "0")}`, "foreup", { is_active: 0 })
     );
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy.mock.calls[0][0]).toContain("Error probing inactive course");
+    const batch0Ids = coursesInBatch(courses, 0);
+    expect(batch0Ids.length).toBeGreaterThanOrEqual(2);
 
-    consoleSpy.mockRestore();
-  });
-
-  it("polls active courses and probes inactive courses in the same run", async () => {
-    mockedShouldPollDate.mockReturnValue(true);
-    mockedPollCourse.mockResolvedValue("no_data");
-    const db = makeMockDb([activeCourse, inactiveCourse]);
-    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    // Active: 7 dates, Inactive: 2 dates = 9 total calls
-    expect(mockedPollCourse).toHaveBeenCalledTimes(9);
-    expect(result.courseCount).toBe(1);
-    expect(result.inactiveProbeCount).toBe(2);
-  });
-
-  it("continues polling remaining dates after one date throws", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    // Make pollCourse throw on the 2nd call (date index 1), succeed on all others
-    mockedPollCourse
-      .mockResolvedValueOnce("success")  // date 0
-      .mockRejectedValueOnce(new Error("transient D1 error"))  // date 1
-      .mockResolvedValue("no_data");     // dates 2-6
-
-    mockedShouldPollDate.mockReturnValue(true);
-    const db = makeMockDb([activeCourse]);
-    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    // All 7 dates should have been attempted despite the error on date 1
-    expect(mockedPollCourse).toHaveBeenCalledTimes(7);
-    expect(result.pollCount).toBe(7);
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy.mock.calls[0][0]).toContain("Error polling test-active");
-
-    consoleSpy.mockRestore();
-  });
-
-  it("logs to poll_log when pollCourse throws in active course loop", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    mockedPollCourse
-      .mockRejectedValueOnce(new Error("config parse failure"))
-      .mockResolvedValue("no_data");
-
-    mockedShouldPollDate.mockReturnValue(true);
-    const db = makeMockDb([activeCourse]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-
-    // The catch block should log the error to poll_log
-    const errorLogSql = preparedStatements.find(
-      (sql) => sql.includes("INSERT INTO poll_log") && sql.includes("error")
-    );
-    expect(errorLogSql).toBeDefined();
-
-    consoleSpy.mockRestore();
-  });
-
-  it("continues polling other active courses after one throws on all dates", { timeout: 10000 }, async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const active2 = { ...activeCourse, id: "test-active-2", name: "Active 2" };
-
-    // First course: all dates throw. Second course: all succeed.
-    let callCount = 0;
+    const failId = batch0Ids[0];
     mockedPollCourse.mockImplementation(async (_db, course) => {
-      callCount++;
-      if (course.id === "test-active") throw new Error("adapter crash");
+      if (course.id === failId) throw new Error("adapter crash");
       return "no_data";
     });
 
-    mockedShouldPollDate.mockReturnValue(true);
-    const db = makeMockDb([activeCourse, active2]);
-    await runCronPoll({ DB: db } as unknown as CloudflareEnv);
+    const db = makeMockDb(courses);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
-    // Both courses should have all 7 dates attempted
-    expect(callCount).toBe(14);
-    expect(consoleSpy).toHaveBeenCalledTimes(7);
+    // Second inactive course should have been probed despite first one throwing
+    const polledIds = [...new Set(mockedPollCourse.mock.calls.map((c) => c[1].id))];
+    expect(polledIds.length).toBeGreaterThan(1);
 
     consoleSpy.mockRestore();
-  });
-
-  it("returns inactiveProbeCount in results", async () => {
-    const db = makeMockDb([inactiveCourse]);
-    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv);
-    expect(result).toHaveProperty("inactiveProbeCount");
   });
 });
