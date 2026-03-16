@@ -54,7 +54,7 @@ describe("ForeUpAdapter", () => {
 
     const [url] = fetchSpy.mock.calls[0];
     expect(url).toContain("foreupsoftware.com");
-    expect(url).toContain("date=2026-04-15");
+    expect(url).toContain("date=04-15-2026");
     expect(url).toContain("time=all");
     expect(url).toContain("holes=0");
     expect(url).toContain("players=0");
