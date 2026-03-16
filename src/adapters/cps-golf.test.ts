@@ -324,7 +324,7 @@ describe("CpsGolfAdapter", () => {
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
       JWT_SECRET: "",
-      AWS_FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
       AWS_ACCESS_KEY_ID: "AKID",
       AWS_SECRET_ACCESS_KEY: "SECRET",
     } satisfies CloudflareEnv;
