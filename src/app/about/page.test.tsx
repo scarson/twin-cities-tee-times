@@ -1,0 +1,79 @@
+// @vitest-environment jsdom
+// ABOUTME: Tests for the About/How It Works page.
+// ABOUTME: Verifies key FAQ content sections are rendered.
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import AboutPage from "./page";
+
+describe("About page", () => {
+  it("renders the page heading", () => {
+    render(<AboutPage />);
+    expect(screen.getByText("How It Works")).toBeDefined();
+  });
+
+  it("includes the polling frequency table", () => {
+    render(<AboutPage />);
+    expect(screen.getByText("Today & tomorrow")).toBeDefined();
+    expect(screen.getByText("4–7 days out")).toBeDefined();
+  });
+
+  it("explains the stale indicator", () => {
+    render(<AboutPage />);
+    expect(
+      screen.getByText(/marked as stale/)
+    ).toBeDefined();
+  });
+
+  it("mentions the Refresh button", () => {
+    render(<AboutPage />);
+    expect(
+      screen.getByText(/hit the/)
+    ).toBeDefined();
+  });
+
+  it("explains that booking is external", () => {
+    render(<AboutPage />);
+    expect(
+      screen.getByText(/link directly to each/)
+    ).toBeDefined();
+  });
+
+  it("explains sharing favorites", () => {
+    render(<AboutPage />);
+    expect(
+      screen.getByText(/Share favorites/)
+    ).toBeDefined();
+  });
+
+  it("explains sign-in is optional", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/never required/)).toBeDefined();
+  });
+
+  it("explains sign-in syncs favorites across devices", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/sync across devices/)).toBeDefined();
+  });
+
+  it("explains what data is collected on sign-in", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/name and email/)).toBeDefined();
+  });
+
+  it("explains how to delete account", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/Delete account/)).toBeDefined();
+  });
+
+  it("explains local favorites survive account deletion", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/local favorites are not affected/)).toBeDefined();
+  });
+
+  it("includes the SD test courses note", () => {
+    render(<AboutPage />);
+    expect(
+      screen.getByText(/San Diego courses are included temporarily/)
+    ).toBeDefined();
+  });
+});
