@@ -5,9 +5,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}"],
-    exclude: ["src/**/*.smoke.test.{ts,tsx}"],
+    include: ["src/**/*.smoke.test.{ts,tsx}"],
+    testTimeout: 30000,
     pool: "forks",
+    fileParallelism: false,
   },
   resolve: {
     alias: {

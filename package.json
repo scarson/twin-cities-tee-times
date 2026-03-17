@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run --pass-with-no-tests",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts --pass-with-no-tests",
     "test:watch": "vitest",
     "preview": "opennextjs-cloudflare build && wrangler dev",
     "deploy": "opennextjs-cloudflare build && wrangler deploy",
