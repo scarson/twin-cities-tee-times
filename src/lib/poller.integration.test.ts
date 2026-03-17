@@ -244,7 +244,8 @@ describe("pipeline integration: poll status and freshness", () => {
       new Response(JSON.stringify(foreupFixture), { status: 200 })
     );
 
-    await pollCourse(db, courseRow, "2026-04-15");
+    const status = await pollCourse(db, courseRow, "2026-04-15");
+    expect(status).toBe("success");
 
     const result = await db.prepare(FRESHNESS_SQL).all<{
       id: string;
@@ -260,7 +261,8 @@ describe("pipeline integration: poll status and freshness", () => {
       new Response(JSON.stringify([]), { status: 200 })
     );
 
-    await pollCourse(db, courseRow, "2026-04-15");
+    const status = await pollCourse(db, courseRow, "2026-04-15");
+    expect(status).toBe("no_data");
 
     const result = await db.prepare(FRESHNESS_SQL).all<{
       id: string;
@@ -274,7 +276,8 @@ describe("pipeline integration: poll status and freshness", () => {
   it("error poll → excluded from freshness", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("network error"));
 
-    await pollCourse(db, courseRow, "2026-04-15");
+    const status = await pollCourse(db, courseRow, "2026-04-15");
+    expect(status).toBe("error");
 
     const result = await db.prepare(FRESHNESS_SQL).all<{
       id: string;
