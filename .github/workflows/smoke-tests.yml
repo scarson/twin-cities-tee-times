@@ -1,0 +1,27 @@
+name: API Smoke Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/adapters/**'
+      - 'src/lib/proxy-fetch.ts'
+      - 'src/types/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.smoke.config.ts'
+      - '.github/workflows/smoke-tests.yml'
+
+jobs:
+  smoke-test:
+    name: Adapter Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run test:smoke
