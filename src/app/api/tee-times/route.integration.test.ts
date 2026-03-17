@@ -1,21 +1,8 @@
 // ABOUTME: Integration tests for the tee-times SQL query with dynamic filter building.
 // ABOUTME: Verifies date, course, time range, holes, minSlots filters, and ordering.
 import { describe, it, expect, beforeEach } from "vitest";
-import { createTestDb, seedCourse } from "@/test/d1-test-helper";
+import { createTestDb, seedCourse, makeTeeTime } from "@/test/d1-test-helper";
 import { upsertTeeTimes } from "@/lib/db";
-import type { TeeTime } from "@/types";
-
-function makeTeeTime(overrides: Partial<TeeTime> = {}): TeeTime {
-  return {
-    courseId: "c1",
-    time: "2026-03-16T08:30:00",
-    price: 45,
-    holes: 18,
-    openSlots: 4,
-    bookingUrl: "https://example.com/book",
-    ...overrides,
-  };
-}
 
 /**
  * Build and execute the same dynamic SQL query as src/app/api/tee-times/route.ts.

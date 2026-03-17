@@ -1,21 +1,8 @@
 // ABOUTME: Integration tests for core db.ts functions against real SQLite.
 // ABOUTME: Covers upsertTeeTimes, logPoll, batch atomicity, FK enforcement, and time parsing.
 import { describe, it, expect, beforeEach } from "vitest";
-import { createTestDb, seedCourse } from "@/test/d1-test-helper";
+import { createTestDb, seedCourse, makeTeeTime } from "@/test/d1-test-helper";
 import { upsertTeeTimes, logPoll } from "./db";
-import type { TeeTime } from "@/types";
-
-function makeTeeTime(overrides: Partial<TeeTime> = {}): TeeTime {
-  return {
-    courseId: "test-course",
-    time: "2026-03-16T08:30:00",
-    price: 45,
-    holes: 18,
-    openSlots: 4,
-    bookingUrl: "https://example.com/book",
-    ...overrides,
-  };
-}
 
 describe("upsertTeeTimes", () => {
   let db: D1Database;

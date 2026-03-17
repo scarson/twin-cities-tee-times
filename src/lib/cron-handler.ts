@@ -217,13 +217,19 @@ export async function runCronPoll(
       }
 
       try {
-        await cleanupOldPolls(db);
+        const deletedPolls = await cleanupOldPolls(db);
+        if (deletedPolls > 0) {
+          console.log(`Cleaned up ${deletedPolls} old poll_log entries`);
+        }
       } catch (err) {
         console.error("poll_log cleanup error:", err);
       }
 
       try {
-        await cleanupExpiredSessions(db);
+        const deletedSessions = await cleanupExpiredSessions(db);
+        if (deletedSessions > 0) {
+          console.log(`Cleaned up ${deletedSessions} expired session(s)`);
+        }
       } catch (err) {
         console.error("session cleanup error:", err);
       }

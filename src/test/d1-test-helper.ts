@@ -3,6 +3,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+import type { TeeTime } from "@/types";
 
 interface BoundStatement {
   first<T = Record<string, unknown>>(): Promise<T | null>;
@@ -168,4 +169,19 @@ export async function seedUser(
     )
     .bind(u.id, u.google_id, u.email, u.name, u.created_at)
     .run();
+}
+
+/**
+ * Create a TeeTime with sensible defaults. Override any field via the overrides param.
+ */
+export function makeTeeTime(overrides: Partial<TeeTime> = {}): TeeTime {
+  return {
+    courseId: "test-course",
+    time: "2026-03-16T08:30:00",
+    price: 45,
+    holes: 18,
+    openSlots: 4,
+    bookingUrl: "https://example.com/book",
+    ...overrides,
+  };
 }
