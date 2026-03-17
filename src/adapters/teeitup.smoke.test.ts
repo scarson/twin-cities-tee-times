@@ -3,11 +3,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TeeItUpAdapter } from "./teeitup";
 import type { CourseConfig, TeeTime } from "@/types";
+import { todayCT } from "@/lib/format";
 
 const testDate = (() => {
-  const d = new Date();
-  d.setDate(d.getDate() + 5);
-  return d.toISOString().split("T")[0];
+  const [y, m, d] = todayCT().split("-").map(Number);
+  const future = new Date(Date.UTC(y, m - 1, d + 5));
+  return future.toISOString().split("T")[0];
 })();
 
 const courses: CourseConfig[] = [

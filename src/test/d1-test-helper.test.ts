@@ -25,6 +25,7 @@ describe("D1 test helper", () => {
     expect(names).toContain("sessions");
     expect(names).toContain("user_favorites");
     expect(names).toContain("booking_clicks");
+    expect(names).toContain("user_settings");
   });
 
   it("first() returns null when no row matches", async () => {
