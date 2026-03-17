@@ -1,5 +1,6 @@
 // ABOUTME: Smoke tests for Teesnap adapter (not yet implemented).
 // ABOUTME: API research not yet conducted.
+import { describe } from "vitest";
 
 describe.todo("Teesnap - live API smoke tests (Mandatory: implement when adapter exists — 3 courses)");
 describe.todo("Teesnap - API contract validation (Mandatory: implement when adapter exists)");

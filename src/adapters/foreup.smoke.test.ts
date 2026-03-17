@@ -80,13 +80,14 @@ describe("ForeUp - API contract validation", () => {
 
   it(
     "Level 2: raw API response matches expected contract",
-    async () => {
+    async (ctx) => {
       const { results } = await fetchWithFallback(adapter);
 
       if (results.length === 0) {
         console.warn(
           "ForeUp Level 2: No tee times available from any test course — skipping contract validation"
         );
+        ctx.skip();
         return;
       }
 
@@ -122,13 +123,14 @@ describe("ForeUp - parsed output validation", () => {
 
   it(
     "Level 3: parsed TeeTime objects have valid fields",
-    async () => {
+    async (ctx) => {
       const { results, config } = await fetchWithFallback(adapter);
 
       if (results.length === 0) {
         console.warn(
           "ForeUp Level 3: No tee times available from any test course — skipping output validation"
         );
+        ctx.skip();
         return;
       }
 
