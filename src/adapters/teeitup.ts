@@ -5,9 +5,11 @@ import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 interface TeeItUpRate {
   holes: number;
   trade?: boolean;
-  greenFeeWalking: number;
+  greenFeeWalking?: number;
+  greenFeeCart?: number;
   promotion?: {
-    greenFeeWalking: number;
+    greenFeeWalking?: number;
+    greenFeeCart?: number;
   };
 }
 
@@ -53,12 +55,17 @@ export class TeeItUpAdapter implements PlatformAdapter {
         .filter((tt) => tt.maxPlayers > 0 && tt.rates.length > 0)
         .map((tt) => {
           const rate = tt.rates.find((r) => !r.trade) ?? tt.rates[0];
-          const priceInCents = rate.promotion?.greenFeeWalking ?? rate.greenFeeWalking;
+          const priceInCents =
+            rate.promotion?.greenFeeWalking ??
+            rate.promotion?.greenFeeCart ??
+            rate.greenFeeWalking ??
+            rate.greenFeeCart ??
+            null;
 
           return {
             courseId: config.id,
             time: this.toLocalIso(tt.teetime, timezone ?? "America/Chicago"),
-            price: priceInCents / 100,
+            price: priceInCents !== null ? priceInCents / 100 : null,
             holes: rate.holes === 9 ? 9 : 18,
             openSlots: tt.maxPlayers,
             bookingUrl: config.bookingUrl,
