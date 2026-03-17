@@ -82,3 +82,42 @@ export function sqliteIsoNow(modifier?: string): string {
   }
   return "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
 }
+
+/**
+ * Delete poll_log entries older than 7 days.
+ * Returns the number of deleted rows.
+ */
+export async function cleanupOldPolls(db: D1Database): Promise<number> {
+  const result = await db
+    .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
+    .run();
+  return result.meta.changes;
+}
+
+/**
+ * Deactivate courses that haven't had tee times for 30+ days.
+ * Courses with NULL last_had_tee_times are NOT deactivated (never checked yet).
+ * Returns the number of deactivated courses.
+ */
+export async function deactivateStaleCourses(db: D1Database): Promise<number> {
+  const result = await db
+    .prepare(
+      `UPDATE courses SET is_active = 0
+       WHERE is_active = 1
+         AND last_had_tee_times IS NOT NULL
+         AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
+    )
+    .run();
+  return result.meta.changes;
+}
+
+/**
+ * Delete sessions past their expiration time.
+ * Returns the number of deleted sessions.
+ */
+export async function cleanupExpiredSessions(db: D1Database): Promise<number> {
+  const result = await db
+    .prepare(`DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`)
+    .run();
+  return result.meta.changes;
+}

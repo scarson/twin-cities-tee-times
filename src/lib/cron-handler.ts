@@ -1,7 +1,7 @@
 // ABOUTME: Cron polling orchestrator that distributes courses across 5 batched invocations.
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
-import { sqliteIsoNow, logPoll } from "@/lib/db";
+import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
 import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
@@ -208,33 +208,22 @@ export async function runCronPoll(
     // --- Housekeeping: batch 0 only ---
     if (batchIndex === 0) {
       try {
-        const deactivated = await db
-          .prepare(
-            `UPDATE courses SET is_active = 0
-             WHERE is_active = 1
-               AND last_had_tee_times IS NOT NULL
-               AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
-          )
-          .run();
-        if (deactivated.meta?.changes && deactivated.meta.changes > 0) {
-          console.log(`Auto-deactivated ${deactivated.meta.changes} course(s): no tee times for 30 days`);
+        const deactivatedCount = await deactivateStaleCourses(db);
+        if (deactivatedCount > 0) {
+          console.log(`Auto-deactivated ${deactivatedCount} course(s): no tee times for 30 days`);
         }
       } catch (err) {
         console.error("Auto-deactivation error:", err);
       }
 
       try {
-        await db
-          .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
-          .run();
+        await cleanupOldPolls(db);
       } catch (err) {
         console.error("poll_log cleanup error:", err);
       }
 
       try {
-        await db
-          .prepare(`DELETE FROM sessions WHERE expires_at < ${sqliteIsoNow()}`)
-          .run();
+        await cleanupExpiredSessions(db);
       } catch (err) {
         console.error("session cleanup error:", err);
       }
