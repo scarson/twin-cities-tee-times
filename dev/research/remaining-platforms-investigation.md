@@ -156,36 +156,24 @@ All POST endpoints send JSON with the `dbname` as a parameter. The exact request
 
 ## CPS Golf V4 / ProphetServices (Brookview)
 
-**Status: Deferred** — requires Lambda proxy and separate adapter work.
+**Status: Implemented** — uses `brookview.cps.golf` with V4 apiKey auth.
 
-### Background
-Brookview Golf Course (Golden Valley) uses CPS Golf's legacy **V4** self-hosted system, not the V5 cloud platform (`*.cps.golf`) our adapter targets. The `brookview.cps.golf` domain exists but only serves the V4 SPA shell — the V5 API endpoints (`/identityapi/`, `/onlineres/onlineapi/`) return 404/401.
+### Resolution
+The initial investigation focused on `secure.east.prophetservices.com` (which is behind AWS WAF). Later discovery found that `brookview.cps.golf` serves the V4 API and works with the same shared V4 apiKey (`CPS_V4_API_KEY` secret) used by Edinburgh USA, Oak Glen, Victory Links, and Gem Lake Hills. No proxy or WAF workaround needed.
 
-### API Base
-`https://secure.east.prophetservices.com/BrookviewGCv3/`
+### Courses
+- Brookview Regulation (courseIds 1,2) — 18-hole
+- Brookview Par-3 (courseId 3)
+- websiteId: `00000000-0000-0000-0000-000000000000` (zeroed GUID from Configuration endpoint)
 
-Par-3 course variant: `https://secure.east.prophetservices.com/BrookviewGCv3Par3/`
-
-### Booking URLs (from Brookview website)
-- Regulation: `https://secure.east.prophetservices.com/BrookviewGCv3/(S(...))/Home/nIndex?CourseId=1,2&Date=...`
-- Par-3: `https://secure.east.prophetservices.com/BrookviewGCv3Par3/(S(...))/Home/nIndex?CourseId=3&Date=...`
-
-### Access Challenges
-1. **AWS WAF** — The ProphetServices API sits behind an AWS WAF challenge (`x-amzn-waf-action: challenge`, HTTP 202). Direct HTTP requests are blocked.
-2. **ASP.NET session auth** — URLs contain `(S(xxxxx))` session segments. API requires an active session cookie.
-3. **V4 API differs from V5** — Even if WAF is bypassed (e.g., via Lambda proxy), the V4 API structure (`/onlinereswebapi/api/OnlineRes/GetAllOptions`) is different from the V5 endpoints our CpsGolfAdapter uses.
-
-### Chronogolf Fallback?
-Brookview has a Chronogolf profile (club ID 8336) but `online_booking_enabled: false`. Not usable.
-
-### Feasibility
-Could potentially work via the Lambda fetch proxy (add `.prophetservices.com` to `ALLOWED_HOSTS`), but would require reverse-engineering the V4 API and building a separate adapter or V4 variant.
+### Note
+Brookview's V4 endpoint requires transaction registration (unlike some other V4 courses). The CPS Golf adapter was updated to always register transactions for V4 courses.
 
 ---
 
 ## GolfNow (Ft. Snelling)
 
-**Status: Deferred** — API not yet investigated.
+**Status: Deferred (API requires affiliate credentials)** — Ft. Snelling added as catalog-only with GolfNow booking link.
 
 ### Background
 Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its primary booking platform, unlike the other Mpls Park Board courses which use CPS Golf V5.
@@ -196,29 +184,31 @@ Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its pri
 - **Course website:** `https://www.minneapolisparks.org/golf/courses/fort_snelling_golf_club/`
 - **API base (unverified):** `api.gnsvc.com`
 
+### API Investigation (2026-03-27)
+Two APIs exist:
+1. **Official Affiliate API** (`api.gnsvc.com/rest`) — full tee time data, but requires registered affiliate credentials (registration at `affiliate.gnsvc.com`). Returns 401 without credentials.
+2. **Website API** (`www.golfnow.com/api/...`) — POST endpoints behind Cloudflare bot management (JS challenge). Not usable from server-side code.
+
+A **summaries-only endpoint** works without auth: `GET /api/tee-times/tee-times/facility/{facilityId}/summaries/from/{dateMin}/to/{dateMax}` — returns per-day counts and price ranges, but not individual tee times.
+
+### Resolution
+Ft. Snelling added to catalog with `disabled: 1` and `displayNotes` linking to GolfNow. No adapter built. Individual tee times would require affiliate API credentials.
+
 ### Notes
 - GolfNow is a marketplace/aggregator (NBC Sports). Several other TC courses also list on GolfNow as a secondary channel.
 - 6 TC courses appear to use GolfNow as their primary booking system (see `tc-courses-platforms.md`).
-- The `api.gnsvc.com` API has not been investigated. May require authentication or have anti-scraping protections given GolfNow's commercial nature.
 
 ---
 
 ## TeeWire (Inver Wood)
 
-**Status: Deferred** — new platform, no API research.
+**Status: Implemented** — adapter built, Inver Wood onboarded.
 
 ### Background
-Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp based on March 2026 research. As of late March 2026, the course uses **TeeWire** (`teewire.app`), not TeeItUp. The old TeeItUp URL (`inverwood-golf-course.book.teeitup.golf`) returns 403 Forbidden.
+Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp but switched to TeeWire. Full API details in `dev/research/teewire-platform-investigation.md`.
 
-### Known Info
-- **TeeWire booking URL:** `https://teewire.app/inverwood`
-- **Course website:** [inverwood golf course website]
-- **Holes:** 27 (18-hole championship + 9-hole executive)
-- **Old TeeItUp URL (dead):** `https://inverwood-golf-course.book.teeitup.golf` → 403
-
-### Notes
-- TeeWire appears to be a newer/less common tee time booking platform. No API investigation has been conducted.
-- The platform switch from TeeItUp to TeeWire likely happened between the March 8 research and March 26 discovery.
+### Resolution
+TeeWire adapter built. Clean public JSON API, no auth needed (just a User-Agent header). Two courses added: Championship 18 (calendarId 3) and Executive 9 (calendarId 16).
 - Bluff Creek Golf Course was also originally listed as TeeItUp but is actually on Chronogolf.
 
 ---
@@ -233,8 +223,8 @@ Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged 
 | Chronogolf | x-csrf-token (session) | REST GET, JSON | No* | Medium | Needs adapter |
 | Eagle Club | None (dbname param) | REST POST, JSON | No | Low-Medium | Needs adapter |
 | CPS Golf (V4) | ASP.NET session + WAF | REST GET, JSON | No** | High | Deferred |
-| GolfNow | Unknown | Unknown | Unknown | Unknown | Deferred |
-| TeeWire | Unknown | Unknown | Unknown | Unknown | Deferred |
+| TeeWire | User-Agent header only | REST GET, JSON | No | Low | Adapter built |
+| GolfNow | Affiliate credentials | REST GET/POST, JSON | No* | High | Deferred (credentials) |
 
 *Chronogolf may require fetching a page first to obtain the CSRF token, or there may be a token-free endpoint. Needs spring verification.
 
@@ -242,4 +232,4 @@ Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged 
 
 ## Conclusion
 
-The 5 original platforms (CPS Golf V5, ForeUp, TeeItUp, Chronogolf, Eagle Club) are confirmed accessible via plain HTTP. Three additional platforms (CPS Golf V4/ProphetServices, GolfNow, TeeWire) have been identified but deferred due to access challenges or lack of API research.
+The 5 original platforms (CPS Golf V5, ForeUp, TeeItUp, Chronogolf, Eagle Club) are confirmed accessible via plain HTTP. CPS Golf V4 (Brookview) and TeeWire (Inver Wood) have been implemented. GolfNow (Ft. Snelling) requires affiliate API credentials — added as catalog-only with booking link.
