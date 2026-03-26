@@ -741,7 +741,7 @@ describe("runCronPoll SQL verification", () => {
     await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
     const courseQuery = db.prepare.mock.calls.find(
-      ([sql]: [string]) => sql.includes("FROM courses")
+      (args) => (args[0] as string).includes("FROM courses")
     );
     expect(courseQuery).toBeDefined();
     expect(courseQuery![0]).toContain("disabled = 0");
@@ -754,7 +754,7 @@ describe("runCronPoll SQL verification", () => {
     await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
     const updateCall = db.prepare.mock.calls.find(
-      ([sql]: [string]) => sql.includes("last_had_tee_times")
+      (args) => (args[0] as string).includes("last_had_tee_times")
     );
     expect(updateCall).toBeDefined();
     expect(updateCall![0]).toContain("UPDATE courses SET last_had_tee_times");
@@ -767,7 +767,7 @@ describe("runCronPoll SQL verification", () => {
     await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
     const updateCall = db.prepare.mock.calls.find(
-      ([sql]: [string]) => sql.includes("SET last_had_tee_times")
+      (args) => (args[0] as string).includes("SET last_had_tee_times")
     );
     expect(updateCall).toBeUndefined();
   });
@@ -781,7 +781,7 @@ describe("runCronPoll SQL verification", () => {
     await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
 
     const activateCall = db.prepare.mock.calls.find(
-      ([sql]: [string]) => sql.includes("SET is_active = 1")
+      (args) => (args[0] as string).includes("SET is_active = 1")
     );
     expect(activateCall).toBeDefined();
     expect(activateCall![0]).toContain("last_had_tee_times");
