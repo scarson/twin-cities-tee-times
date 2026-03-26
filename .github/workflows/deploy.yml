@@ -29,6 +29,10 @@ jobs:
           key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
           restore-keys: |
             nextjs-${{ hashFiles('package-lock.json') }}-
+      - name: Set build metadata
+        run: |
+          echo "NEXT_PUBLIC_BUILD_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - run: npx @opennextjs/cloudflare build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
