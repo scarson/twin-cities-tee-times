@@ -37,6 +37,7 @@ export interface CourseRow {
   booking_url: string;
   is_active: number; // SQLite boolean
   disabled: number; // SQLite boolean — manual override, never changed by cron
+  display_notes: string | null;
   last_had_tee_times: string | null;
 }
 

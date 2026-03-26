@@ -27,6 +27,7 @@ function makeCourseRow(overrides: Partial<CourseRow> = {}): CourseRow {
     booking_url: "https://example.com/book",
     is_active: 1,
     disabled: 0,
+    display_notes: null,
     last_had_tee_times: null,
     ...overrides,
   };

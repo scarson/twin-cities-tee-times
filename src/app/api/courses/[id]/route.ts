@@ -15,7 +15,7 @@ export async function GET(
   try {
     const course = await db
       .prepare(
-        `SELECT c.id, c.name, c.city, c.platform, c.booking_url, c.is_active,
+        `SELECT c.id, c.name, c.city, c.platform, c.booking_url, c.is_active, c.display_notes,
                 p.polled_at as last_polled,
                 p.status as last_poll_status
          FROM courses c

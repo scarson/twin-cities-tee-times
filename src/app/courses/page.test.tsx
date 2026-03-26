@@ -12,6 +12,7 @@ vi.mock("@/config/courses.json", () => ({
     { id: "course-b", name: "Bravo Links", city: "St. Paul", bookingUrl: "https://example.com/b" },
     { id: "course-c", name: "Charlie Greens", city: "Minneapolis", bookingUrl: "https://example.com/c" },
     { id: "course-d", name: "Disabled Course", city: "Minneapolis", bookingUrl: "https://example.com/d", disabled: 1 },
+    { id: "course-e", name: "Notes Course", city: "Minneapolis", bookingUrl: "https://example.com/e", disabled: 1, displayNotes: "Book on their website" },
   ],
 }));
 
@@ -76,6 +77,11 @@ describe("CoursesPage", () => {
     expect(screen.getByText("Alpha Golf Club")).toBeDefined();
     expect(screen.getByText("Bravo Links")).toBeDefined();
     expect(screen.getByText("Charlie Greens")).toBeDefined();
+  });
+
+  it("shows disabled course with displayNotes", () => {
+    render(<CoursesPage />);
+    expect(screen.getByText("Notes Course")).toBeDefined();
   });
 
   it("hides area groups with no matching courses during search", () => {

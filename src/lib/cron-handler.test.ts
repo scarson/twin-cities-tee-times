@@ -29,6 +29,7 @@ function makeCourseRow(
     booking_url: "https://example.com",
     is_active: overrides.is_active ?? 1,
     disabled: 0,
+    display_notes: null,
     last_had_tee_times: overrides.last_had_tee_times ?? null,
   };
 }

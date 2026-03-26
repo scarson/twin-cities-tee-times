@@ -340,20 +340,29 @@ describe("CpsGolfAdapter", () => {
       CPS_V4_API_KEY: "test-v4-api-key",
     } satisfies CloudflareEnv;
 
-    it("skips token and transaction, uses apiKey header directly", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-        new Response(JSON.stringify(fixture), { status: 200 })
-      );
+    it("skips token but registers transaction for v4 courses", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response(JSON.stringify(true), { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(fixture), { status: 200 })
+        );
 
       const results = await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4Env);
 
-      // Only 1 fetch call (TeeTimes), not 3 (token + register + TeeTimes)
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-      const [url, init] = fetchSpy.mock.calls[0];
-      expect(url).toContain("/TeeTimes?");
-      expect(url).not.toContain("transactionId");
-      expect((init as RequestInit).headers).toHaveProperty("x-apikey", "test-v4-api-key");
-      expect((init as RequestInit).headers).toHaveProperty("client-id", "js1");
+      // 2 fetch calls (register + TeeTimes), not 3 (no token)
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+      // Call 1: register transaction
+      const [registerUrl, registerInit] = fetchSpy.mock.calls[0];
+      expect(registerUrl).toContain("/RegisterTransactionId");
+      expect((registerInit as RequestInit).headers).toHaveProperty("x-apikey", "test-v4-api-key");
+
+      // Call 2: tee times with transactionId
+      const [ttUrl, ttInit] = fetchSpy.mock.calls[1];
+      expect(ttUrl).toContain("/TeeTimes?");
+      expect(ttUrl).toContain("transactionId=");
+      expect((ttInit as RequestInit).headers).toHaveProperty("x-apikey", "test-v4-api-key");
+      expect((ttInit as RequestInit).headers).toHaveProperty("client-id", "js1");
       expect(results).toHaveLength(3);
     });
 
@@ -366,22 +375,32 @@ describe("CpsGolfAdapter", () => {
       } satisfies CloudflareEnv;
 
       vi.spyOn(globalThis, "fetch");
-      vi.mocked(proxyFetch).mockResolvedValueOnce({
-        status: 200,
-        headers: {},
-        body: JSON.stringify(fixture),
-      });
+      vi.mocked(proxyFetch)
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(true),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(fixture),
+        });
 
       const results = await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4ProxyEnv);
 
-      // v4 + proxy: only 1 proxyFetch call (TeeTimes), no token or transaction
-      expect(proxyFetch).toHaveBeenCalledTimes(1);
+      // v4 + proxy: 2 proxyFetch calls (register + TeeTimes), no token
+      expect(proxyFetch).toHaveBeenCalledTimes(2);
       expect(fetch).not.toHaveBeenCalled();
-      const proxyCall = vi.mocked(proxyFetch).mock.calls[0][0];
-      expect(proxyCall.url).toContain("/TeeTimes?");
-      expect(proxyCall.url).not.toContain("transactionId");
-      expect(proxyCall.headers).toHaveProperty("x-apikey", "test-v4-api-key");
-      expect(proxyCall.headers).toHaveProperty("client-id", "js1");
+
+      const registerCall = vi.mocked(proxyFetch).mock.calls[0][0];
+      expect(registerCall.url).toContain("/RegisterTransactionId");
+
+      const ttCall = vi.mocked(proxyFetch).mock.calls[1][0];
+      expect(ttCall.url).toContain("/TeeTimes?");
+      expect(ttCall.url).toContain("transactionId=");
+      expect(ttCall.headers).toHaveProperty("x-apikey", "test-v4-api-key");
+      expect(ttCall.headers).toHaveProperty("client-id", "js1");
       expect(results).toHaveLength(3);
     });
 

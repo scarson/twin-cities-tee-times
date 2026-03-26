@@ -17,6 +17,7 @@ interface CatalogCourse {
   address?: string;
   bookingUrl: string;
   disabled?: number;
+  displayNotes?: string;
 }
 
 function getCollapsedAreas(): string[] {
@@ -55,7 +56,7 @@ function CourseBrowser() {
   }, []);
 
   const visibleCourses = (courseCatalog as CatalogCourse[]).filter((c) => {
-    if (c.disabled) return false;
+    if (c.disabled && !c.displayNotes) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q);

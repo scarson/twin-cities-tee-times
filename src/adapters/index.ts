@@ -6,6 +6,7 @@ import { CpsGolfAdapter } from "./cps-golf";
 import { EagleClubAdapter } from "./eagle-club";
 import { ForeUpAdapter } from "./foreup";
 import { TeeItUpAdapter } from "./teeitup";
+import { TeeWireAdapter } from "./teewire";
 
 const adapters: PlatformAdapter[] = [
   new CpsGolfAdapter(),
@@ -13,6 +14,7 @@ const adapters: PlatformAdapter[] = [
   new TeeItUpAdapter(),
   new ChronogolfAdapter(),
   new EagleClubAdapter(),
+  new TeeWireAdapter(),
 ];
 
 const adapterMap = new Map(adapters.map((a) => [a.platformId, a]));
