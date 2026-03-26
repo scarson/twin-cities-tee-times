@@ -504,12 +504,11 @@
     "city": "Anoka",
     "state": "MN",
     "address": "2800 Greenhaven Rd, Anoka, MN 55303",
-    "is_active": 0,
-    "platform": "chronogolf",
+    "platform": "foreup",
     "platformConfig": {
-      "clubSlug": "greenhaven-golf-course",
-      "courseId": "936ec61e-7e1b-4de3-b465-3f53ec0918da"
+      "facilityId": "21694",
+      "scheduleId": "8609"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/greenhaven-golf-course#teetimes"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21694/8609"
   }
 ]
