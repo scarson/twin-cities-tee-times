@@ -2,6 +2,7 @@
 // ABOUTME: Rendering tests for the courses page component.
 // ABOUTME: Verifies disabled course filtering, visible courses, and area grouping.
 
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 

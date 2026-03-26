@@ -2,6 +2,7 @@
 // ABOUTME: Rendering tests for the TeeTimeList component.
 // ABOUTME: Verifies loading/empty states, price/slot formatting, links, and booking buttons.
 
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 
@@ -85,7 +86,7 @@ describe("TeeTimeList rendering", () => {
 
   it("omits nines label when nines is undefined", () => {
     const tt = makeTeeTimeItem();
-    delete (tt as Record<string, unknown>).nines;
+    delete (tt as unknown as Record<string, unknown>).nines;
     render(<TeeTimeList teeTimes={[tt]} loading={false} />);
     expect(screen.getByText("18 holes")).toBeDefined();
   });
