@@ -17,7 +17,8 @@ const COURSES_LIST_SQL = `
     WHERE polled_at > ${sqliteIsoNow("-24 hours")}
       AND status IN ('success', 'no_data')
   ) p ON c.id = p.course_id AND p.rn = 1
-  ORDER BY c.name
+  WHERE c.disabled = 0
+  ORDER BY c.state DESC, c.name ASC
 `;
 
 describe("courses list query", () => {
@@ -94,5 +95,26 @@ describe("courses list query", () => {
     const c1 = result.results.find((r) => r.id === "c1");
     expect(c1!.last_polled).toBeNull();
     expect(c1!.last_poll_status).toBeNull();
+  });
+
+  it("excludes disabled courses from results", async () => {
+    await seedCourse(db, { id: "c1", name: "Active Course", disabled: 0 });
+    await seedCourse(db, { id: "c2", name: "Disabled Course", disabled: 1 });
+
+    const result = await db.prepare(COURSES_LIST_SQL).all<{ id: string }>();
+
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].id).toBe("c1");
+  });
+
+  it("sorts MN courses before CA courses", async () => {
+    await seedCourse(db, { id: "ca1", name: "Alpha", state: "CA" });
+    await seedCourse(db, { id: "mn1", name: "Zulu", state: "MN" });
+
+    const result = await db.prepare(COURSES_LIST_SQL).all<{ id: string }>();
+
+    expect(result.results).toHaveLength(2);
+    expect(result.results[0].id).toBe("mn1");
+    expect(result.results[1].id).toBe("ca1");
   });
 });

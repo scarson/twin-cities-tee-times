@@ -20,10 +20,10 @@ async function queryTeeTimes(
   }
 ) {
   let query = `
-    SELECT t.*, c.name as course_name, c.city as course_city
+    SELECT t.*, c.name as course_name, c.city as course_city, c.state as course_state
     FROM tee_times t
     JOIN courses c ON t.course_id = c.id
-    WHERE t.date = ?
+    WHERE t.date = ? AND c.disabled = 0
   `;
   const bindings: unknown[] = [params.date];
 
@@ -53,7 +53,7 @@ async function queryTeeTimes(
     bindings.push(parseInt(params.minSlots));
   }
 
-  query += " ORDER BY t.time ASC";
+  query += " ORDER BY c.state DESC, t.time ASC";
 
   return db.prepare(query).bind(...bindings).all<{
     course_id: string;
@@ -63,6 +63,7 @@ async function queryTeeTimes(
     holes: number;
     open_slots: number;
     course_name: string;
+    course_state: string;
   }>();
 }
 
@@ -193,5 +194,45 @@ describe("tee-times query", () => {
 
     const result = await queryTeeTimes(db, { date: "2026-03-16", minSlots: "3" });
     expect(result.results).toHaveLength(2);
+  });
+
+  it("excludes tee times from disabled courses", async () => {
+    await seedCourse(db, { id: "c3", name: "Charlie", disabled: 1 });
+    await upsertTeeTimes(db, "c1", "2026-03-16", [
+      makeTeeTime({ time: "2026-03-16T08:00:00" }),
+    ], new Date().toISOString());
+    await upsertTeeTimes(db, "c3", "2026-03-16", [
+      makeTeeTime({ courseId: "c3", time: "2026-03-16T09:00:00" }),
+    ], new Date().toISOString());
+
+    const result = await queryTeeTimes(db, { date: "2026-03-16" });
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].course_id).toBe("c1");
+  });
+
+  it("sorts by state DESC then time ASC", async () => {
+    await seedCourse(db, { id: "ca1", name: "Cali Course", state: "CA" });
+    await upsertTeeTimes(db, "ca1", "2026-03-16", [
+      makeTeeTime({ courseId: "ca1", time: "2026-03-16T07:00:00" }),
+    ], new Date().toISOString());
+    await upsertTeeTimes(db, "c1", "2026-03-16", [
+      makeTeeTime({ time: "2026-03-16T09:00:00" }),
+    ], new Date().toISOString());
+
+    const result = await queryTeeTimes(db, { date: "2026-03-16" });
+    expect(result.results).toHaveLength(2);
+    expect(result.results[0].course_id).toBe("c1");
+    expect(result.results[0].course_state).toBe("MN");
+    expect(result.results[1].course_id).toBe("ca1");
+    expect(result.results[1].course_state).toBe("CA");
+  });
+
+  it("includes course_state in results", async () => {
+    await upsertTeeTimes(db, "c1", "2026-03-16", [
+      makeTeeTime({ time: "2026-03-16T08:00:00" }),
+    ], new Date().toISOString());
+
+    const result = await queryTeeTimes(db, { date: "2026-03-16" });
+    expect(result.results[0].course_state).toBe("MN");
   });
 });
