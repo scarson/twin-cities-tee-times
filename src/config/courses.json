@@ -122,8 +122,8 @@
   },
   {
     "index": 11,
-    "id": "oak-glen",
-    "name": "Oak Glen",
+    "id": "oak-glen-championship",
+    "name": "Oak Glen Championship",
     "city": "Stillwater",
     "state": "MN",
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
@@ -131,7 +131,23 @@
     "platformConfig": {
       "subdomain": "oakglen",
       "websiteId": "9f317850-4f93-426f-7b46-08d8e820791e",
-      "courseIds": "6,7",
+      "courseIds": "6",
+      "authType": "v4"
+    },
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
+  },
+  {
+    "index": 36,
+    "id": "oak-glen-executive",
+    "name": "Oak Glen Executive",
+    "city": "Stillwater",
+    "state": "MN",
+    "address": "1599 McKusick Rd N, Stillwater, MN 55082",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "oakglen",
+      "websiteId": "9f317850-4f93-426f-7b46-08d8e820791e",
+      "courseIds": "7",
       "authType": "v4"
     },
     "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
@@ -147,7 +163,22 @@
     "platformConfig": {
       "subdomain": "highlandnationalmn",
       "websiteId": "482d82a7-43b7-45f5-62af-08d8eb0c3cdf",
-      "courseIds": "3,4"
+      "courseIds": "3"
+    },
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
+  },
+  {
+    "index": 37,
+    "id": "highland-9",
+    "name": "Highland 9-Hole",
+    "city": "St. Paul",
+    "state": "MN",
+    "address": "1403 Montreal Ave, St. Paul, MN 55116",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "highlandnationalmn",
+      "websiteId": "482d82a7-43b7-45f5-62af-08d8eb0c3cdf",
+      "courseIds": "4"
     },
     "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
   },
@@ -184,8 +215,8 @@
   },
   {
     "index": 6,
-    "id": "gem-lake-hills",
-    "name": "Gem Lake Hills",
+    "id": "gem-lake-executive",
+    "name": "Gem Lake Executive",
     "city": "White Bear Lake",
     "state": "MN",
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
@@ -193,7 +224,23 @@
     "platformConfig": {
       "subdomain": "gem",
       "websiteId": "678ba294-347e-4beb-0048-08d8e81dbf0f",
-      "courseIds": "8,9",
+      "courseIds": "9",
+      "authType": "v4"
+    },
+    "bookingUrl": "https://gem.cps.golf/onlineresweb"
+  },
+  {
+    "index": 38,
+    "id": "gem-lake-par3",
+    "name": "Gem Lake Par-3",
+    "city": "White Bear Lake",
+    "state": "MN",
+    "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "gem",
+      "websiteId": "678ba294-347e-4beb-0048-08d8e81dbf0f",
+      "courseIds": "8",
       "authType": "v4"
     },
     "bookingUrl": "https://gem.cps.golf/onlineresweb"
