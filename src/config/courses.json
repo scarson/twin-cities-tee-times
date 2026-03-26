@@ -243,6 +243,19 @@
     "bookingUrl": "https://pioneercreek.cps.golf/onlineresweb"
   },
   {
+    "index": 35,
+    "id": "valleywood",
+    "name": "Valleywood",
+    "city": "Apple Valley",
+    "state": "MN",
+    "address": "4851 McAndrews Rd, Apple Valley, MN 55124",
+    "platform": "eagle_club",
+    "platformConfig": {
+      "dbname": "mnvalleywood20250115"
+    },
+    "bookingUrl": "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115"
+  },
+  {
     "index": 14,
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",

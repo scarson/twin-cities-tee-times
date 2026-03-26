@@ -3,6 +3,7 @@
 import type { PlatformAdapter } from "@/types";
 import { ChronogolfAdapter } from "./chronogolf";
 import { CpsGolfAdapter } from "./cps-golf";
+import { EagleClubAdapter } from "./eagle-club";
 import { ForeUpAdapter } from "./foreup";
 import { TeeItUpAdapter } from "./teeitup";
 
@@ -11,6 +12,7 @@ const adapters: PlatformAdapter[] = [
   new ForeUpAdapter(),
   new TeeItUpAdapter(),
   new ChronogolfAdapter(),
+  new EagleClubAdapter(),
 ];
 
 const adapterMap = new Map(adapters.map((a) => [a.platformId, a]));
