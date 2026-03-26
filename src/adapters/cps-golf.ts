@@ -1,5 +1,5 @@
 // ABOUTME: CPS Golf (Club Prophet) platform adapter for fetching tee times.
-// ABOUTME: Handles v5 OAuth2 auth flow, transaction registration, and response parsing.
+// ABOUTME: Supports v5 (bearer token + transaction) and v4 (apiKey header) auth flows.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
@@ -35,23 +35,16 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     const baseUrl = `https://${subdomain}.cps.golf/onlineres/onlineapi/api/v1/onlinereservation`;
     const timezone = config.platformConfig.timezone ?? "America/Chicago";
+    const isV4 = config.platformConfig.authType === "v4";
 
     const proxy = this.getProxyConfig(env);
-    const token = await this.getToken(subdomain, proxy);
-    const headers = this.buildHeaders(config, token, timezone);
-    const transactionId = await this.registerTransaction(
-      baseUrl,
-      token,
-      headers,
-      proxy
-    );
 
+    let headers: Record<string, string>;
     const searchDate = this.formatCpsDate(date, timezone);
 
     const params = new URLSearchParams({
       searchDate,
       courseIds: config.platformConfig.courseIds ?? "",
-      transactionId,
       holes: "0",
       numberOfPlayer: "0",
       searchTimeType: "0",
@@ -65,6 +58,24 @@ export class CpsGolfAdapter implements PlatformAdapter {
       memberStoreId: "1",
       searchType: "1",
     });
+
+    if (isV4) {
+      const apiKey = env?.CPS_V4_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing CPS_V4_API_KEY secret for v4 auth");
+      }
+      headers = this.buildV4Headers(config, apiKey, timezone);
+    } else {
+      const token = await this.getToken(subdomain, proxy);
+      headers = this.buildHeaders(config, token, timezone);
+      const transactionId = await this.registerTransaction(
+        baseUrl,
+        token,
+        headers,
+        proxy
+      );
+      params.set("transactionId", transactionId);
+    }
 
     const response = await this.doFetch(`${baseUrl}/TeeTimes?${params}`, {
       method: "GET",
@@ -201,6 +212,28 @@ export class CpsGolfAdapter implements PlatformAdapter {
       signal: AbortSignal.timeout(10000),
     });
     return { ok: response.ok, status: response.status, json: () => response.json() };
+  }
+
+  private buildV4Headers(
+    config: CourseConfig,
+    apiKey: string,
+    timezone: string
+  ): Record<string, string> {
+    const { websiteId, siteId, terminalId } = config.platformConfig;
+
+    return {
+      "x-apikey": apiKey,
+      "client-id": "js1",
+      ...(websiteId && { "x-websiteid": websiteId }),
+      ...(siteId && { "x-siteid": siteId }),
+      ...(terminalId && { "x-terminalid": terminalId }),
+      "x-componentid": "1",
+      "x-moduleid": "7",
+      "x-productid": "1",
+      "x-ismobile": "false",
+      "x-timezone-offset": String(this.getTimezoneOffset(timezone)),
+      "x-timezoneid": timezone,
+    };
   }
 
   private buildHeaders(

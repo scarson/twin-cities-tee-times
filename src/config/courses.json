@@ -115,7 +115,8 @@
     "platformConfig": {
       "subdomain": "edinburghusa",
       "websiteId": "7b2c1b2a-acee-4ba4-e72a-08dc2c96d123",
-      "courseIds": "1,2"
+      "courseIds": "1,2",
+      "authType": "v4"
     },
     "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb"
   },
@@ -130,7 +131,8 @@
     "platformConfig": {
       "subdomain": "oakglen",
       "websiteId": "9f317850-4f93-426f-7b46-08d8e820791e",
-      "courseIds": "6,7"
+      "courseIds": "6,7",
+      "authType": "v4"
     },
     "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
   },
@@ -175,7 +177,8 @@
     "platformConfig": {
       "subdomain": "victorylinksmn",
       "websiteId": "8d523b1a-4286-4fb5-6798-08d946c25b4a",
-      "courseIds": "6,7"
+      "courseIds": "6,7",
+      "authType": "v4"
     },
     "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb"
   },
@@ -190,7 +193,8 @@
     "platformConfig": {
       "subdomain": "gem",
       "websiteId": "678ba294-347e-4beb-0048-08d8e81dbf0f",
-      "courseIds": "8,9"
+      "courseIds": "8,9",
+      "authType": "v4"
     },
     "bookingUrl": "https://gem.cps.golf/onlineresweb"
   },
