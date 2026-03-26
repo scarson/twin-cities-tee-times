@@ -105,6 +105,7 @@ export async function seedCourse(
     city: string;
     state: string;
     disabled: number;
+    display_notes: string | null;
     platform: string;
     platform_config: string;
     booking_url: string;
@@ -118,6 +119,7 @@ export async function seedCourse(
     city: "Minneapolis",
     state: "MN",
     disabled: 0,
+    display_notes: null as string | null,
     platform: "foreup",
     platform_config: JSON.stringify({ scheduleId: "1234" }),
     booking_url: "https://example.com/book",
@@ -128,8 +130,8 @@ export async function seedCourse(
 
   await db
     .prepare(
-      `INSERT INTO courses (id, name, city, state, disabled, platform, platform_config, booking_url, is_active, last_had_tee_times)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO courses (id, name, city, state, disabled, display_notes, platform, platform_config, booking_url, is_active, last_had_tee_times)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       c.id,
@@ -137,6 +139,7 @@ export async function seedCourse(
       c.city,
       c.state,
       c.disabled,
+      c.display_notes,
       c.platform,
       c.platform_config,
       c.booking_url,

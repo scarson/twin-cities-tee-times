@@ -18,6 +18,7 @@ export default function CoursePage() {
     city: string;
     booking_url: string;
     last_polled: string | null;
+    display_notes: string | null;
   } | null>(null);
   const [teeTimes, setTeeTimes] = useState<
     { course_id: string; date: string; time: string; price: number | null; holes: number; open_slots: number; course_name: string; course_city: string; booking_url: string; fetched_at: string }[]
@@ -68,6 +69,12 @@ export default function CoursePage() {
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && (
         <CourseHeader course={course} dates={dates} teeTimes={teeTimes} onRefreshed={() => fetchData(false)} />
+      )}
+
+      {course?.display_notes && (
+        <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          {course.display_notes}
+        </div>
       )}
 
       <div className="mt-4">
