@@ -3,7 +3,7 @@
 // ABOUTME: Verifies disabled course filtering, visible courses, and area grouping.
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 
 vi.mock("@/config/courses.json", () => ({
@@ -49,5 +49,41 @@ describe("CoursesPage", () => {
     render(<CoursesPage />);
     expect(screen.getByText("Minneapolis")).toBeDefined();
     expect(screen.getByText("St. Paul")).toBeDefined();
+  });
+
+  it("filters courses by name when typing in search", () => {
+    render(<CoursesPage />);
+    const search = screen.getByPlaceholderText("Search courses...");
+    fireEvent.change(search, { target: { value: "alpha" } });
+    expect(screen.getByText("Alpha Golf Club")).toBeDefined();
+    expect(screen.queryByText("Bravo Links")).toBeNull();
+    expect(screen.queryByText("Charlie Greens")).toBeNull();
+  });
+
+  it("filters courses by city when typing in search", () => {
+    render(<CoursesPage />);
+    const search = screen.getByPlaceholderText("Search courses...");
+    fireEvent.change(search, { target: { value: "st. paul" } });
+    expect(screen.getByText("Bravo Links")).toBeDefined();
+    expect(screen.queryByText("Alpha Golf Club")).toBeNull();
+  });
+
+  it("shows all courses when search is cleared", () => {
+    render(<CoursesPage />);
+    const search = screen.getByPlaceholderText("Search courses...");
+    fireEvent.change(search, { target: { value: "alpha" } });
+    fireEvent.change(search, { target: { value: "" } });
+    expect(screen.getByText("Alpha Golf Club")).toBeDefined();
+    expect(screen.getByText("Bravo Links")).toBeDefined();
+    expect(screen.getByText("Charlie Greens")).toBeDefined();
+  });
+
+  it("hides area groups with no matching courses during search", () => {
+    render(<CoursesPage />);
+    const search = screen.getByPlaceholderText("Search courses...");
+    fireEvent.change(search, { target: { value: "bravo" } });
+    // Bravo is in St. Paul, so Minneapolis group should be hidden
+    expect(screen.getByText("St. Paul")).toBeDefined();
+    expect(screen.queryByText("Minneapolis")).toBeNull();
   });
 });
