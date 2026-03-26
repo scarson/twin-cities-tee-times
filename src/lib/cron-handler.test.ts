@@ -3,8 +3,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
-import { sqliteIsoNow } from "@/lib/db";
+import * as dbModule from "@/lib/db";
 import { assignBatches, BATCH_COUNT } from "@/lib/batch";
+
+const { sqliteIsoNow } = dbModule;
 
 // Helper to create CourseRow objects for tests
 function makeCourseRow(
@@ -73,9 +75,23 @@ vi.mock("@/lib/poller", () => ({
   getPollingDates: vi.fn().mockReturnValue(["2026-04-15"]),
 }));
 
+// Partial mock of db module: pass through real implementations, allow per-test overrides
+vi.mock("@/lib/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db")>();
+  return {
+    ...actual,
+    deactivateStaleCourses: vi.fn().mockImplementation(actual.deactivateStaleCourses),
+    cleanupOldPolls: vi.fn().mockImplementation(actual.cleanupOldPolls),
+    cleanupExpiredSessions: vi.fn().mockImplementation(actual.cleanupExpiredSessions),
+  };
+});
+
 const mockedPollCourse = vi.mocked(pollCourse);
 const mockedShouldPollDate = vi.mocked(shouldPollDate);
 const mockedGetPollingDates = vi.mocked(getPollingDates);
+const mockedDeactivateStaleCourses = vi.mocked(dbModule.deactivateStaleCourses);
+const mockedCleanupOldPolls = vi.mocked(dbModule.cleanupOldPolls);
+const mockedCleanupExpiredSessions = vi.mocked(dbModule.cleanupExpiredSessions);
 
 // Cron expressions for batch 0 and batch 1
 const BATCH_0_CRON = "*/5 * * * *";
@@ -431,6 +447,44 @@ describe("runCronPoll housekeeping", () => {
     expect(sessionCleanup).toBeUndefined();
     expect(pollLogCleanup).toBeUndefined();
     expect(deactivation).toBeUndefined();
+  });
+
+  it("continues cleanup when deactivateStaleCourses throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedDeactivateStaleCourses.mockRejectedValueOnce(new Error("deactivation boom"));
+
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    expect(mockedCleanupOldPolls).toHaveBeenCalled();
+    expect(mockedCleanupExpiredSessions).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("continues cleanup when cleanupOldPolls throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedCleanupOldPolls.mockRejectedValueOnce(new Error("poll cleanup boom"));
+
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    expect(mockedCleanupExpiredSessions).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("continues cleanup when cleanupExpiredSessions throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedCleanupExpiredSessions.mockRejectedValueOnce(new Error("session cleanup boom"));
+
+    const db = makeMockDb();
+    const result = await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    // Should return normally without crashing
+    expect(result.skipped).toBe(false);
+
+    consoleSpy.mockRestore();
   });
 });
 

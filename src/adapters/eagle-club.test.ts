@@ -203,6 +203,20 @@ describe("EagleClubAdapter", () => {
     expect(results[0].price).toBeNull();
   });
 
+  it("passes AbortSignal.timeout to fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ BG: { BoolSuccess: true }, LstAppointment: [] }),
+        { status: 200 },
+      ),
+    );
+
+    await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+    const fetchOptions = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("uses EighteenFee as price for 18-hole course", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })

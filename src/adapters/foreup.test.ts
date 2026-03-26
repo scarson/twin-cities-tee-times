@@ -169,6 +169,17 @@ describe("ForeUpAdapter", () => {
     expect(results[0].nines).toBeUndefined();
   });
 
+  it("passes AbortSignal.timeout to fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([]), { status: 200 }),
+    );
+
+    await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+    const fetchOptions = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("returns null price for non-numeric green_fee", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([{
