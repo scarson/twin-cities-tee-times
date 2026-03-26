@@ -90,7 +90,9 @@ export class EagleClubAdapter implements PlatformAdapter {
     return data.LstAppointment.map((appt) => ({
       courseId: config.id,
       time: this.toIso(date, appt.Time),
-      price: parseFloat(appt.EighteenFee),
+      price: appt.EighteenFee && !Number.isNaN(parseFloat(appt.EighteenFee))
+        ? parseFloat(appt.EighteenFee)
+        : null,
       holes: 18 as const,
       openSlots: appt.Slots,
       bookingUrl: config.bookingUrl,

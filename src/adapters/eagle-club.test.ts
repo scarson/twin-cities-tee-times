@@ -152,6 +152,22 @@ describe("EagleClubAdapter", () => {
     ).rejects.toThrow("Software version is out of date");
   });
 
+  it("returns null price when EighteenFee is empty", async () => {
+    const emptyFeeFixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], EighteenFee: "" },
+      ],
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(emptyFeeFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results[0].price).toBeNull();
+  });
+
   it("uses EighteenFee as price for 18-hole course", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
