@@ -1,9 +1,8 @@
 // ABOUTME: Course browser page listing all courses grouped by area.
-// ABOUTME: Supports favoriting, collapsible area sections, and ?test=true for SD courses.
+// ABOUTME: Supports favoriting and collapsible area sections.
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useFavorites } from "@/hooks/use-favorites";
 import { groupByArea, mapsUrl } from "@/config/areas";
@@ -40,8 +39,6 @@ function saveCollapsedAreas(areas: string[]) {
 }
 
 function CourseBrowser() {
-  const searchParams = useSearchParams();
-  const showTest = searchParams.get("test") === "true";
   const { toggleFavorite, isFavorite } = useFavorites();
   const [collapsed, setCollapsed] = useState<string[]>(getCollapsedAreas);
 
@@ -55,10 +52,7 @@ function CourseBrowser() {
     });
   }, []);
 
-  // Filter out SD test courses unless ?test=true
-  const visibleCourses = (courseCatalog as CatalogCourse[]).filter(
-    (c) => showTest || !c.id.startsWith("sd-")
-  );
+  const visibleCourses = courseCatalog as CatalogCourse[];
 
   const groups = groupByArea(visibleCourses);
 
@@ -162,9 +156,5 @@ function CourseBrowser() {
 }
 
 export default function CoursesPage() {
-  return (
-    <Suspense>
-      <CourseBrowser />
-    </Suspense>
-  );
+  return <CourseBrowser />;
 }

@@ -78,6 +78,7 @@ describe("pollCourse", () => {
     booking_url: "https://foreupsoftware.com/index.php/booking/21445/7829",
     is_active: 1,
     city: "Edina",
+    state: "MN",
     last_had_tee_times: null,
   };
 

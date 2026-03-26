@@ -65,12 +65,12 @@ describe("getArea", () => {
 describe("AREA_ORDER", () => {
   it("lists areas in display order", () => {
     expect(AREA_ORDER).toEqual([
-      "San Diego",
       "Minneapolis",
       "St. Paul",
       "North Metro",
       "East Metro",
       "South Metro",
+      "San Diego",
     ]);
   });
 });

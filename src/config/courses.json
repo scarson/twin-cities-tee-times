@@ -4,6 +4,7 @@
     "id": "theodore-wirth-18",
     "name": "Theodore Wirth",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "1301 Theodore Wirth Pkwy, Minneapolis, MN 55422",
     "platform": "cps_golf",
     "platformConfig": {
@@ -18,6 +19,7 @@
     "id": "gross-national",
     "name": "Gross National",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "2201 St. Anthony Blvd, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
@@ -30,6 +32,7 @@
     "id": "meadowbrook",
     "name": "Meadowbrook",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "201 Meadowbrook Rd, Hopkins, MN 55343",
     "platform": "cps_golf",
     "platformConfig": {
@@ -42,6 +45,7 @@
     "id": "columbia",
     "name": "Columbia",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "3300 Central Ave NE, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
@@ -54,6 +58,7 @@
     "id": "hiawatha",
     "name": "Hiawatha",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "4553 Longfellow Ave, Minneapolis, MN 55407",
     "platform": "cps_golf",
     "platformConfig": {
@@ -66,6 +71,7 @@
     "id": "phalen",
     "name": "Phalen",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1615 Phalen Dr E, St. Paul, MN 55106",
     "platform": "cps_golf",
     "platformConfig": {
@@ -78,6 +84,7 @@
     "id": "chaska-town-course",
     "name": "Chaska Town Course",
     "city": "Chaska",
+    "state": "MN",
     "address": "3000 Town Course Dr, Chaska, MN 55318",
     "platform": "cps_golf",
     "platformConfig": {
@@ -90,6 +97,7 @@
     "id": "edinburgh-usa",
     "name": "Edinburgh USA",
     "city": "Brooklyn Park",
+    "state": "MN",
     "address": "8700 Edinbrook Crossing, Brooklyn Park, MN 55443",
     "platform": "cps_golf",
     "platformConfig": {
@@ -102,6 +110,7 @@
     "id": "oak-glen",
     "name": "Oak Glen",
     "city": "Stillwater",
+    "state": "MN",
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
     "platform": "cps_golf",
     "platformConfig": {
@@ -114,6 +123,7 @@
     "id": "highland-national",
     "name": "Highland National",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1403 Montreal Ave, St. Paul, MN 55116",
     "platform": "cps_golf",
     "platformConfig": {
@@ -126,6 +136,7 @@
     "id": "como-park",
     "name": "Como Park",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1431 N Lexington Pkwy, St. Paul, MN 55103",
     "platform": "cps_golf",
     "platformConfig": {
@@ -138,6 +149,7 @@
     "id": "victory-links",
     "name": "Victory Links",
     "city": "Blaine",
+    "state": "MN",
     "address": "2010 105th Ave NE, Blaine, MN 55449",
     "platform": "cps_golf",
     "platformConfig": {
@@ -150,6 +162,7 @@
     "id": "gem-lake-hills",
     "name": "Gem Lake Hills",
     "city": "White Bear Lake",
+    "state": "MN",
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
     "platform": "cps_golf",
     "platformConfig": {
@@ -162,6 +175,7 @@
     "id": "braemar",
     "name": "Braemar",
     "city": "Edina",
+    "state": "MN",
     "address": "6364 John Harris Dr, Edina, MN 55439",
     "platform": "foreup",
     "platformConfig": {
@@ -175,6 +189,7 @@
     "id": "bunker-hills",
     "name": "Bunker Hills",
     "city": "Coon Rapids",
+    "state": "MN",
     "address": "12800 Bunker Prairie Rd NW, Coon Rapids, MN 55448",
     "platform": "foreup",
     "platformConfig": {
@@ -187,6 +202,7 @@
     "id": "roseville-cedarholm",
     "name": "Roseville Cedarholm",
     "city": "Roseville",
+    "state": "MN",
     "address": "2323 Hamline Ave N, Roseville, MN 55113",
     "platform": "foreup",
     "platformConfig": {
@@ -200,6 +216,7 @@
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",
     "city": "San Diego",
+    "state": "CA",
     "address": "2600 Golf Course Dr, San Diego, CA 92102",
     "platform": "foreup",
     "platformConfig": {
@@ -213,6 +230,7 @@
     "id": "sd-goat-hill",
     "name": "Goat Hill Park (SD Test)",
     "city": "Oceanside",
+    "state": "CA",
     "address": "2323 Goat Hill Dr, Oceanside, CA 92054",
     "platform": "foreup",
     "platformConfig": {
@@ -226,6 +244,7 @@
     "id": "sd-oceanside",
     "name": "Oceanside Muni (SD Test)",
     "city": "Oceanside",
+    "state": "CA",
     "address": "825 Douglas Dr, Oceanside, CA 92058",
     "platform": "foreup",
     "platformConfig": {
@@ -239,6 +258,7 @@
     "id": "sd-lomas-santa-fe",
     "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
     "city": "Solana Beach",
+    "state": "CA",
     "address": "1580 Sun Valley Rd, Solana Beach, CA 92075",
     "platform": "teeitup",
     "platformConfig": {
@@ -253,6 +273,7 @@
     "id": "sd-coronado",
     "name": "Coronado Golf Course (SD Test)",
     "city": "Coronado",
+    "state": "CA",
     "address": "2000 Visalia Row, Coronado, CA 92118",
     "platform": "teeitup",
     "platformConfig": {
@@ -267,6 +288,7 @@
     "id": "sd-encinitas-ranch",
     "name": "Encinitas Ranch (SD Test)",
     "city": "Encinitas",
+    "state": "CA",
     "address": "1275 Quail Gardens Dr, Encinitas, CA 92024",
     "platform": "cps_golf",
     "platformConfig": {
@@ -284,6 +306,7 @@
     "id": "sd-twin-oaks",
     "name": "Twin Oaks (SD Test)",
     "city": "San Marcos",
+    "state": "CA",
     "address": "1425 N Twin Oaks Valley Rd, San Marcos, CA 92069",
     "platform": "cps_golf",
     "platformConfig": {
@@ -301,6 +324,7 @@
     "id": "sd-rancho-bernardo-inn",
     "name": "Rancho Bernardo Inn (SD Test)",
     "city": "San Diego",
+    "state": "CA",
     "address": "17550 Bernardo Oaks Dr, San Diego, CA 92128",
     "platform": "cps_golf",
     "platformConfig": {

@@ -21,6 +21,7 @@ function makeCourseRow(
     id,
     name: overrides.name ?? id,
     city: overrides.city ?? "Test",
+    state: "MN",
     platform,
     platform_config: "{}",
     booking_url: "https://example.com",
