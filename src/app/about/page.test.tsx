@@ -76,4 +76,21 @@ describe("About page", () => {
       screen.getByText(/San Diego courses are included temporarily/)
     ).toBeDefined();
   });
+
+  it("shows build info when env vars are set", () => {
+    process.env.NEXT_PUBLIC_BUILD_SHA = "abc1234";
+    process.env.NEXT_PUBLIC_BUILD_TIME = "2026-03-26T12:00:00Z";
+    render(<AboutPage />);
+    expect(screen.getByText(/Build: abc1234/)).toBeDefined();
+    expect(screen.getByText(/2026-03-26T12:00:00Z/)).toBeDefined();
+    delete process.env.NEXT_PUBLIC_BUILD_SHA;
+    delete process.env.NEXT_PUBLIC_BUILD_TIME;
+  });
+
+  it("hides build info when env vars are not set", () => {
+    delete process.env.NEXT_PUBLIC_BUILD_SHA;
+    delete process.env.NEXT_PUBLIC_BUILD_TIME;
+    render(<AboutPage />);
+    expect(screen.queryByText(/Build:/)).toBeNull();
+  });
 });

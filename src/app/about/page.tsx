@@ -163,6 +163,15 @@ export default function AboutPage() {
           </p>
         </section>
       </div>
+
+      {process.env.NEXT_PUBLIC_BUILD_SHA && (
+        <p className="mt-12 text-center text-xs text-gray-400">
+          Build: {process.env.NEXT_PUBLIC_BUILD_SHA}
+          {process.env.NEXT_PUBLIC_BUILD_TIME
+            ? `-${process.env.NEXT_PUBLIC_BUILD_TIME}`
+            : ""}
+        </p>
+      )}
     </main>
   );
 }
