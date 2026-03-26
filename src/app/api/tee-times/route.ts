@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     bindings.push(parseInt(minSlots));
   }
 
-  query += " ORDER BY c.state ASC, t.time ASC";
+  query += " ORDER BY c.state DESC, t.time ASC";
 
   try {
     const result = await db.prepare(query).bind(...bindings).all();
