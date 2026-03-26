@@ -193,7 +193,8 @@
     "address": "12800 Bunker Prairie Rd NW, Coon Rapids, MN 55448",
     "platform": "foreup",
     "platformConfig": {
-      "facilityId": "20252"
+      "facilityId": "20252",
+      "scheduleId": "5010"
     },
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
   },

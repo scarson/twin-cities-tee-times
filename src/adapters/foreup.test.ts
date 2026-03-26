@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ForeUpAdapter } from "./foreup";
 import type { CourseConfig } from "@/types";
 import fixture from "@/test/fixtures/foreup-tee-times.json";
+import bunkerFixture from "@/test/fixtures/foreup-bunker-hills.json";
 
 const mockConfig: CourseConfig = {
   id: "braemar",
@@ -118,6 +119,37 @@ describe("ForeUpAdapter", () => {
       new Response("Rate limited", { status: 429 })
     );
     await expect(adapter.fetchTeeTimes(mockConfig, "2026-04-15")).rejects.toThrow("429");
+  });
+
+  it("parses nines from teesheet_side_name fields", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(bunkerFixture), { status: 200 })
+    );
+
+    const bunkerConfig: CourseConfig = {
+      id: "bunker-hills",
+      name: "Bunker Hills",
+      platform: "foreup",
+      platformConfig: { facilityId: "20252", scheduleId: "5010" },
+      bookingUrl: "https://foreupsoftware.com/index.php/booking/20252",
+    };
+
+    const results = await adapter.fetchTeeTimes(bunkerConfig, "2026-04-15");
+
+    expect(results).toHaveLength(3);
+    expect(results[0].nines).toBe("East/West");
+    expect(results[1].nines).toBe("West/North");
+    expect(results[2].nines).toBe("North/East");
+  });
+
+  it("omits nines when teesheet_side_name is null", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(fixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+    expect(results[0].nines).toBeUndefined();
   });
 
   it("returns null price for non-numeric green_fee", async () => {

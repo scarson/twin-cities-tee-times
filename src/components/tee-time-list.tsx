@@ -18,6 +18,7 @@ interface TeeTimeItem {
   open_slots: number;
   booking_url: string;
   fetched_at: string;
+  nines?: string | null;
 }
 
 interface TeeTimeListProps {
@@ -127,7 +128,7 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
                         <span className="text-xs text-gray-400 lg:text-sm">{tt.course_city}</span>
                       </div>
                       <div className="mt-0.5 flex gap-3 text-xs text-gray-500 lg:text-sm lg:gap-4">
-                        <span>{tt.holes} holes</span>
+                        <span>{tt.holes} holes{tt.nines ? ` (${tt.nines})` : ""}</span>
                         <span>
                           {tt.open_slots} {tt.open_slots === 1 ? "spot" : "spots"}
                         </span>
