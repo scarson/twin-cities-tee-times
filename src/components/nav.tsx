@@ -30,7 +30,7 @@ export function Nav() {
             />
           </Link>
           <Link
-            href="/courses?test=true"
+            href="/courses"
             className="text-sm font-medium text-gray-300 hover:text-white lg:text-base"
           >
             Courses
