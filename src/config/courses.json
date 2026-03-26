@@ -367,5 +367,136 @@
       "timezone": "America/Los_Angeles"
     },
     "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
+  },
+  {
+    "index": 26,
+    "id": "baker-national-championship",
+    "name": "Baker National Championship",
+    "city": "Medina",
+    "state": "MN",
+    "address": "2935 Parkview Dr, Medina, MN 55340",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "baker-national-golf-club",
+      "courseId": "e9d8899b-a26b-44fa-a6f6-ebaec3db1656"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+  },
+  {
+    "index": 27,
+    "id": "baker-national-evergreen",
+    "name": "Baker National Evergreen",
+    "city": "Medina",
+    "state": "MN",
+    "address": "2935 Parkview Dr, Medina, MN 55340",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "baker-national-golf-club",
+      "courseId": "49987288-e1cd-415b-b1cc-a3e8b243ee40"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+  },
+  {
+    "index": 28,
+    "id": "dwan",
+    "name": "Dwan",
+    "city": "Bloomington",
+    "state": "MN",
+    "address": "3301 W 108th St, Bloomington, MN 55431",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "dwan-golf-club",
+      "courseId": "9223cfc2-bb40-4dab-8d7d-4e8fced53271"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/dwan-golf-club#teetimes"
+  },
+  {
+    "index": 29,
+    "id": "bluff-creek",
+    "name": "Bluff Creek",
+    "city": "Chaska",
+    "state": "MN",
+    "address": "1025 County Rd 17, Chaska, MN 55318",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "bluff-creek-golf-course-minnesota",
+      "courseId": "665c37fd-4898-4df0-9e4e-acc94898db1a"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/bluff-creek-golf-course-minnesota#teetimes"
+  },
+  {
+    "index": 30,
+    "id": "majestic-oaks-executive",
+    "name": "Majestic Oaks Executive",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "cce24258-1fd8-455e-94d3-64c0998f0727"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 31,
+    "id": "majestic-oaks-signature",
+    "name": "Majestic Oaks Signature",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "9a5a2a0e-82f1-4c9c-8e26-858b7d2122bb"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 32,
+    "id": "majestic-oaks-crossroads",
+    "name": "Majestic Oaks Crossroads",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "c3a9fc28-dfc9-452b-af2e-51d23bed8f53"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 33,
+    "id": "rush-creek",
+    "name": "Rush Creek",
+    "city": "Maple Grove",
+    "state": "MN",
+    "address": "7801 CR 101, Maple Grove, MN 55311",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "rush-creek-golf-club",
+      "courseId": "533475d8-cac9-40f1-bc8b-71113277aa70"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/rush-creek-golf-club#teetimes"
+  },
+  {
+    "index": 34,
+    "id": "greenhaven",
+    "name": "Greenhaven",
+    "city": "Anoka",
+    "state": "MN",
+    "address": "2800 Greenhaven Rd, Anoka, MN 55303",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "greenhaven-golf-course",
+      "courseId": "936ec61e-7e1b-4de3-b465-3f53ec0918da"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/greenhaven-golf-course#teetimes"
   }
 ]
