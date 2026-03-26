@@ -1,0 +1,153 @@
+{
+  "success": true,
+  "data": {
+    "tee_times": [
+      {
+        "slot_id": 1,
+        "time": "09:00:00",
+        "date": "2026-04-15",
+        "timestamp": 1776261600,
+        "time_us_format": "9:00am",
+        "availability": {
+          "available_spots": 4,
+          "max_spots": 4,
+          "reserved_spots": 0,
+          "blocked_spots": 0,
+          "held_spots": 0
+        },
+        "pricing": {
+          "rates": [
+            {
+              "rate_id": 33,
+              "rate_title": "18 Holes Walking",
+              "holes": 18,
+              "price": "$51.00",
+              "description": "18 Holes Walking"
+            },
+            {
+              "rate_id": 35,
+              "rate_title": "18 Holes Riding",
+              "holes": 18,
+              "price": "$77.00",
+              "description": "18 Holes Riding"
+            },
+            {
+              "rate_id": 36,
+              "rate_title": "9 Holes Walking",
+              "holes": 9,
+              "price": "$28.00",
+              "description": "9 Holes Walking"
+            },
+            {
+              "rate_id": 37,
+              "rate_title": "9 Holes Riding",
+              "holes": 9,
+              "price": "$44.00",
+              "description": "9 Holes Riding"
+            }
+          ]
+        },
+        "course_info": { "slot_length": 10 },
+        "golfer_type_flags": { "free_golfer": false, "free_cart_fee": false },
+        "override_type": "seasonal_wave",
+        "available_holes": [9, 18],
+        "cross_nine_blocked": false,
+        "cross_nine_detail": null
+      },
+      {
+        "slot_id": 2,
+        "time": "09:10:00",
+        "date": "2026-04-15",
+        "timestamp": 1776262200,
+        "time_us_format": "9:10am",
+        "availability": {
+          "available_spots": 2,
+          "max_spots": 4,
+          "reserved_spots": 2,
+          "blocked_spots": 0,
+          "held_spots": 0
+        },
+        "pricing": {
+          "rates": [
+            {
+              "rate_id": 33,
+              "rate_title": "18 Holes Walking",
+              "holes": 18,
+              "price": "$51.00",
+              "description": "18 Holes Walking"
+            },
+            {
+              "rate_id": 35,
+              "rate_title": "18 Holes Riding",
+              "holes": 18,
+              "price": "$77.00",
+              "description": "18 Holes Riding"
+            }
+          ]
+        },
+        "course_info": { "slot_length": 10 },
+        "golfer_type_flags": { "free_golfer": false, "free_cart_fee": false },
+        "override_type": "seasonal_wave",
+        "available_holes": [18],
+        "cross_nine_blocked": false,
+        "cross_nine_detail": null
+      },
+      {
+        "slot_id": 3,
+        "time": "14:30:00",
+        "date": "2026-04-15",
+        "timestamp": 1776281400,
+        "time_us_format": "2:30pm",
+        "availability": {
+          "available_spots": 1,
+          "max_spots": 4,
+          "reserved_spots": 3,
+          "blocked_spots": 0,
+          "held_spots": 0
+        },
+        "pricing": {
+          "rates": [
+            {
+              "rate_id": 36,
+              "rate_title": "9 Holes Walking",
+              "holes": 9,
+              "price": "$28.00",
+              "description": "9 Holes Walking"
+            },
+            {
+              "rate_id": 37,
+              "rate_title": "9 Holes Riding",
+              "holes": 9,
+              "price": "$44.00",
+              "description": "9 Holes Riding"
+            }
+          ]
+        },
+        "course_info": { "slot_length": 10 },
+        "golfer_type_flags": { "free_golfer": false, "free_cart_fee": false },
+        "override_type": "seasonal_wave",
+        "available_holes": [9],
+        "cross_nine_blocked": false,
+        "cross_nine_detail": null
+      }
+    ],
+    "date": "2026-04-15",
+    "total_available": 3,
+    "course_settings": {
+      "calendar_type": "18_hole_course",
+      "9_hole_course_only": 0,
+      "enable_18_hole": 0,
+      "turn_time_18": 120,
+      "turn_time_tolerance": 20,
+      "nine_hole_play_duration": 120,
+      "no_single_empty_booking": 1
+    },
+    "golfer_type_rules": {
+      "booking_window": 14,
+      "limit_booking_per_day": 0
+    },
+    "max_booking_date": "2026-04-15",
+    "current_bookings_today": 0,
+    "limit_booking_per_day": 0
+  }
+}

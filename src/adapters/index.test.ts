@@ -35,6 +35,12 @@ describe("getAdapter", () => {
     expect(adapter!.platformId).toBe("eagle_club");
   });
 
+  it("returns TeeWireAdapter for teewire platform", () => {
+    const adapter = getAdapter("teewire");
+    expect(adapter).toBeDefined();
+    expect(adapter!.platformId).toBe("teewire");
+  });
+
   it("returns undefined for unknown platform", () => {
     expect(getAdapter("unknown")).toBeUndefined();
   });
