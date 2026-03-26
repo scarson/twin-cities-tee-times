@@ -22,6 +22,7 @@ export async function GET() {
            WHERE polled_at > ${sqliteIsoNow("-24 hours")}
              AND status IN ('success', 'no_data')
          ) p ON c.id = p.course_id AND p.rn = 1
+         WHERE c.disabled = 0
          ORDER BY c.state DESC, c.name ASC`
       )
       .all();

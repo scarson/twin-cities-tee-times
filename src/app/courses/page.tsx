@@ -16,6 +16,7 @@ interface CatalogCourse {
   city: string;
   address?: string;
   bookingUrl: string;
+  disabled?: number;
 }
 
 function getCollapsedAreas(): string[] {
@@ -52,7 +53,9 @@ function CourseBrowser() {
     });
   }, []);
 
-  const visibleCourses = courseCatalog as CatalogCourse[];
+  const visibleCourses = (courseCatalog as CatalogCourse[]).filter(
+    (c) => !c.disabled
+  );
 
   const groups = groupByArea(visibleCourses);
 

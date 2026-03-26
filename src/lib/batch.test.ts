@@ -14,6 +14,7 @@ function makeCourse(id: string, platform: string): CourseRow {
     platform_config: "{}",
     booking_url: "https://example.com",
     is_active: 1,
+    disabled: 0,
     last_had_tee_times: null,
   };
 }

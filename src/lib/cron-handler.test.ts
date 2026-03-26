@@ -26,6 +26,7 @@ function makeCourseRow(
     platform_config: "{}",
     booking_url: "https://example.com",
     is_active: overrides.is_active ?? 1,
+    disabled: 0,
     last_had_tee_times: overrides.last_had_tee_times ?? null,
   };
 }

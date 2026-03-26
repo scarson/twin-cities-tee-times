@@ -26,6 +26,7 @@ function makeCourseRow(overrides: Partial<CourseRow> = {}): CourseRow {
     platform_config: JSON.stringify({ scheduleId: "1234" }),
     booking_url: "https://example.com/book",
     is_active: 1,
+    disabled: 0,
     last_had_tee_times: null,
     ...overrides,
   };
