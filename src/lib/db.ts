@@ -27,8 +27,8 @@ export async function upsertTeeTimes(
       : tt.time;
     return db
       .prepare(
-        `INSERT INTO tee_times (course_id, date, time, price, holes, open_slots, booking_url, fetched_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO tee_times (course_id, date, time, price, holes, open_slots, booking_url, fetched_at, nines)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         courseId,
@@ -38,7 +38,8 @@ export async function upsertTeeTimes(
         tt.holes,
         tt.openSlots,
         tt.bookingUrl,
-        fetchedAt
+        fetchedAt,
+        tt.nines ?? null
       );
   });
 
