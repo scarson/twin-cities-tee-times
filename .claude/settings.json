@@ -25,7 +25,8 @@
       "WebFetch(domain:www.chronogolf.com)",
       "WebFetch(domain:api.eagleclubsystems.online)",
       "WebFetch(domain:player.eagleclubsystems.online)",
-      "WebFetch(domain:www.valleywoodgolf.com)"
+      "WebFetch(domain:www.valleywoodgolf.com)",
+      "WebFetch(domain:minneapolisgrossnational.cps.golf)"
     ]
   }
 }
