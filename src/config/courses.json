@@ -331,6 +331,81 @@
     "bookingUrl": "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115"
   },
   {
+    "index": 39,
+    "id": "brookview-regulation",
+    "name": "Brookview Regulation",
+    "city": "Golden Valley",
+    "state": "MN",
+    "address": "200 Brookview Pkwy, Golden Valley, MN 55426",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "brookview",
+      "websiteId": "00000000-0000-0000-0000-000000000000",
+      "courseIds": "1,2",
+      "authType": "v4"
+    },
+    "bookingUrl": "https://brookview.cps.golf/onlineresweb"
+  },
+  {
+    "index": 40,
+    "id": "brookview-par3",
+    "name": "Brookview Par-3",
+    "city": "Golden Valley",
+    "state": "MN",
+    "address": "200 Brookview Pkwy, Golden Valley, MN 55426",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "brookview",
+      "websiteId": "00000000-0000-0000-0000-000000000000",
+      "courseIds": "3",
+      "authType": "v4"
+    },
+    "bookingUrl": "https://brookview.cps.golf/onlineresweb"
+  },
+  {
+    "index": 41,
+    "id": "inver-wood-18",
+    "name": "Inver Wood Championship",
+    "city": "Inver Grove Heights",
+    "state": "MN",
+    "address": "1850 70th St E, Inver Grove Heights, MN 55077",
+    "platform": "teewire",
+    "platformConfig": {
+      "tenant": "inverwood",
+      "calendarId": "3"
+    },
+    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=3&view=list"
+  },
+  {
+    "index": 42,
+    "id": "inver-wood-9",
+    "name": "Inver Wood Executive",
+    "city": "Inver Grove Heights",
+    "state": "MN",
+    "address": "1850 70th St E, Inver Grove Heights, MN 55077",
+    "platform": "teewire",
+    "platformConfig": {
+      "tenant": "inverwood",
+      "calendarId": "16"
+    },
+    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=16&view=list"
+  },
+  {
+    "index": 43,
+    "id": "ft-snelling",
+    "name": "Ft. Snelling",
+    "city": "Minneapolis",
+    "state": "MN",
+    "address": "49 Hwy 5, St. Paul, MN 55111",
+    "disabled": 1,
+    "displayNotes": "Tee times for this course are available on GolfNow. Select 'Book Online' to view and book.",
+    "platform": "golfnow",
+    "platformConfig": {
+      "facilityId": "18122"
+    },
+    "bookingUrl": "https://www.golfnow.com/tee-times/facility/18122-fort-snelling-golf-club-9-holes/search"
+  },
+  {
     "index": 14,
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",
