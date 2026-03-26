@@ -1,0 +1,20 @@
+# ABOUTME: Dependabot configuration for automated dependency and action updates.
+# ABOUTME: Covers npm packages and GitHub Actions versions on a weekly schedule.
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
