@@ -29,6 +29,12 @@ describe("getAdapter", () => {
     expect(adapter!.platformId).toBe("chronogolf");
   });
 
+  it("returns EagleClubAdapter for eagle_club platform", () => {
+    const adapter = getAdapter("eagle_club");
+    expect(adapter).toBeDefined();
+    expect(adapter!.platformId).toBe("eagle_club");
+  });
+
   it("returns undefined for unknown platform", () => {
     expect(getAdapter("unknown")).toBeUndefined();
   });

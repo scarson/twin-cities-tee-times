@@ -128,6 +128,51 @@ describe("upsertTeeTimes", () => {
     expect(rows.results).toHaveLength(3);
   });
 
+  it("stores and retrieves nines field", async () => {
+    await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime({ nines: "East/West" })],
+      new Date().toISOString()
+    );
+
+    const row = await db
+      .prepare("SELECT nines FROM tee_times WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ nines: string | null }>();
+
+    expect(row!.nines).toBe("East/West");
+  });
+
+  it("stores null when nines is undefined", async () => {
+    await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime()],
+      new Date().toISOString()
+    );
+
+    const row = await db
+      .prepare("SELECT nines FROM tee_times WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ nines: string | null }>();
+
+    expect(row!.nines).toBeNull();
+  });
+
+  it("stores null price", async () => {
+    await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime({ price: null })],
+      new Date().toISOString()
+    );
+
+    const row = await db
+      .prepare("SELECT price FROM tee_times WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ price: number | null }>();
+
+    expect(row!.price).toBeNull();
+  });
+
   it("FK enforcement: inserting tee time for non-existent course fails", async () => {
     await expect(
       upsertTeeTimes(

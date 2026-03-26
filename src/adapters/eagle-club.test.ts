@@ -168,6 +168,41 @@ describe("EagleClubAdapter", () => {
     expect(results[0].price).toBeNull();
   });
 
+  it("uses StrExceptions when BoolSuccess is false and StrResult is empty", async () => {
+    const errorResponse = {
+      BG: {
+        BoolSuccess: false,
+        StrResult: "",
+        StrExceptions: ["Connection timeout", "Retry failed"],
+      },
+      LstAppointment: [],
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(errorResponse), { status: 200 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow("Connection timeout; Retry failed");
+  });
+
+  it("returns null price for non-numeric EighteenFee", async () => {
+    const naFeeFixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], EighteenFee: "N/A" },
+      ],
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(naFeeFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results[0].price).toBeNull();
+  });
+
   it("uses EighteenFee as price for 18-hole course", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
