@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   }
 
   let query = `
-    SELECT t.*, c.name as course_name, c.city as course_city
+    SELECT t.*, c.name as course_name, c.city as course_city, c.state as course_state
     FROM tee_times t
     JOIN courses c ON t.course_id = c.id
     WHERE t.date = ?
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     bindings.push(parseInt(minSlots));
   }
 
-  query += " ORDER BY t.time ASC";
+  query += " ORDER BY c.state DESC, t.time ASC";
 
   try {
     const result = await db.prepare(query).bind(...bindings).all();

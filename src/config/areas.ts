@@ -11,15 +11,25 @@ const CITY_TO_AREA: Record<string, string> = {
   "Coon Rapids": "North Metro",
   Blaine: "North Metro",
   Roseville: "North Metro",
+  "Ham Lake": "North Metro",
+  Anoka: "North Metro",
 
   // East Metro
   "White Bear Lake": "East Metro",
   Stillwater: "East Metro",
+  Maplewood: "East Metro",
+  "Inver Grove Heights": "East Metro",
 
   // South Metro
   Edina: "South Metro",
   Chaska: "South Metro",
   Hopkins: "South Metro",
+  "Apple Valley": "South Metro",
+  Bloomington: "South Metro",
+  "Golden Valley": "South Metro",
+  Medina: "South Metro",
+  "Maple Plain": "South Metro",
+  "Maple Grove": "South Metro",
 
   // San Diego (test courses)
   "San Diego": "San Diego",
@@ -31,12 +41,12 @@ const CITY_TO_AREA: Record<string, string> = {
 };
 
 export const AREA_ORDER = [
-  "San Diego",
   "Minneapolis",
   "St. Paul",
   "North Metro",
   "East Metro",
   "South Metro",
+  "San Diego",
 ];
 
 export function getArea(city: string): string {

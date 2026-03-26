@@ -8,6 +8,8 @@ interface ForeUpTeeTime {
   green_fee: string | null;
   holes: number;
   schedule_id: number;
+  teesheet_side_name?: string | null;
+  reround_teesheet_side_name?: string | null;
 }
 
 export class ForeUpAdapter implements PlatformAdapter {
@@ -49,16 +51,23 @@ export class ForeUpAdapter implements PlatformAdapter {
 
     const data: ForeUpTeeTime[] = await response.json();
 
-    return data.map((tt) => ({
-      courseId: config.id,
-      time: this.toIso(tt.time),
-      price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
-        ? parseFloat(tt.green_fee)
-        : null,
-      holes: tt.holes === 9 ? 9 : 18,
-      openSlots: tt.available_spots,
-      bookingUrl: config.bookingUrl,
-    }));
+    return data.map((tt) => {
+      const nines = tt.teesheet_side_name && tt.reround_teesheet_side_name
+        ? `${tt.teesheet_side_name}/${tt.reround_teesheet_side_name}`
+        : undefined;
+
+      return {
+        courseId: config.id,
+        time: this.toIso(tt.time),
+        price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
+          ? parseFloat(tt.green_fee)
+          : null,
+        holes: tt.holes === 9 ? 9 : 18,
+        openSlots: tt.available_spots,
+        bookingUrl: config.bookingUrl,
+        ...(nines && { nines }),
+      };
+    });
   }
 
   /** Convert "YYYY-MM-DD HH:MM" → "YYYY-MM-DDTHH:MM:00" */

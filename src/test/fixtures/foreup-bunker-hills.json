@@ -1,0 +1,29 @@
+[
+  {
+    "time": "2026-04-15 10:36",
+    "available_spots": 4,
+    "green_fee": "56.00",
+    "holes": 18,
+    "schedule_id": 5010,
+    "teesheet_side_name": "East",
+    "reround_teesheet_side_name": "West"
+  },
+  {
+    "time": "2026-04-15 10:36",
+    "available_spots": 4,
+    "green_fee": "56.00",
+    "holes": 18,
+    "schedule_id": 5010,
+    "teesheet_side_name": "West",
+    "reround_teesheet_side_name": "North"
+  },
+  {
+    "time": "2026-04-15 10:36",
+    "available_spots": 3,
+    "green_fee": "56.00",
+    "holes": 18,
+    "schedule_id": 5010,
+    "teesheet_side_name": "North",
+    "reround_teesheet_side_name": "East"
+  }
+]

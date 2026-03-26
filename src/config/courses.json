@@ -4,6 +4,7 @@
     "id": "theodore-wirth-18",
     "name": "Theodore Wirth",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "1301 Theodore Wirth Pkwy, Minneapolis, MN 55422",
     "platform": "cps_golf",
     "platformConfig": {
@@ -18,6 +19,7 @@
     "id": "gross-national",
     "name": "Gross National",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "2201 St. Anthony Blvd, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
@@ -30,6 +32,7 @@
     "id": "meadowbrook",
     "name": "Meadowbrook",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "201 Meadowbrook Rd, Hopkins, MN 55343",
     "platform": "cps_golf",
     "platformConfig": {
@@ -42,6 +45,7 @@
     "id": "columbia",
     "name": "Columbia",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "3300 Central Ave NE, Minneapolis, MN 55418",
     "platform": "cps_golf",
     "platformConfig": {
@@ -54,6 +58,7 @@
     "id": "hiawatha",
     "name": "Hiawatha",
     "city": "Minneapolis",
+    "state": "MN",
     "address": "4553 Longfellow Ave, Minneapolis, MN 55407",
     "platform": "cps_golf",
     "platformConfig": {
@@ -66,6 +71,7 @@
     "id": "phalen",
     "name": "Phalen",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1615 Phalen Dr E, St. Paul, MN 55106",
     "platform": "cps_golf",
     "platformConfig": {
@@ -78,6 +84,7 @@
     "id": "chaska-town-course",
     "name": "Chaska Town Course",
     "city": "Chaska",
+    "state": "MN",
     "address": "3000 Town Course Dr, Chaska, MN 55318",
     "platform": "cps_golf",
     "platformConfig": {
@@ -90,6 +97,7 @@
     "id": "edinburgh-usa",
     "name": "Edinburgh USA",
     "city": "Brooklyn Park",
+    "state": "MN",
     "address": "8700 Edinbrook Crossing, Brooklyn Park, MN 55443",
     "platform": "cps_golf",
     "platformConfig": {
@@ -102,6 +110,7 @@
     "id": "oak-glen",
     "name": "Oak Glen",
     "city": "Stillwater",
+    "state": "MN",
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
     "platform": "cps_golf",
     "platformConfig": {
@@ -114,6 +123,7 @@
     "id": "highland-national",
     "name": "Highland National",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1403 Montreal Ave, St. Paul, MN 55116",
     "platform": "cps_golf",
     "platformConfig": {
@@ -126,6 +136,7 @@
     "id": "como-park",
     "name": "Como Park",
     "city": "St. Paul",
+    "state": "MN",
     "address": "1431 N Lexington Pkwy, St. Paul, MN 55103",
     "platform": "cps_golf",
     "platformConfig": {
@@ -138,6 +149,7 @@
     "id": "victory-links",
     "name": "Victory Links",
     "city": "Blaine",
+    "state": "MN",
     "address": "2010 105th Ave NE, Blaine, MN 55449",
     "platform": "cps_golf",
     "platformConfig": {
@@ -150,6 +162,7 @@
     "id": "gem-lake-hills",
     "name": "Gem Lake Hills",
     "city": "White Bear Lake",
+    "state": "MN",
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
     "platform": "cps_golf",
     "platformConfig": {
@@ -162,6 +175,7 @@
     "id": "braemar",
     "name": "Braemar",
     "city": "Edina",
+    "state": "MN",
     "address": "6364 John Harris Dr, Edina, MN 55439",
     "platform": "foreup",
     "platformConfig": {
@@ -175,10 +189,12 @@
     "id": "bunker-hills",
     "name": "Bunker Hills",
     "city": "Coon Rapids",
+    "state": "MN",
     "address": "12800 Bunker Prairie Rd NW, Coon Rapids, MN 55448",
     "platform": "foreup",
     "platformConfig": {
-      "facilityId": "20252"
+      "facilityId": "20252",
+      "scheduleId": "5010"
     },
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
   },
@@ -187,6 +203,7 @@
     "id": "roseville-cedarholm",
     "name": "Roseville Cedarholm",
     "city": "Roseville",
+    "state": "MN",
     "address": "2323 Hamline Ave N, Roseville, MN 55113",
     "platform": "foreup",
     "platformConfig": {
@@ -196,10 +213,54 @@
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216"
   },
   {
+    "index": 24,
+    "id": "keller",
+    "name": "Keller",
+    "city": "Maplewood",
+    "state": "MN",
+    "address": "2166 Maplewood Dr, Maplewood, MN 55109",
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "ramsey-county-golf",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "17055"
+    },
+    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=17055"
+  },
+  {
+    "index": 25,
+    "id": "pioneer-creek",
+    "name": "Pioneer Creek",
+    "city": "Maple Plain",
+    "state": "MN",
+    "address": "705 Copeland Rd, Maple Plain, MN 55359",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "pioneercreek",
+      "websiteId": "07ecdaf7-4af5-4b9f-40c3-08dc8bc4f610",
+      "courseIds": "5"
+    },
+    "bookingUrl": "https://pioneercreek.cps.golf/onlineresweb"
+  },
+  {
+    "index": 35,
+    "id": "valleywood",
+    "name": "Valleywood",
+    "city": "Apple Valley",
+    "state": "MN",
+    "address": "4851 McAndrews Rd, Apple Valley, MN 55124",
+    "platform": "eagle_club",
+    "platformConfig": {
+      "dbname": "mnvalleywood20250115"
+    },
+    "bookingUrl": "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115"
+  },
+  {
     "index": 14,
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",
     "city": "San Diego",
+    "state": "CA",
     "address": "2600 Golf Course Dr, San Diego, CA 92102",
     "platform": "foreup",
     "platformConfig": {
@@ -213,6 +274,7 @@
     "id": "sd-goat-hill",
     "name": "Goat Hill Park (SD Test)",
     "city": "Oceanside",
+    "state": "CA",
     "address": "2323 Goat Hill Dr, Oceanside, CA 92054",
     "platform": "foreup",
     "platformConfig": {
@@ -226,6 +288,7 @@
     "id": "sd-oceanside",
     "name": "Oceanside Muni (SD Test)",
     "city": "Oceanside",
+    "state": "CA",
     "address": "825 Douglas Dr, Oceanside, CA 92058",
     "platform": "foreup",
     "platformConfig": {
@@ -239,6 +302,7 @@
     "id": "sd-lomas-santa-fe",
     "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
     "city": "Solana Beach",
+    "state": "CA",
     "address": "1580 Sun Valley Rd, Solana Beach, CA 92075",
     "platform": "teeitup",
     "platformConfig": {
@@ -253,6 +317,7 @@
     "id": "sd-coronado",
     "name": "Coronado Golf Course (SD Test)",
     "city": "Coronado",
+    "state": "CA",
     "address": "2000 Visalia Row, Coronado, CA 92118",
     "platform": "teeitup",
     "platformConfig": {
@@ -267,6 +332,7 @@
     "id": "sd-encinitas-ranch",
     "name": "Encinitas Ranch (SD Test)",
     "city": "Encinitas",
+    "state": "CA",
     "address": "1275 Quail Gardens Dr, Encinitas, CA 92024",
     "platform": "cps_golf",
     "platformConfig": {
@@ -284,6 +350,7 @@
     "id": "sd-twin-oaks",
     "name": "Twin Oaks (SD Test)",
     "city": "San Marcos",
+    "state": "CA",
     "address": "1425 N Twin Oaks Valley Rd, San Marcos, CA 92069",
     "platform": "cps_golf",
     "platformConfig": {
@@ -301,6 +368,7 @@
     "id": "sd-rancho-bernardo-inn",
     "name": "Rancho Bernardo Inn (SD Test)",
     "city": "San Diego",
+    "state": "CA",
     "address": "17550 Bernardo Oaks Dr, San Diego, CA 92128",
     "platform": "cps_golf",
     "platformConfig": {
@@ -312,5 +380,136 @@
       "timezone": "America/Los_Angeles"
     },
     "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
+  },
+  {
+    "index": 26,
+    "id": "baker-national-championship",
+    "name": "Baker National Championship",
+    "city": "Medina",
+    "state": "MN",
+    "address": "2935 Parkview Dr, Medina, MN 55340",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "baker-national-golf-club",
+      "courseId": "e9d8899b-a26b-44fa-a6f6-ebaec3db1656"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+  },
+  {
+    "index": 27,
+    "id": "baker-national-evergreen",
+    "name": "Baker National Evergreen",
+    "city": "Medina",
+    "state": "MN",
+    "address": "2935 Parkview Dr, Medina, MN 55340",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "baker-national-golf-club",
+      "courseId": "49987288-e1cd-415b-b1cc-a3e8b243ee40"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+  },
+  {
+    "index": 28,
+    "id": "dwan",
+    "name": "Dwan",
+    "city": "Bloomington",
+    "state": "MN",
+    "address": "3301 W 108th St, Bloomington, MN 55431",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "dwan-golf-club",
+      "courseId": "9223cfc2-bb40-4dab-8d7d-4e8fced53271"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/dwan-golf-club#teetimes"
+  },
+  {
+    "index": 29,
+    "id": "bluff-creek",
+    "name": "Bluff Creek",
+    "city": "Chaska",
+    "state": "MN",
+    "address": "1025 County Rd 17, Chaska, MN 55318",
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "bluff-creek-golf-course-minnesota",
+      "courseId": "665c37fd-4898-4df0-9e4e-acc94898db1a"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/bluff-creek-golf-course-minnesota#teetimes"
+  },
+  {
+    "index": 30,
+    "id": "majestic-oaks-executive",
+    "name": "Majestic Oaks Executive",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "cce24258-1fd8-455e-94d3-64c0998f0727"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 31,
+    "id": "majestic-oaks-signature",
+    "name": "Majestic Oaks Signature",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "9a5a2a0e-82f1-4c9c-8e26-858b7d2122bb"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 32,
+    "id": "majestic-oaks-crossroads",
+    "name": "Majestic Oaks Crossroads",
+    "city": "Ham Lake",
+    "state": "MN",
+    "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "majestic-oaks-golf-club",
+      "courseId": "c3a9fc28-dfc9-452b-af2e-51d23bed8f53"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+  },
+  {
+    "index": 33,
+    "id": "rush-creek",
+    "name": "Rush Creek",
+    "city": "Maple Grove",
+    "state": "MN",
+    "address": "7801 CR 101, Maple Grove, MN 55311",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "rush-creek-golf-club",
+      "courseId": "533475d8-cac9-40f1-bc8b-71113277aa70"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/rush-creek-golf-club#teetimes"
+  },
+  {
+    "index": 34,
+    "id": "greenhaven",
+    "name": "Greenhaven",
+    "city": "Anoka",
+    "state": "MN",
+    "address": "2800 Greenhaven Rd, Anoka, MN 55303",
+    "is_active": 0,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "greenhaven-golf-course",
+      "courseId": "936ec61e-7e1b-4de3-b465-3f53ec0918da"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/greenhaven-golf-course#teetimes"
   }
 ]

@@ -21,6 +21,7 @@ function makeCourseRow(overrides: Partial<CourseRow> = {}): CourseRow {
     id: "test-course",
     name: "Test Course",
     city: "Minneapolis",
+    state: "MN",
     platform: "foreup",
     platform_config: JSON.stringify({ scheduleId: "1234" }),
     booking_url: "https://example.com/book",

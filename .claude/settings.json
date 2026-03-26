@@ -11,7 +11,21 @@
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit:*)",
       "WebFetch(domain:twin-cities-tee-times.samuel-carson.workers.dev)",
-      "WebFetch(domain:blog.cloudflare.com)"
+      "WebFetch(domain:blog.cloudflare.com)",
+      "WebFetch(domain:bluff-creek-golf-course.book.teeitup.com)",
+      "WebFetch(domain:inverwood-golf-course.book.teeitup.com)",
+      "WebFetch(domain:bluff-creek.book.teeitup.golf)",
+      "WebFetch(domain:www.inverwood.com)",
+      "WebFetch(domain:www.bluffcreekgolfclub.com)",
+      "WebFetch(domain:www.teeitup.com)",
+      "WebFetch(domain:inverwood.com)",
+      "WebFetch(domain:inverwoodgolf.com)",
+      "WebFetch(domain:www.inverwood.org)",
+      "WebFetch(domain:bluffcreek.com)",
+      "WebFetch(domain:www.chronogolf.com)",
+      "WebFetch(domain:api.eagleclubsystems.online)",
+      "WebFetch(domain:player.eagleclubsystems.online)",
+      "WebFetch(domain:www.valleywoodgolf.com)"
     ]
   }
 }

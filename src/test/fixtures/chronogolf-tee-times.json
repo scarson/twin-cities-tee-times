@@ -1,0 +1,129 @@
+{
+  "status": "open",
+  "teetimes": [
+    {
+      "id": 515620369,
+      "uuid": "da1c8e42-666a-4233-baab-f68803109e8c",
+      "course": {
+        "id": 9602,
+        "bookable_holes": [9, 18],
+        "holes": 9,
+        "name": "Championship",
+        "uuid": "e9d8899b-a26b-44fa-a6f6-ebaec3db1656"
+      },
+      "hole": 1,
+      "has_cart": false,
+      "min_player_size": 2,
+      "max_player_size": 4,
+      "starts_at": "2026-03-28T14:15:00Z",
+      "start_time": "9:15",
+      "date": "2026-03-28",
+      "event_id": null,
+      "has_deal": false,
+      "default_price": {
+        "green_fee": 51.0,
+        "half_cart": 23.0,
+        "one_person_cart": null,
+        "player_type_id": 34102,
+        "subtotal": 51.0,
+        "bookable_holes": 18,
+        "affiliation_type": "Public"
+      },
+      "departure": null,
+      "format": "normal"
+    },
+    {
+      "id": 515620374,
+      "uuid": "d81d4c91-a660-4b31-9c7a-6186fb1bc77c",
+      "course": {
+        "id": 9602,
+        "bookable_holes": [9, 18],
+        "holes": 9,
+        "name": "Championship",
+        "uuid": "e9d8899b-a26b-44fa-a6f6-ebaec3db1656"
+      },
+      "hole": 1,
+      "has_cart": false,
+      "min_player_size": 1,
+      "max_player_size": 2,
+      "starts_at": "2026-03-28T15:05:00Z",
+      "start_time": "10:05",
+      "date": "2026-03-28",
+      "event_id": null,
+      "has_deal": false,
+      "default_price": {
+        "green_fee": 51.0,
+        "half_cart": 23.0,
+        "one_person_cart": null,
+        "player_type_id": 34102,
+        "subtotal": 51.0,
+        "bookable_holes": 18,
+        "affiliation_type": "Public"
+      },
+      "departure": null,
+      "format": "normal"
+    },
+    {
+      "id": 515743502,
+      "uuid": "a87ecb9b-f39c-4df6-b2fa-279ce32dfadc",
+      "course": {
+        "id": 9603,
+        "bookable_holes": [9, 18],
+        "holes": 9,
+        "name": "Evergreen",
+        "uuid": "49987288-e1cd-415b-b1cc-a3e8b243ee40"
+      },
+      "hole": 1,
+      "has_cart": false,
+      "min_player_size": 2,
+      "max_player_size": 4,
+      "starts_at": "2026-03-28T14:10:00Z",
+      "start_time": "9:10",
+      "date": "2026-03-28",
+      "event_id": null,
+      "has_deal": false,
+      "default_price": {
+        "green_fee": 21.0,
+        "half_cart": 14.0,
+        "one_person_cart": null,
+        "player_type_id": 34102,
+        "subtotal": 21.0,
+        "bookable_holes": 9,
+        "affiliation_type": "Public"
+      },
+      "departure": null,
+      "format": "normal"
+    },
+    {
+      "id": 517159926,
+      "uuid": "0ec00e5c-8f51-41d7-b78f-d58f5ee4eadb",
+      "course": {
+        "id": 21203,
+        "bookable_holes": [9, 18],
+        "holes": 18,
+        "name": "Dwan 18",
+        "uuid": "9223cfc2-bb40-4dab-8d7d-4e8fced53271"
+      },
+      "hole": 1,
+      "has_cart": false,
+      "min_player_size": 1,
+      "max_player_size": 1,
+      "starts_at": "2026-03-28T16:03:00Z",
+      "start_time": "11:03",
+      "date": "2026-03-28",
+      "event_id": null,
+      "has_deal": false,
+      "default_price": {
+        "green_fee": 26.6,
+        "half_cart": 13.76,
+        "one_person_cart": 5.5,
+        "player_type_id": 34294,
+        "subtotal": 26.6,
+        "bookable_holes": 18,
+        "affiliation_type": "Public"
+      },
+      "departure": null,
+      "format": "normal"
+    }
+  ]
+}

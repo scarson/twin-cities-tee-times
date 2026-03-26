@@ -23,6 +23,12 @@ describe("getAdapter", () => {
     expect(adapter!.platformId).toBe("teeitup");
   });
 
+  it("returns Chronogolf adapter for 'chronogolf'", () => {
+    const adapter = getAdapter("chronogolf");
+    expect(adapter).toBeDefined();
+    expect(adapter!.platformId).toBe("chronogolf");
+  });
+
   it("returns undefined for unknown platform", () => {
     expect(getAdapter("unknown")).toBeUndefined();
   });

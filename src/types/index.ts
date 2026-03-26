@@ -17,6 +17,7 @@ export interface TeeTime {
   holes: 9 | 18;
   openSlots: number;
   bookingUrl: string;
+  nines?: string; // e.g., "East/West" for multi-nine courses
 }
 
 /** Platform adapter interface — each booking platform implements this */
@@ -30,6 +31,7 @@ export interface CourseRow {
   id: string;
   name: string;
   city: string;
+  state: string;
   platform: string;
   platform_config: string; // JSON string
   booking_url: string;
@@ -48,6 +50,7 @@ export interface TeeTimeRow {
   open_slots: number;
   booking_url: string;
   fetched_at: string;
+  nines: string | null;
 }
 
 /** Poll log row from D1 */

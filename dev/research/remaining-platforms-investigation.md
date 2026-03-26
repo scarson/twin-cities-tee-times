@@ -4,7 +4,7 @@ Date: 2026-03-08
 
 ## Summary
 
-All three remaining platforms (Chronogolf, TeeItUp, Eagle Club Systems) have plain HTTP JSON APIs. No headless browser needed. This confirms the entire app can run on Cloudflare Workers free tier.
+Five platforms investigated for direct HTTP API access. Chronogolf, TeeItUp, and Eagle Club Systems all have plain HTTP JSON APIs. Two additional platforms (CPS Golf V4/ProphetServices, GolfNow) were identified later and deferred.
 
 ---
 
@@ -154,18 +154,92 @@ All POST endpoints send JSON with the `dbname` as a parameter. The exact request
 
 ---
 
+## CPS Golf V4 / ProphetServices (Brookview)
+
+**Status: Deferred** — requires Lambda proxy and separate adapter work.
+
+### Background
+Brookview Golf Course (Golden Valley) uses CPS Golf's legacy **V4** self-hosted system, not the V5 cloud platform (`*.cps.golf`) our adapter targets. The `brookview.cps.golf` domain exists but only serves the V4 SPA shell — the V5 API endpoints (`/identityapi/`, `/onlineres/onlineapi/`) return 404/401.
+
+### API Base
+`https://secure.east.prophetservices.com/BrookviewGCv3/`
+
+Par-3 course variant: `https://secure.east.prophetservices.com/BrookviewGCv3Par3/`
+
+### Booking URLs (from Brookview website)
+- Regulation: `https://secure.east.prophetservices.com/BrookviewGCv3/(S(...))/Home/nIndex?CourseId=1,2&Date=...`
+- Par-3: `https://secure.east.prophetservices.com/BrookviewGCv3Par3/(S(...))/Home/nIndex?CourseId=3&Date=...`
+
+### Access Challenges
+1. **AWS WAF** — The ProphetServices API sits behind an AWS WAF challenge (`x-amzn-waf-action: challenge`, HTTP 202). Direct HTTP requests are blocked.
+2. **ASP.NET session auth** — URLs contain `(S(xxxxx))` session segments. API requires an active session cookie.
+3. **V4 API differs from V5** — Even if WAF is bypassed (e.g., via Lambda proxy), the V4 API structure (`/onlinereswebapi/api/OnlineRes/GetAllOptions`) is different from the V5 endpoints our CpsGolfAdapter uses.
+
+### Chronogolf Fallback?
+Brookview has a Chronogolf profile (club ID 8336) but `online_booking_enabled: false`. Not usable.
+
+### Feasibility
+Could potentially work via the Lambda fetch proxy (add `.prophetservices.com` to `ALLOWED_HOSTS`), but would require reverse-engineering the V4 API and building a separate adapter or V4 variant.
+
+---
+
+## GolfNow (Ft. Snelling)
+
+**Status: Deferred** — API not yet investigated.
+
+### Background
+Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its primary booking platform, unlike the other Mpls Park Board courses which use CPS Golf V5.
+
+### Known Info
+- **GolfNow facility ID:** 18122
+- **Booking URL:** `https://www.golfnow.com/tee-times/facility/18122-fort-snelling-golf-club-9-holes/search`
+- **Course website:** `https://www.minneapolisparks.org/golf/courses/fort_snelling_golf_club/`
+- **API base (unverified):** `api.gnsvc.com`
+
+### Notes
+- GolfNow is a marketplace/aggregator (NBC Sports). Several other TC courses also list on GolfNow as a secondary channel.
+- 6 TC courses appear to use GolfNow as their primary booking system (see `tc-courses-platforms.md`).
+- The `api.gnsvc.com` API has not been investigated. May require authentication or have anti-scraping protections given GolfNow's commercial nature.
+
+---
+
+## TeeWire (Inver Wood)
+
+**Status: Deferred** — new platform, no API research.
+
+### Background
+Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp based on March 2026 research. As of late March 2026, the course uses **TeeWire** (`teewire.app`), not TeeItUp. The old TeeItUp URL (`inverwood-golf-course.book.teeitup.golf`) returns 403 Forbidden.
+
+### Known Info
+- **TeeWire booking URL:** `https://teewire.app/inverwood`
+- **Course website:** [inverwood golf course website]
+- **Holes:** 27 (18-hole championship + 9-hole executive)
+- **Old TeeItUp URL (dead):** `https://inverwood-golf-course.book.teeitup.golf` → 403
+
+### Notes
+- TeeWire appears to be a newer/less common tee time booking platform. No API investigation has been conducted.
+- The platform switch from TeeItUp to TeeWire likely happened between the March 8 research and March 26 discovery.
+- Bluff Creek Golf Course was also originally listed as TeeItUp but is actually on Chronogolf.
+
+---
+
 ## Platform Comparison Summary
 
-| Platform | Auth Model | API Style | Headless Browser? | Complexity |
-|---|---|---|---|---|
-| CPS Golf | Static x-apikey header | REST GET, JSON | No | Low |
-| ForeUp | None (api_key=no_limits) | REST GET, JSON | No | Very Low |
-| Chronogolf | x-csrf-token (session) | REST GET, JSON | No* | Medium |
-| TeeItUp/Kenna | x-be-alias header | REST GET, JSON | No | Low |
-| Eagle Club | None (dbname param) | REST POST, JSON | No | Low-Medium |
+| Platform | Auth Model | API Style | Headless Browser? | Complexity | Status |
+|---|---|---|---|---|---|
+| CPS Golf (V5) | Static x-apikey header | REST GET, JSON | No | Low | Adapter built |
+| ForeUp | None (api_key=no_limits) | REST GET, JSON | No | Very Low | Adapter built |
+| TeeItUp/Kenna | x-be-alias header | REST GET, JSON | No | Low | Adapter built |
+| Chronogolf | x-csrf-token (session) | REST GET, JSON | No* | Medium | Needs adapter |
+| Eagle Club | None (dbname param) | REST POST, JSON | No | Low-Medium | Needs adapter |
+| CPS Golf (V4) | ASP.NET session + WAF | REST GET, JSON | No** | High | Deferred |
+| GolfNow | Unknown | Unknown | Unknown | Unknown | Deferred |
+| TeeWire | Unknown | Unknown | Unknown | Unknown | Deferred |
 
 *Chronogolf may require fetching a page first to obtain the CSRF token, or there may be a token-free endpoint. Needs spring verification.
 
+**CPS V4 (ProphetServices) is behind AWS WAF. Could work via Lambda proxy, but V4 API differs from V5.
+
 ## Conclusion
 
-All 5 platforms needed for the 11 favorite courses are confirmed accessible via plain HTTP. The app architecture (Cloudflare Workers + Cron Triggers) is fully viable.
+The 5 original platforms (CPS Golf V5, ForeUp, TeeItUp, Chronogolf, Eagle Club) are confirmed accessible via plain HTTP. Three additional platforms (CPS Golf V4/ProphetServices, GolfNow, TeeWire) have been identified but deferred due to access challenges or lack of API research.
