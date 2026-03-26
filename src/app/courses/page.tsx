@@ -42,6 +42,7 @@ function saveCollapsedAreas(areas: string[]) {
 function CourseBrowser() {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [collapsed, setCollapsed] = useState<string[]>(getCollapsedAreas);
+  const [search, setSearch] = useState("");
 
   const toggleArea = useCallback((area: string) => {
     setCollapsed((prev) => {
@@ -53,9 +54,12 @@ function CourseBrowser() {
     });
   }, []);
 
-  const visibleCourses = (courseCatalog as CatalogCourse[]).filter(
-    (c) => !c.disabled
-  );
+  const visibleCourses = (courseCatalog as CatalogCourse[]).filter((c) => {
+    if (c.disabled) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q);
+  });
 
   const groups = groupByArea(visibleCourses);
 
@@ -65,6 +69,14 @@ function CourseBrowser() {
       <p className="mt-1 text-sm text-gray-500 lg:text-base">
         Browse courses and add them to your favorites.
       </p>
+
+      <input
+        type="text"
+        placeholder="Search courses..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mt-4 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 lg:text-base"
+      />
 
       <div className="mt-6 space-y-6">
         {groups.map(({ area, courses }) => {
