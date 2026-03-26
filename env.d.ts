@@ -8,4 +8,5 @@ interface CloudflareEnv {
   FETCH_PROXY_URL?: string;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
+  CPS_V4_API_KEY?: string;
 }

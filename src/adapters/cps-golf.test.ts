@@ -318,6 +318,54 @@ describe("CpsGolfAdapter", () => {
     expect(ttUrl).not.toContain("%2C"); // no commas
   });
 
+  describe("v4 auth mode", () => {
+    const v4Config: CourseConfig = {
+      id: "edinburgh-usa",
+      name: "Edinburgh USA",
+      platform: "cps_golf",
+      platformConfig: {
+        subdomain: "edinburghusa",
+        websiteId: "7b2c1b2a-acee-4ba4-e72a-08dc2c96d123",
+        courseIds: "1,2",
+        authType: "v4",
+      },
+      bookingUrl: "https://edinburghusa.cps.golf/onlineresweb",
+    };
+
+    const v4Env = {
+      DB: {} as any,
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      JWT_SECRET: "",
+      CPS_V4_API_KEY: "test-v4-api-key",
+    } satisfies CloudflareEnv;
+
+    it("skips token and transaction, uses apiKey header directly", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(JSON.stringify(fixture), { status: 200 })
+      );
+
+      const results = await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4Env);
+
+      // Only 1 fetch call (TeeTimes), not 3 (token + register + TeeTimes)
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchSpy.mock.calls[0];
+      expect(url).toContain("/TeeTimes?");
+      expect(url).not.toContain("transactionId");
+      expect((init as RequestInit).headers).toHaveProperty("x-apikey", "test-v4-api-key");
+      expect((init as RequestInit).headers).toHaveProperty("client-id", "js1");
+      expect(results).toHaveLength(3);
+    });
+
+    it("throws when CPS_V4_API_KEY secret is missing", async () => {
+      const noKeyEnv = { ...v4Env, CPS_V4_API_KEY: undefined } as unknown as CloudflareEnv;
+
+      await expect(
+        adapter.fetchTeeTimes(v4Config, "2026-03-12", noKeyEnv)
+      ).rejects.toThrow("Missing CPS_V4_API_KEY");
+    });
+  });
+
   describe("proxy mode", () => {
     const proxyEnv = {
       DB: {} as any,
