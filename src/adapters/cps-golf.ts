@@ -65,6 +65,13 @@ export class CpsGolfAdapter implements PlatformAdapter {
         throw new Error("Missing CPS_V4_API_KEY secret for v4 auth");
       }
       headers = this.buildV4Headers(config, apiKey, timezone);
+      const transactionId = await this.registerTransaction(
+        baseUrl,
+        apiKey,
+        headers,
+        proxy
+      );
+      params.set("transactionId", transactionId);
     } else {
       const token = await this.getToken(subdomain, proxy);
       headers = this.buildHeaders(config, token, timezone);
