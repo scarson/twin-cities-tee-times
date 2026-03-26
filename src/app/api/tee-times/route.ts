@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     SELECT t.*, c.name as course_name, c.city as course_city, c.state as course_state
     FROM tee_times t
     JOIN courses c ON t.course_id = c.id
-    WHERE t.date = ?
+    WHERE t.date = ? AND c.disabled = 0
   `;
   const bindings: unknown[] = [date];
 

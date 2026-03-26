@@ -37,6 +37,26 @@ describe("getArea", () => {
     expect(getArea("Solana Beach")).toBe("San Diego");
   });
 
+  it.each([
+    ["Brooklyn Park", "North Metro"],
+    ["Coon Rapids", "North Metro"],
+    ["Blaine", "North Metro"],
+    ["Ham Lake", "North Metro"],
+    ["Anoka", "North Metro"],
+    ["White Bear Lake", "East Metro"],
+    ["Maplewood", "East Metro"],
+    ["Inver Grove Heights", "East Metro"],
+    ["Chaska", "South Metro"],
+    ["Apple Valley", "South Metro"],
+    ["Bloomington", "South Metro"],
+    ["Golden Valley", "South Metro"],
+    ["Medina", "South Metro"],
+    ["Maple Plain", "South Metro"],
+    ["Maple Grove", "South Metro"],
+  ])("maps %s to %s", (city, expectedArea) => {
+    expect(getArea(city)).toBe(expectedArea);
+  });
+
   it("returns Other for unknown cities", () => {
     expect(getArea("Timbuktu")).toBe("Other");
   });

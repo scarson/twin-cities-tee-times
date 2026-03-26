@@ -77,6 +77,7 @@ describe("pollCourse", () => {
     platform_config: JSON.stringify({ facilityId: "21445", scheduleId: "7829" }),
     booking_url: "https://foreupsoftware.com/index.php/booking/21445/7829",
     is_active: 1,
+    disabled: 0,
     city: "Edina",
     state: "MN",
     last_had_tee_times: null,

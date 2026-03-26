@@ -91,4 +91,25 @@ describe("GET /api/tee-times", () => {
     const sql = db.prepare.mock.calls[0][0];
     expect(sql).toContain("IN");
   });
+
+  it("returns 400 for non-numeric minSlots", async () => {
+    const res = await GET(makeRequest({ date: "2026-04-15", minSlots: "abc" }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("minSlots");
+  });
+
+  it("returns 400 for minSlots of 0", async () => {
+    const res = await GET(makeRequest({ date: "2026-04-15", minSlots: "0" }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("minSlots");
+  });
+
+  it("returns 400 for negative minSlots", async () => {
+    const res = await GET(makeRequest({ date: "2026-04-15", minSlots: "-1" }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("minSlots");
+  });
 });

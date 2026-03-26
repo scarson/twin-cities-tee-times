@@ -70,7 +70,7 @@ export async function runCronPoll(
 
     // Fetch ALL courses and assign to batches
     const coursesResult = await db
-      .prepare("SELECT * FROM courses")
+      .prepare("SELECT * FROM courses WHERE disabled = 0")
       .all<CourseRow>();
     const allCourses = coursesResult.results;
     const batches = assignBatches(allCourses);

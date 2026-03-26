@@ -261,6 +261,7 @@
     "name": "Balboa Park (SD Test)",
     "city": "San Diego",
     "state": "CA",
+    "disabled": 1,
     "address": "2600 Golf Course Dr, San Diego, CA 92102",
     "platform": "foreup",
     "platformConfig": {
@@ -275,6 +276,7 @@
     "name": "Goat Hill Park (SD Test)",
     "city": "Oceanside",
     "state": "CA",
+    "disabled": 1,
     "address": "2323 Goat Hill Dr, Oceanside, CA 92054",
     "platform": "foreup",
     "platformConfig": {
@@ -289,6 +291,7 @@
     "name": "Oceanside Muni (SD Test)",
     "city": "Oceanside",
     "state": "CA",
+    "disabled": 1,
     "address": "825 Douglas Dr, Oceanside, CA 92058",
     "platform": "foreup",
     "platformConfig": {
@@ -303,6 +306,7 @@
     "name": "Lomas Santa Fe Executive Golf Course (SD Test)",
     "city": "Solana Beach",
     "state": "CA",
+    "disabled": 1,
     "address": "1580 Sun Valley Rd, Solana Beach, CA 92075",
     "platform": "teeitup",
     "platformConfig": {
@@ -318,6 +322,7 @@
     "name": "Coronado Golf Course (SD Test)",
     "city": "Coronado",
     "state": "CA",
+    "disabled": 1,
     "address": "2000 Visalia Row, Coronado, CA 92118",
     "platform": "teeitup",
     "platformConfig": {
@@ -333,6 +338,7 @@
     "name": "Encinitas Ranch (SD Test)",
     "city": "Encinitas",
     "state": "CA",
+    "disabled": 1,
     "address": "1275 Quail Gardens Dr, Encinitas, CA 92024",
     "platform": "cps_golf",
     "platformConfig": {
@@ -351,6 +357,7 @@
     "name": "Twin Oaks (SD Test)",
     "city": "San Marcos",
     "state": "CA",
+    "disabled": 1,
     "address": "1425 N Twin Oaks Valley Rd, San Marcos, CA 92069",
     "platform": "cps_golf",
     "platformConfig": {
@@ -369,6 +376,7 @@
     "name": "Rancho Bernardo Inn (SD Test)",
     "city": "San Diego",
     "state": "CA",
+    "disabled": 1,
     "address": "17550 Bernardo Oaks Dr, San Diego, CA 92128",
     "platform": "cps_golf",
     "platformConfig": {
@@ -444,7 +452,7 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
-    "is_active": 0,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "majestic-oaks-golf-club",
@@ -459,7 +467,7 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
-    "is_active": 0,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "majestic-oaks-golf-club",
@@ -474,7 +482,7 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
-    "is_active": 0,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "majestic-oaks-golf-club",
@@ -489,7 +497,7 @@
     "city": "Maple Grove",
     "state": "MN",
     "address": "7801 CR 101, Maple Grove, MN 55311",
-    "is_active": 0,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "rush-creek-golf-club",
@@ -504,12 +512,11 @@
     "city": "Anoka",
     "state": "MN",
     "address": "2800 Greenhaven Rd, Anoka, MN 55303",
-    "is_active": 0,
-    "platform": "chronogolf",
+    "platform": "foreup",
     "platformConfig": {
-      "clubSlug": "greenhaven-golf-course",
-      "courseId": "936ec61e-7e1b-4de3-b465-3f53ec0918da"
+      "facilityId": "21694",
+      "scheduleId": "8609"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/greenhaven-golf-course#teetimes"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21694/8609"
   }
 ]

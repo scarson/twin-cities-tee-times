@@ -24,6 +24,7 @@ interface CourseEntry {
   name: string;
   city: string;
   state?: string;
+  disabled?: number;
   platform: string;
   platformConfig: Record<string, string>;
   bookingUrl: string;
@@ -42,7 +43,7 @@ const lines: string[] = [
 
 for (const course of courses) {
   lines.push(
-    `INSERT INTO courses (id, name, city, state, platform, platform_config, booking_url) VALUES ('${esc(course.id)}', '${esc(course.name)}', '${esc(course.city)}', '${esc(course.state ?? "MN")}', '${esc(course.platform)}', '${esc(JSON.stringify(course.platformConfig))}', '${esc(course.bookingUrl)}') ON CONFLICT(id) DO UPDATE SET name=excluded.name, city=excluded.city, state=excluded.state, platform=excluded.platform, platform_config=excluded.platform_config, booking_url=excluded.booking_url;`
+    `INSERT INTO courses (id, name, city, state, disabled, platform, platform_config, booking_url) VALUES ('${esc(course.id)}', '${esc(course.name)}', '${esc(course.city)}', '${esc(course.state ?? "MN")}', ${course.disabled ?? 0}, '${esc(course.platform)}', '${esc(JSON.stringify(course.platformConfig))}', '${esc(course.bookingUrl)}') ON CONFLICT(id) DO UPDATE SET name=excluded.name, city=excluded.city, state=excluded.state, disabled=excluded.disabled, platform=excluded.platform, platform_config=excluded.platform_config, booking_url=excluded.booking_url;`
   );
 }
 

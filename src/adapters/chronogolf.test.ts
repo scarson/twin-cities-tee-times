@@ -119,6 +119,17 @@ describe("ChronogolfAdapter", () => {
     expect(results[3].time).toBe("2026-03-28T11:03:00");
   });
 
+  it("passes AbortSignal.timeout to fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "open", teetimes: [] }), { status: 200 }),
+    );
+
+    await adapter.fetchTeeTimes(mockConfig, "2026-03-28");
+
+    const fetchOptions = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("uses max_player_size for openSlots", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
