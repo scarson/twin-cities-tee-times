@@ -203,6 +203,26 @@ Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its pri
 
 ---
 
+## TeeWire (Inver Wood)
+
+**Status: Deferred** — new platform, no API research.
+
+### Background
+Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp based on March 2026 research. As of late March 2026, the course uses **TeeWire** (`teewire.app`), not TeeItUp. The old TeeItUp URL (`inverwood-golf-course.book.teeitup.golf`) returns 403 Forbidden.
+
+### Known Info
+- **TeeWire booking URL:** `https://teewire.app/inverwood`
+- **Course website:** [inverwood golf course website]
+- **Holes:** 27 (18-hole championship + 9-hole executive)
+- **Old TeeItUp URL (dead):** `https://inverwood-golf-course.book.teeitup.golf` → 403
+
+### Notes
+- TeeWire appears to be a newer/less common tee time booking platform. No API investigation has been conducted.
+- The platform switch from TeeItUp to TeeWire likely happened between the March 8 research and March 26 discovery.
+- Bluff Creek Golf Course was also originally listed as TeeItUp but is actually on Chronogolf.
+
+---
+
 ## Platform Comparison Summary
 
 | Platform | Auth Model | API Style | Headless Browser? | Complexity | Status |
@@ -214,6 +234,7 @@ Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its pri
 | Eagle Club | None (dbname param) | REST POST, JSON | No | Low-Medium | Needs adapter |
 | CPS Golf (V4) | ASP.NET session + WAF | REST GET, JSON | No** | High | Deferred |
 | GolfNow | Unknown | Unknown | Unknown | Unknown | Deferred |
+| TeeWire | Unknown | Unknown | Unknown | Unknown | Deferred |
 
 *Chronogolf may require fetching a page first to obtain the CSRF token, or there may be a token-free endpoint. Needs spring verification.
 
@@ -221,4 +242,4 @@ Ft. Snelling Golf Club (Minneapolis Park Board, 9 holes) uses GolfNow as its pri
 
 ## Conclusion
 
-The 5 original platforms (CPS Golf V5, ForeUp, TeeItUp, Chronogolf, Eagle Club) are confirmed accessible via plain HTTP. Two additional platforms (CPS Golf V4/ProphetServices, GolfNow) have been identified but deferred due to access challenges or lack of API research.
+The 5 original platforms (CPS Golf V5, ForeUp, TeeItUp, Chronogolf, Eagle Club) are confirmed accessible via plain HTTP. Three additional platforms (CPS Golf V4/ProphetServices, GolfNow, TeeWire) have been identified but deferred due to access challenges or lack of API research.

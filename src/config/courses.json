@@ -213,6 +213,36 @@
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216"
   },
   {
+    "index": 24,
+    "id": "keller",
+    "name": "Keller",
+    "city": "Maplewood",
+    "state": "MN",
+    "address": "2166 Maplewood Dr, Maplewood, MN 55109",
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "ramsey-county-golf",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "17055"
+    },
+    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=17055"
+  },
+  {
+    "index": 25,
+    "id": "pioneer-creek",
+    "name": "Pioneer Creek",
+    "city": "Maple Plain",
+    "state": "MN",
+    "address": "705 Copeland Rd, Maple Plain, MN 55359",
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "pioneercreek",
+      "websiteId": "07ecdaf7-4af5-4b9f-40c3-08dc8bc4f610",
+      "courseIds": "5"
+    },
+    "bookingUrl": "https://pioneercreek.cps.golf/onlineresweb"
+  },
+  {
     "index": 14,
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",
