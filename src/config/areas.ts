@@ -13,12 +13,14 @@ const CITY_TO_AREA: Record<string, string> = {
   Roseville: "North Metro",
   "Ham Lake": "North Metro",
   Anoka: "North Metro",
+  Dayton: "North Metro",
 
   // East Metro
   "White Bear Lake": "East Metro",
   Stillwater: "East Metro",
   Maplewood: "East Metro",
   "Inver Grove Heights": "East Metro",
+  "Cottage Grove": "East Metro",
 
   // South Metro
   Edina: "South Metro",
@@ -30,6 +32,7 @@ const CITY_TO_AREA: Record<string, string> = {
   Medina: "South Metro",
   "Maple Plain": "South Metro",
   "Maple Grove": "South Metro",
+  Hastings: "South Metro",
 
   // San Diego (test courses)
   "San Diego": "San Diego",

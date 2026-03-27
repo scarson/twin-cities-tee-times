@@ -1,0 +1,101 @@
+[
+  {
+    "teeTime": 480,
+    "items": [
+      {
+        "allowSinglesToBookOnline": true,
+        "availableCount": 0,
+        "bookingNotAllowed": false,
+        "golfClubId": 9431,
+        "golfCourseId": 11701,
+        "golfCourseNumberOfHoles": 18,
+        "hide": false,
+        "name": "River Oaks Municipal",
+        "playerCount": 0,
+        "price": 42.0,
+        "teeTime": 480,
+        "teeTimeId": 14395001
+      }
+    ]
+  },
+  {
+    "teeTime": 492,
+    "items": [
+      {
+        "allowSinglesToBookOnline": true,
+        "availableCount": 0,
+        "bookingNotAllowed": false,
+        "golfClubId": 9431,
+        "golfCourseId": 11701,
+        "golfCourseNumberOfHoles": 18,
+        "hide": false,
+        "name": "River Oaks Municipal",
+        "playerCount": 2,
+        "price": 42.0,
+        "teeTime": 492,
+        "teeTimeId": 14395002
+      }
+    ]
+  },
+  {
+    "teeTime": 504,
+    "items": [
+      {
+        "allowSinglesToBookOnline": true,
+        "availableCount": 0,
+        "bookingNotAllowed": false,
+        "golfClubId": 9431,
+        "golfCourseId": 11701,
+        "golfCourseNumberOfHoles": 18,
+        "hide": false,
+        "name": "River Oaks Municipal",
+        "playerCount": 4,
+        "price": 42.0,
+        "teeTime": 504,
+        "teeTimeId": 14395003
+      }
+    ]
+  },
+  {
+    "teeTime": 516,
+    "items": [
+      {
+        "allowSinglesToBookOnline": true,
+        "availableCount": 0,
+        "bookingNotAllowed": true,
+        "golfClubId": 9431,
+        "golfCourseId": 11701,
+        "golfCourseNumberOfHoles": 18,
+        "hide": false,
+        "name": "River Oaks Municipal",
+        "playerCount": 0,
+        "price": 42.0,
+        "teeTime": 516,
+        "teeTimeId": 14395004
+      }
+    ]
+  },
+  {
+    "teeTime": 528,
+    "items": [
+      {
+        "allowSinglesToBookOnline": true,
+        "availableCount": 0,
+        "bookingNotAllowed": false,
+        "golfClubId": 9431,
+        "golfCourseId": 11701,
+        "golfCourseNumberOfHoles": 18,
+        "hide": true,
+        "name": "River Oaks Municipal",
+        "playerCount": 0,
+        "price": 42.0,
+        "teeTime": 528,
+        "teeTimeId": 14395005
+      }
+    ]
+  },
+  {
+    "teeTime": 540,
+    "items": []
+  }
+]

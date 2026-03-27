@@ -406,6 +406,76 @@
     "bookingUrl": "https://www.golfnow.com/tee-times/facility/18122-fort-snelling-golf-club-9-holes/search"
   },
   {
+    "index": 44,
+    "id": "daytona",
+    "name": "Daytona Golf Club",
+    "city": "Dayton",
+    "state": "MN",
+    "address": "14730 Lawndale Ln N, Dayton, MN 55327",
+    "platform": "teesnap",
+    "platformConfig": {
+      "subdomain": "daytonagolfclub",
+      "courseId": "1163"
+    },
+    "bookingUrl": "https://daytonagolfclub.teesnap.net"
+  },
+  {
+    "index": 45,
+    "id": "stoneridge",
+    "name": "StoneRidge",
+    "city": "Stillwater",
+    "state": "MN",
+    "address": "13600 Hudson Blvd N, Stillwater, MN 55082",
+    "platform": "teesnap",
+    "platformConfig": {
+      "subdomain": "stoneridgegc",
+      "courseId": "1320"
+    },
+    "bookingUrl": "https://stoneridgegc.teesnap.net"
+  },
+  {
+    "index": 46,
+    "id": "river-oaks",
+    "name": "River Oaks Municipal",
+    "city": "Cottage Grove",
+    "state": "MN",
+    "address": "11099 S Robert Trail, Cottage Grove, MN 55016",
+    "platform": "membersports",
+    "platformConfig": {
+      "golfClubId": "9431",
+      "golfCourseId": "11701"
+    },
+    "bookingUrl": "https://app.membersports.com/tee-times/9431/11701/0"
+  },
+  {
+    "index": 47,
+    "id": "emerald-greens-gold",
+    "name": "Emerald Greens (Gold)",
+    "city": "Hastings",
+    "state": "MN",
+    "address": "14425 Goodwin Ave, Hastings, MN 55033",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "19202",
+      "scheduleId": "1266"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1266"
+  },
+  {
+    "index": 48,
+    "id": "emerald-greens-silver",
+    "name": "Emerald Greens (Silver)",
+    "city": "Hastings",
+    "state": "MN",
+    "address": "14425 Goodwin Ave, Hastings, MN 55033",
+    "platform": "foreup",
+    "platformConfig": {
+      "facilityId": "19202",
+      "scheduleId": "1308"
+    },
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1308"
+  },
+  {
     "index": 14,
     "id": "sd-balboa-park",
     "name": "Balboa Park (SD Test)",

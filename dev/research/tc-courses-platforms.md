@@ -10,14 +10,15 @@
 | CPS Golf (Club Prophet) | 12 | 2 | 14 |
 | Chronogolf/Lightspeed | 27 | 8 | 35 |
 | TeeItUp | 7 | 1 | 8 |
-| ForeUp | 3 | 1 | 4 |
-| Teesnap | 3 | 0 | 3 |
-| GolfNow (primary) | 4 | 2 | 6 |
+| ForeUp | 5 | 1 | 6 |
+| Teesnap | 2 | 0 | 2 |
+| MemberSports | 1 | 0 | 1 |
+| GolfNow (primary) | 3 | 2 | 5 |
 | Eagle Club Systems | 1 | 0 | 1 |
 | EZLinks | 1 | 0 | 1 |
 | City/Custom System | 0 | 3 | 3 |
 | Unknown/Closed | 2 | 2 | 4 |
-| **Total** | **60** | **19** | **79** |
+| **Total** | **61** | **19** | **80** |
 
 > **Course count note:** The total exceeds the input list because all 11 previously-known
 > favorites are included alongside the newly-researched courses. Some facilities have
@@ -137,6 +138,8 @@ Courses using foreupsoftware.com for reservations.
 | Bunker Hills | Coon Rapids | 18 | Facility 20252 | *Favorite* - Anoka County |
 | Roseville Cedarholm | Roseville | 9 | foreupsoftware.com/index.php/booking/22244/10216 | Par 27 |
 | Pheasant Acres | Rogers | 18 | Unknown facility ID | ForeUp confirmed |
+| Emerald Greens (Gold) | Hastings | 18 | Facility 19202, Schedule 1266 | 36-hole facility |
+| Emerald Greens (Silver) | Hastings | 18 | Facility 19202, Schedule 1308 | 36-hole facility |
 
 **Notes:**
 - ForeUp has a public API with `api_key=no_limits`. See `booking-platform-investigation.md`.
@@ -150,8 +153,23 @@ Courses using `{subdomain}.teesnap.net` for reservations.
 | Course Name | City | Holes | Booking URL | Notes |
 |---|---|---|---|---|
 | Daytona | Dayton | 18 | daytonagolfclub.teesnap.net | Pay at course |
-| River Oaks | Cottage Grove | 18 | riveroaksmunigolf.teesnap.net | Municipal course |
 | StoneRidge | Stillwater | 18 | stoneridgegc.teesnap.net | Dynamic pricing; pre-pay online |
+
+> **Note:** River Oaks Municipal (Cottage Grove) previously used Teesnap but has moved to MemberSports.
+
+---
+
+## MemberSports
+
+Courses using `app.membersports.com` for reservations.
+
+| Course Name | City | Holes | MemberSports IDs | Notes |
+|---|---|---|---|---|
+| River Oaks Municipal | Cottage Grove | 18 | golfClubId 9431, golfCourseId 11701 | Previously on Teesnap |
+
+**Notes:**
+- MemberSports uses a public REST API at `api.membersports.com` with a static `x-api-key`.
+- Only River Oaks is confirmed to actively use MemberSports in the TC metro. Other MN courses have MemberSports catalog entries but don't use it for booking.
 
 ---
 
@@ -208,10 +226,11 @@ Courses where the primary direct booking platform could not be confirmed from we
 
 | Course Name | City | Holes | Known Aggregator Listings | Notes |
 |---|---|---|---|---|
-| Emerald Greens | Hastings | 36 | GolfNow (3886) | Two 18-hole courses; own website booking |
 | Pinewood Golf Club | Elk River | 9 | GolfNow (16031) | Executive 9-hole |
 | Brookland Golf Park | Brooklyn Park | 9 | GolfNow (16956) | Par 30; may be phone-only |
 | U of M Les Bolstad | St. Paul | 18 | Chronogolf | **CLOSED after 2025 season** - land being sold |
+
+> **Note:** Emerald Greens (Hastings) was previously listed here but uses ForeUp as its primary booking system (facility 19202).
 
 ---
 
@@ -235,7 +254,8 @@ Courses where the primary direct booking platform could not be confirmed from we
 ### Platforms needing API investigation
 - **Chronogolf/Lightspeed:** Largest group (~35 courses). High priority for API research.
 - **TeeItUp:** 8 courses including Ramsey County. Medium priority.
-- **Teesnap:** 3 courses. Lower priority.
+- **Teesnap:** 2 courses. Adapter implemented.
+- **MemberSports:** 1 course (River Oaks). Adapter implemented.
 - **GolfNow:** 6 courses as primary. May require different approach (GolfNow is a marketplace).
 - **EZLinks:** 1 course. Low priority.
 
