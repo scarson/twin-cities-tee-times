@@ -145,6 +145,17 @@ describe("MemberSportsAdapter", () => {
     expect(headers["x-api-key"]).toBe("A9814038-9E19-4683-B171-5A06B39147FC");
   });
 
+  // PITFALL (testing-pitfalls.md §6.4): Unexpected response shape must throw.
+  it("throws when response is not an array", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ unexpected: "shape" }), { status: 200 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow("unexpected response shape");
+  });
+
   it("returns empty array for empty API response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([]), { status: 200 })

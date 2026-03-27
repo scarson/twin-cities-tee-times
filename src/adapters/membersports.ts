@@ -65,6 +65,10 @@ export class MemberSportsAdapter implements PlatformAdapter {
 
     const data: MemberSportsSlot[] = await response.json();
 
+    if (!Array.isArray(data)) {
+      throw new Error("MemberSports API returned unexpected response shape");
+    }
+
     const results: TeeTime[] = [];
 
     for (const slot of data) {
@@ -80,7 +84,7 @@ export class MemberSportsAdapter implements PlatformAdapter {
       results.push({
         courseId: config.id,
         time: this.minutesToIso(date, slot.teeTime),
-        price: item.price,
+        price: item.price != null && !Number.isNaN(item.price) ? item.price : null,
         holes: item.golfCourseNumberOfHoles === 9 ? 9 : 18,
         openSlots,
         bookingUrl: config.bookingUrl,
