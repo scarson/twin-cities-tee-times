@@ -411,6 +411,7 @@
     "name": "Daytona Golf Club",
     "city": "Dayton",
     "state": "MN",
+    "address": "14730 Lawndale Ln N, Dayton, MN 55327",
     "platform": "teesnap",
     "platformConfig": {
       "subdomain": "daytonagolfclub",
@@ -424,6 +425,7 @@
     "name": "StoneRidge",
     "city": "Stillwater",
     "state": "MN",
+    "address": "13600 Hudson Blvd N, Stillwater, MN 55082",
     "platform": "teesnap",
     "platformConfig": {
       "subdomain": "stoneridgegc",
@@ -437,6 +439,7 @@
     "name": "River Oaks Municipal",
     "city": "Cottage Grove",
     "state": "MN",
+    "address": "11099 S Robert Trail, Cottage Grove, MN 55016",
     "platform": "membersports",
     "platformConfig": {
       "golfClubId": "9431",
@@ -450,6 +453,7 @@
     "name": "Emerald Greens (Gold)",
     "city": "Hastings",
     "state": "MN",
+    "address": "14425 Goodwin Ave, Hastings, MN 55033",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19202",
@@ -463,6 +467,7 @@
     "name": "Emerald Greens (Silver)",
     "city": "Hastings",
     "state": "MN",
+    "address": "14425 Goodwin Ave, Hastings, MN 55033",
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19202",
