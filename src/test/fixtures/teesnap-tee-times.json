@@ -1,0 +1,95 @@
+{
+  "teeTimes": {
+    "bookings": [
+      {
+        "bookingId": 50001,
+        "golfers": [1001, 1002],
+        "teeOffSection": "FRONT_NINE",
+        "roundType": "EIGHTEEN_HOLE"
+      },
+      {
+        "bookingId": 50002,
+        "golfers": [1003, 1004, 1005, 1006],
+        "teeOffSection": "FRONT_NINE",
+        "roundType": "EIGHTEEN_HOLE"
+      },
+      {
+        "bookingId": 50003,
+        "golfers": [1007],
+        "teeOffSection": "FRONT_NINE",
+        "roundType": "NINE_HOLE"
+      }
+    ],
+    "golfers": [
+      { "id": 1001, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1002, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1003, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1004, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1005, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1006, "roundType": "EIGHTEEN_HOLE", "checkedIn": false },
+      { "id": 1007, "roundType": "NINE_HOLE", "checkedIn": false }
+    ],
+    "teeSheetPriceOverrides": [],
+    "teeTimes": [
+      {
+        "teeTime": "2026-04-15T08:00:00",
+        "prices": [
+          { "roundType": "NINE_HOLE", "rackRatePrice": "30.00", "price": "30.00", "taxInclusive": false },
+          { "roundType": "EIGHTEEN_HOLE", "rackRatePrice": "55.00", "price": "50.00", "taxInclusive": false }
+        ],
+        "teeOffSections": [
+          { "teeOff": "FRONT_NINE", "bookings": [], "isHeld": false }
+        ],
+        "squeezeTime": false,
+        "shotgun": false
+      },
+      {
+        "teeTime": "2026-04-15T08:09:00",
+        "prices": [
+          { "roundType": "NINE_HOLE", "rackRatePrice": "30.00", "price": "30.00", "taxInclusive": false },
+          { "roundType": "EIGHTEEN_HOLE", "rackRatePrice": "55.00", "price": "50.00", "taxInclusive": false }
+        ],
+        "teeOffSections": [
+          { "teeOff": "FRONT_NINE", "bookings": [50001], "isHeld": false }
+        ],
+        "squeezeTime": false,
+        "shotgun": false
+      },
+      {
+        "teeTime": "2026-04-15T08:18:00",
+        "prices": [
+          { "roundType": "NINE_HOLE", "rackRatePrice": "30.00", "price": "30.00", "taxInclusive": false },
+          { "roundType": "EIGHTEEN_HOLE", "rackRatePrice": "55.00", "price": "50.00", "taxInclusive": false }
+        ],
+        "teeOffSections": [
+          { "teeOff": "FRONT_NINE", "bookings": [50002], "isHeld": false }
+        ],
+        "squeezeTime": false,
+        "shotgun": false
+      },
+      {
+        "teeTime": "2026-04-15T08:27:00",
+        "prices": [
+          { "roundType": "NINE_HOLE", "rackRatePrice": "30.00", "price": "30.00", "taxInclusive": false },
+          { "roundType": "EIGHTEEN_HOLE", "rackRatePrice": "55.00", "price": "50.00", "taxInclusive": false }
+        ],
+        "teeOffSections": [
+          { "teeOff": "FRONT_NINE", "bookings": [], "isHeld": true }
+        ],
+        "squeezeTime": false,
+        "shotgun": false
+      },
+      {
+        "teeTime": "2026-04-15T08:36:00",
+        "prices": [
+          { "roundType": "NINE_HOLE", "rackRatePrice": "25.00", "price": "25.00", "taxInclusive": false }
+        ],
+        "teeOffSections": [
+          { "teeOff": "FRONT_NINE", "bookings": [50003], "isHeld": false }
+        ],
+        "squeezeTime": false,
+        "shotgun": false
+      }
+    ]
+  }
+}
