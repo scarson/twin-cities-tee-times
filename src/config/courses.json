@@ -398,7 +398,7 @@
     "state": "MN",
     "address": "49 Hwy 5, St. Paul, MN 55111",
     "disabled": 1,
-    "displayNotes": "Tee times for this course are available on GolfNow. Select 'Book Online' to view and book.",
+    "displayNotes": "Tee times for this course are available on GolfNow. Select 'Book online' to view and book.",
     "platform": "golfnow",
     "platformConfig": {
       "facilityId": "18122"
