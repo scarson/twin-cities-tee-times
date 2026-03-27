@@ -14,14 +14,37 @@
 
 ---
 
-## Task 1: Teesnap Adapter — Test Fixture
+## Dependency Graph
+
+```
+Task 1 (Teesnap fixture + tests + impl) ──┐
+                                           ├─→ Task 3 (register adapters + catalog + docs)
+Task 2 (MemberSports fixture + tests + impl) ┘     │
+                                                    ↓
+                                           Task 4 (smoke tests + final verification)
+```
+
+Tasks 1 and 2 are **fully independent** and can run in parallel. Task 3 depends on both. Task 4 depends on Task 3.
+
+---
+
+## Task 1: Teesnap Adapter (fixture + tests + implementation)
+
+BEFORE starting work:
+1. Invoke the `superpowers:test-driven-development` skill
+2. Read `dev/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
+3. Read `dev/research/teesnap-platform-investigation.md` for full API details
+4. Read `src/adapters/eagle-club.ts` and `src/adapters/eagle-club.test.ts` as the reference pattern
+Follow TDD: write failing test → implement fix → verify green.
 
 **Files:**
 - Create: `src/test/fixtures/teesnap-tee-times.json`
+- Create: `src/adapters/teesnap.test.ts`
+- Create: `src/adapters/teesnap.ts`
 
-**Context:** The Teesnap API returns a nested response with `teeTimes.teeTimes[]` for slots, `teeTimes.bookings[]` for booking details, and `teeTimes.golfers[]` for golfer counts. We need a fixture that exercises: fully open slots, partially booked slots, fully booked slots, held sections, and both 9/18-hole pricing.
+### Step 1: Create the test fixture
 
-**Step 1: Create the test fixture**
+Create `src/test/fixtures/teesnap-tee-times.json` with this exact content:
 
 ```json
 {
@@ -121,30 +144,16 @@
 }
 ```
 
-Fixture covers:
+Fixture slot summary:
 - `08:00` — fully open (no bookings), both prices → 4 open slots, $50 (18-hole)
 - `08:09` — partially booked (2 golfers via booking 50001) → 2 open slots, $50
-- `08:18` — fully booked (4 golfers via booking 50002) → 0 open slots, filtered out
-- `08:27` — held section → filtered out (even though no bookings)
+- `08:18` — fully booked (4 golfers via booking 50002) → 0 open slots, FILTERED OUT
+- `08:27` — held section (`isHeld: true`) → FILTERED OUT
 - `08:36` — only 9-hole pricing, 1 golfer booked → 3 open slots, $25, holes: 9
 
-**Step 2: Commit**
+### Step 2: Write the test file
 
-```bash
-git add src/test/fixtures/teesnap-tee-times.json
-git commit -m "test: add Teesnap API response fixture"
-```
-
----
-
-## Task 2: Teesnap Adapter — Unit Tests
-
-**Files:**
-- Create: `src/adapters/teesnap.test.ts`
-
-**Context:** Follow the pattern in `src/adapters/eagle-club.test.ts`. Mock `globalThis.fetch`, use the fixture, test all behaviors.
-
-**Step 1: Write the test file**
+Create `src/adapters/teesnap.test.ts` with this exact content:
 
 ```typescript
 // @vitest-environment node
@@ -185,7 +194,7 @@ describe("TeensnapAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
     // 5 slots in fixture: 08:00 (open), 08:09 (partial), 08:18 (full), 08:27 (held), 08:36 (9-hole only)
-    // 08:18 filtered (0 open), 08:27 filtered (held)
+    // 08:18 filtered (0 open), 08:27 filtered (held) → 3 results
     expect(results).toHaveLength(3);
     expect(results[0]).toEqual({
       courseId: "stoneridge",
@@ -230,14 +239,14 @@ describe("TeensnapAdapter", () => {
     expect(times).not.toContain("2026-04-15T08:27:00"); // isHeld = true
   });
 
-  it("uses 18-hole price when available", async () => {
+  it("uses 18-hole promotional price (not rack rate) when available", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // Uses promotional price ($50) not rack rate ($55)
+    // Fixture: rackRatePrice "55.00", price "50.00" — must use price (promo), not rackRate
     expect(results[0].price).toBe(50);
     expect(results[0].holes).toBe(18);
   });
@@ -249,12 +258,15 @@ describe("TeensnapAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // 08:36 has only NINE_HOLE pricing
+    // 08:36 has only NINE_HOLE pricing at $25
     const nineHoleSlot = results.find((r) => r.time === "2026-04-15T08:36:00");
     expect(nineHoleSlot?.price).toBe(25);
     expect(nineHoleSlot?.holes).toBe(9);
   });
 
+  // PITFALL WARNING (testing-pitfalls.md §1.1): date_not_allowed is the ONLY case where
+  // returning [] is correct. This is NOT an error — it means the course is closed for the
+  // season. All actual errors (HTTP failures, network errors) must THROW, never return [].
   it("returns empty array for date_not_allowed (closed course)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify({ errors: "date_not_allowed" }), { status: 200 })
@@ -264,9 +276,24 @@ describe("TeensnapAdapter", () => {
     expect(results).toEqual([]);
   });
 
+  it("returns empty array when teeTimes.teeTimes is empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }),
+        { status: 200 }
+      )
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toEqual([]);
+  });
+
   it("builds correct API URL", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }), { status: 200 })
+      new Response(
+        JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }),
+        { status: 200 }
+      )
     );
 
     await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
@@ -279,7 +306,10 @@ describe("TeensnapAdapter", () => {
 
   it("sends browser-like User-Agent header", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }), { status: 200 })
+      new Response(
+        JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }),
+        { status: 200 }
+      )
     );
 
     await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
@@ -288,7 +318,8 @@ describe("TeensnapAdapter", () => {
     expect(headers["User-Agent"]).toMatch(/Mozilla/);
   });
 
-  it("throws on HTTP error", async () => {
+  // PITFALL (testing-pitfalls.md §1.1): HTTP errors must THROW, never return [].
+  it("throws on HTTP error (does NOT return empty array)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response("Server Error", { status: 500 })
     );
@@ -298,8 +329,43 @@ describe("TeensnapAdapter", () => {
     ).rejects.toThrow("HTTP 500");
   });
 
+  it("throws on HTTP 403 (CDN bot block)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Forbidden", { status: 403 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow("HTTP 403");
+  });
+
+  it("throws on network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new Error("network failure")
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow("network failure");
+  });
+
+  // PITFALL (testing-pitfalls.md §6.2): Malformed response must throw, not return [].
+  it("throws on malformed JSON response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("not json", { status: 200 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow();
+  });
+
+  // PITFALL (testing-pitfalls.md §3.1): Missing config must throw, not silently fail.
   it("throws when subdomain is missing", async () => {
-    const badConfig: CourseConfig = { ...mockConfig, platformConfig: { courseId: "1320" } };
+    const badConfig: CourseConfig = {
+      ...mockConfig,
+      platformConfig: { courseId: "1320" },
+    };
 
     await expect(
       adapter.fetchTeeTimes(badConfig, "2026-04-15")
@@ -307,7 +373,10 @@ describe("TeensnapAdapter", () => {
   });
 
   it("throws when courseId is missing", async () => {
-    const badConfig: CourseConfig = { ...mockConfig, platformConfig: { subdomain: "stoneridgegc" } };
+    const badConfig: CourseConfig = {
+      ...mockConfig,
+      platformConfig: { subdomain: "stoneridgegc" },
+    };
 
     await expect(
       adapter.fetchTeeTimes(badConfig, "2026-04-15")
@@ -316,7 +385,10 @@ describe("TeensnapAdapter", () => {
 
   it("passes AbortSignal.timeout to fetch", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }), { status: 200 })
+      new Response(
+        JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }),
+        { status: 200 }
+      )
     );
 
     await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
@@ -327,26 +399,14 @@ describe("TeensnapAdapter", () => {
 });
 ```
 
-**Step 2: Run tests to verify they fail**
+### Step 3: Run tests to verify they fail
 
 Run: `npx vitest run src/adapters/teesnap.test.ts`
 Expected: FAIL — `TeensnapAdapter` does not exist yet.
 
-**Step 3: Commit**
+### Step 4: Implement the adapter
 
-```bash
-git add src/adapters/teesnap.test.ts
-git commit -m "test: add Teesnap adapter tests (red)"
-```
-
----
-
-## Task 3: Teesnap Adapter — Implementation
-
-**Files:**
-- Create: `src/adapters/teesnap.ts`
-
-**Step 1: Implement the adapter**
+Create `src/adapters/teesnap.ts` with this exact content:
 
 ```typescript
 // ABOUTME: Teesnap platform adapter for fetching tee times.
@@ -415,6 +475,7 @@ export class TeensnapAdapter implements PlatformAdapter {
 
     const data: TeensnapResponse = await response.json();
 
+    // date_not_allowed means the course is closed for the season — not an error
     if (data.errors === "date_not_allowed") {
       return [];
     }
@@ -471,26 +532,42 @@ export class TeensnapAdapter implements PlatformAdapter {
 }
 ```
 
-**Step 2: Run tests to verify they pass**
+### Step 5: Run tests to verify they pass
 
 Run: `npx vitest run src/adapters/teesnap.test.ts`
-Expected: ALL PASS
+Expected: ALL PASS (16 tests)
 
-**Step 3: Commit**
+### Step 6: Commit
 
 ```bash
-git add src/adapters/teesnap.ts
-git commit -m "feat: add Teesnap adapter"
+git add src/test/fixtures/teesnap-tee-times.json src/adapters/teesnap.test.ts src/adapters/teesnap.ts
+git commit -m "feat: add Teesnap adapter with tests"
 ```
+
+BEFORE marking this task complete:
+1. Review your tests against `dev/testing-pitfalls.md`
+2. Verify: HTTP errors throw (§1.1)? Malformed JSON throws (§6.2)? Missing config throws (§3.1)? `date_not_allowed` returns `[]` with clear comment distinguishing it from error swallowing?
+3. Run `npx vitest run src/adapters/teesnap.test.ts` and confirm ALL PASS
 
 ---
 
-## Task 4: MemberSports Adapter — Test Fixture
+## Task 2: MemberSports Adapter (fixture + tests + implementation)
+
+BEFORE starting work:
+1. Invoke the `superpowers:test-driven-development` skill
+2. Read `dev/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
+3. Read `dev/research/membersports-platform-investigation.md` for full API details
+4. Read `src/adapters/eagle-club.ts` and `src/adapters/eagle-club.test.ts` as the reference pattern
+Follow TDD: write failing test → implement fix → verify green.
 
 **Files:**
 - Create: `src/test/fixtures/membersports-tee-times.json`
+- Create: `src/adapters/membersports.test.ts`
+- Create: `src/adapters/membersports.ts`
 
-**Step 1: Create the test fixture**
+### Step 1: Create the test fixture
+
+Create `src/test/fixtures/membersports-tee-times.json` with this exact content:
 
 ```json
 [
@@ -596,29 +673,17 @@ git commit -m "feat: add Teesnap adapter"
 ]
 ```
 
-Fixture covers:
-- `480` (8:00 AM) — fully open, 0 players → 4 open slots
-- `492` (8:12 AM) — 2 players booked → 2 open slots
-- `504` (8:24 AM) — 4 players booked → 0 open slots, filtered out
-- `516` (8:36 AM) — `bookingNotAllowed: true` → filtered out
-- `528` (8:48 AM) — `hide: true` → filtered out
-- `540` (9:00 AM) — empty `items` → filtered out
+Fixture slot summary:
+- `480` (8:00 AM) — fully open, 0 players → 4 open slots, $42
+- `492` (8:12 AM) — 2 players booked → 2 open slots, $42
+- `504` (8:24 AM) — 4 players booked → 0 open slots, FILTERED OUT
+- `516` (8:36 AM) — `bookingNotAllowed: true` → FILTERED OUT
+- `528` (8:48 AM) — `hide: true` → FILTERED OUT
+- `540` (9:00 AM) — empty `items` → FILTERED OUT
 
-**Step 2: Commit**
+### Step 2: Write the test file
 
-```bash
-git add src/test/fixtures/membersports-tee-times.json
-git commit -m "test: add MemberSports API response fixture"
-```
-
----
-
-## Task 5: MemberSports Adapter — Unit Tests
-
-**Files:**
-- Create: `src/adapters/membersports.test.ts`
-
-**Step 1: Write the test file**
+Create `src/adapters/membersports.test.ts` with this exact content:
 
 ```typescript
 // @vitest-environment node
@@ -658,8 +723,8 @@ describe("MemberSportsAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // 6 entries in fixture: 480 (open), 492 (partial), 504 (full), 516 (blocked), 528 (hidden), 540 (empty items)
-    // 504, 516, 528, 540 filtered out
+    // 6 entries: 480 (open), 492 (partial), 504 (full), 516 (blocked), 528 (hidden), 540 (empty)
+    // 504, 516, 528, 540 filtered out → 2 results
     expect(results).toHaveLength(2);
     expect(results[0]).toEqual({
       courseId: "river-oaks",
@@ -693,7 +758,7 @@ describe("MemberSportsAdapter", () => {
     expect(results[1].openSlots).toBe(2); // playerCount: 2
   });
 
-  it("filters out fully booked slots", async () => {
+  it("filters out fully booked slots (playerCount >= 4)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
@@ -712,7 +777,7 @@ describe("MemberSportsAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
     const times = results.map((r) => r.time);
 
-    expect(times).not.toContain("2026-04-15T08:36:00"); // bookingNotAllowed: true
+    expect(times).not.toContain("2026-04-15T08:36:00");
   });
 
   it("filters out hidden slots", async () => {
@@ -723,10 +788,10 @@ describe("MemberSportsAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
     const times = results.map((r) => r.time);
 
-    expect(times).not.toContain("2026-04-15T08:48:00"); // hide: true
+    expect(times).not.toContain("2026-04-15T08:48:00");
   });
 
-  it("filters out slots with empty items", async () => {
+  it("filters out slots with empty items array", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
@@ -734,10 +799,10 @@ describe("MemberSportsAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
     const times = results.map((r) => r.time);
 
-    expect(times).not.toContain("2026-04-15T09:00:00"); // items: []
+    expect(times).not.toContain("2026-04-15T09:00:00");
   });
 
-  it("sends correct POST body", async () => {
+  it("sends correct POST body with integer IDs", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([]), { status: 200 })
     );
@@ -751,8 +816,11 @@ describe("MemberSportsAdapter", () => {
     expect(init?.method).toBe("POST");
 
     const body = JSON.parse(init?.body as string);
+    // Config values are strings in platformConfig but must be sent as integers to the API
     expect(body.golfClubId).toBe(9431);
+    expect(typeof body.golfClubId).toBe("number");
     expect(body.golfCourseId).toBe(11701);
+    expect(typeof body.golfCourseId).toBe("number");
     expect(body.date).toBe("2026-04-15");
     expect(body.configurationTypeId).toBe(0);
     expect(body.memberProfileId).toBe(0);
@@ -778,7 +846,8 @@ describe("MemberSportsAdapter", () => {
     expect(results).toEqual([]);
   });
 
-  it("throws on HTTP error", async () => {
+  // PITFALL (testing-pitfalls.md §1.1): HTTP errors must THROW, never return [].
+  it("throws on HTTP error (does NOT return empty array)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response("Server Error", { status: 500 })
     );
@@ -788,8 +857,33 @@ describe("MemberSportsAdapter", () => {
     ).rejects.toThrow("HTTP 500");
   });
 
+  it("throws on network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new Error("network failure")
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow("network failure");
+  });
+
+  // PITFALL (testing-pitfalls.md §6.2): Malformed response must throw, not return [].
+  it("throws on malformed JSON response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("not json", { status: 200 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow();
+  });
+
+  // PITFALL (testing-pitfalls.md §3.1): Missing config must throw, not silently fail.
   it("throws when golfClubId is missing", async () => {
-    const badConfig: CourseConfig = { ...mockConfig, platformConfig: { golfCourseId: "11701" } };
+    const badConfig: CourseConfig = {
+      ...mockConfig,
+      platformConfig: { golfCourseId: "11701" },
+    };
 
     await expect(
       adapter.fetchTeeTimes(badConfig, "2026-04-15")
@@ -797,7 +891,10 @@ describe("MemberSportsAdapter", () => {
   });
 
   it("throws when golfCourseId is missing", async () => {
-    const badConfig: CourseConfig = { ...mockConfig, platformConfig: { golfClubId: "9431" } };
+    const badConfig: CourseConfig = {
+      ...mockConfig,
+      platformConfig: { golfClubId: "9431" },
+    };
 
     await expect(
       adapter.fetchTeeTimes(badConfig, "2026-04-15")
@@ -817,26 +914,14 @@ describe("MemberSportsAdapter", () => {
 });
 ```
 
-**Step 2: Run tests to verify they fail**
+### Step 3: Run tests to verify they fail
 
 Run: `npx vitest run src/adapters/membersports.test.ts`
 Expected: FAIL — `MemberSportsAdapter` does not exist yet.
 
-**Step 3: Commit**
+### Step 4: Implement the adapter
 
-```bash
-git add src/adapters/membersports.test.ts
-git commit -m "test: add MemberSports adapter tests (red)"
-```
-
----
-
-## Task 6: MemberSports Adapter — Implementation
-
-**Files:**
-- Create: `src/adapters/membersports.ts`
-
-**Step 1: Implement the adapter**
+Create `src/adapters/membersports.ts` with this exact content:
 
 ```typescript
 // ABOUTME: MemberSports platform adapter for fetching tee times.
@@ -934,63 +1019,72 @@ export class MemberSportsAdapter implements PlatformAdapter {
 }
 ```
 
-**Step 2: Run tests to verify they pass**
+### Step 5: Run tests to verify they pass
 
 Run: `npx vitest run src/adapters/membersports.test.ts`
-Expected: ALL PASS
+Expected: ALL PASS (17 tests)
 
-**Step 3: Commit**
+### Step 6: Commit
 
 ```bash
-git add src/adapters/membersports.ts
-git commit -m "feat: add MemberSports adapter"
+git add src/test/fixtures/membersports-tee-times.json src/adapters/membersports.test.ts src/adapters/membersports.ts
+git commit -m "feat: add MemberSports adapter with tests"
 ```
+
+BEFORE marking this task complete:
+1. Review your tests against `dev/testing-pitfalls.md`
+2. Verify: HTTP errors throw (§1.1)? Malformed JSON throws (§6.2)? Missing config throws (§3.1)? String-to-int conversion tested for POST body (§3.2)?
+3. Run `npx vitest run src/adapters/membersports.test.ts` and confirm ALL PASS
 
 ---
 
-## Task 7: Register Adapters
+### Review Loop: After Tasks 1-2
+
+After completing Tasks 1 and 2:
+You MUST carefully review the batch of work from multiple perspectives and revise/refine as appropriate. Repeat this review loop (you must do a minimum of three review rounds; if you still find substantive issues in the third review, keep going with additional rounds until there are no findings) until you're confident there aren't any more issues. Then update your private journal and continue onto the next tasks.
+
+Review checklist:
+- Do both adapters follow the same patterns as existing adapters in `src/adapters/`?
+- Do ABOUTME comments match the standard (2 lines, greppable)?
+- Does every error path throw (not return `[]`)?
+- Are the only `return []` paths for known "no data" responses (not errors)?
+- Do tests cover: happy path, partial data, filtered-out slots, HTTP error, network error, malformed JSON, missing config?
+- Run `npm test` to confirm no regressions across the full suite.
+
+---
+
+## Task 3: Register Adapters + Catalog + Documentation
+
+BEFORE starting work:
+1. Read `src/adapters/index.ts` for the registration pattern
+2. Read `src/config/courses.json` for the catalog entry format — look at existing ForeUp entries for the Emerald Greens pattern
+3. Read `dev/research/tc-courses-platforms.md` for the documentation format
 
 **Files:**
 - Modify: `src/adapters/index.ts`
+- Modify: `src/config/courses.json`
+- Regenerate: `scripts/seed.sql` (via `npx tsx scripts/seed.ts`)
+- Modify: `dev/research/tc-courses-platforms.md`
 
-**Step 1: Add imports and instances**
+### Step 1: Register both adapters in `src/adapters/index.ts`
 
-Add to imports:
+Add these two imports after the existing imports:
+
 ```typescript
 import { TeensnapAdapter } from "./teesnap";
 import { MemberSportsAdapter } from "./membersports";
 ```
 
-Add to the `adapters` array:
+Add these two entries to the `adapters` array (after `new TeeWireAdapter()`):
+
 ```typescript
 new TeensnapAdapter(),
 new MemberSportsAdapter(),
 ```
 
-**Step 2: Run full test suite**
+### Step 2: Add five courses to `src/config/courses.json`
 
-Run: `npm test`
-Expected: ALL PASS
-
-**Step 3: Commit**
-
-```bash
-git add src/adapters/index.ts
-git commit -m "feat: register Teesnap and MemberSports adapters"
-```
-
----
-
-## Task 8: Add Courses to Catalog
-
-**Files:**
-- Modify: `src/config/courses.json`
-
-**Context:** Next available index is 44. ForeUp bookingUrl pattern is `https://foreupsoftware.com/index.php/booking/{facilityId}/{scheduleId}`.
-
-**Step 1: Add five new course entries to `courses.json`**
-
-Add these entries (insert among the MN courses, before the SD test courses):
+Insert these entries **before** the first SD test course (the entry with `"id": "sd-balboa-park"`). The last MN course currently is Ft. Snelling at index 43.
 
 ```json
 {
@@ -1060,122 +1154,451 @@ Add these entries (insert among the MN courses, before the SD test courses):
 }
 ```
 
-**Step 2: Regenerate seed SQL**
+### Step 3: Regenerate seed SQL
 
 Run: `npx tsx scripts/seed.ts`
-Expected: `Wrote 49 courses to ...seed.sql`
+Expected output: `Wrote 49 courses to .../seed.sql`
 
-**Step 3: Apply seed to local D1**
+### Step 4: Update `dev/research/tc-courses-platforms.md`
 
-Run: `npx wrangler d1 execute tee-times-db --local --file=scripts/seed.sql`
+Make these exact changes:
 
-**Step 4: Run full test suite + type check**
+**Platform Summary table** — replace the existing table rows:
 
-Run: `npm test && npx tsc --noEmit`
-Expected: ALL PASS
+| Platform | 18-Hole | 9-Hole/Par 3 | Total |
+|----------|---------|---------------|-------|
+| CPS Golf (Club Prophet) | 12 | 2 | 14 |
+| Chronogolf/Lightspeed | 27 | 8 | 35 |
+| TeeItUp | 7 | 1 | 8 |
+| ForeUp | 5 | 1 | 6 |
+| Teesnap | 2 | 0 | 2 |
+| MemberSports | 1 | 0 | 1 |
+| GolfNow (primary) | 3 | 2 | 5 |
+| Eagle Club Systems | 1 | 0 | 1 |
+| EZLinks | 1 | 0 | 1 |
+| City/Custom System | 0 | 3 | 3 |
+| Unknown/Closed | 2 | 2 | 4 |
+| **Total** | **61** | **19** | **80** |
 
-**Step 5: Commit**
+Changes: ForeUp 3→5 (18-hole) and 4→6 (total) for Emerald Greens Gold/Silver. Teesnap 3→2 (River Oaks removed). GolfNow 4→3 and 6→5 (Emerald Greens removed). MemberSports row added. Total 79→80.
 
-```bash
-git add src/config/courses.json scripts/seed.sql
-git commit -m "feat: add Daytona, StoneRidge, River Oaks, Emerald Greens Gold/Silver to catalog"
+**Teesnap section** — remove the River Oaks row from the table. Add this note below the table:
+
+```
+> **Note:** River Oaks Municipal (Cottage Grove) previously used Teesnap but has moved to MemberSports.
 ```
 
----
+**Add new MemberSports section** — insert after the Teesnap section:
 
-## Task 9: Update Platform Catalog Documentation
+```markdown
+## MemberSports
 
-**Files:**
-- Modify: `dev/research/tc-courses-platforms.md`
+Courses using `app.membersports.com` for reservations.
 
-**Step 1: Update the platform catalog**
+| Course Name | City | Holes | MemberSports IDs | Notes |
+|---|---|---|---|---|
+| River Oaks Municipal | Cottage Grove | 18 | golfClubId 9431, golfCourseId 11701 | Previously on Teesnap |
 
-- In the **Platform Summary** table: add row for MemberSports (1 course, 18-hole). Update Teesnap to 2 courses (River Oaks removed). Add 2 more to ForeUp count (Emerald Greens Gold/Silver). Remove 2 from GolfNow (Emerald Greens was incorrectly listed there). Adjust totals.
-- In the **Teesnap** section: remove River Oaks row, add note that River Oaks moved to MemberSports.
-- Add a new **MemberSports** section with River Oaks entry.
-- In the **GolfNow** section: remove Emerald Greens row, add note that it uses ForeUp.
-- In the **ForeUp** section: add Emerald Greens Gold and Emerald Greens Silver rows.
-- In the **Platforms needing API investigation** section: remove Teesnap (done). Add note that MemberSports is implemented.
+**Notes:**
+- MemberSports uses a public REST API at `api.membersports.com` with a static `x-api-key`.
+- Only River Oaks is confirmed to actively use MemberSports in the TC metro. Other MN courses have MemberSports catalog entries but don't use it for booking.
+```
 
-**Step 2: Commit**
+**GolfNow section** — remove the Emerald Greens row from the table. Add this note:
+
+```
+> **Note:** Emerald Greens (Hastings) was previously listed here but uses ForeUp as its primary booking system (facility 19202).
+```
+
+**ForeUp section** — add two rows to the table:
+
+```
+| Emerald Greens (Gold) | Hastings | 18 | Facility 19202, Schedule 1266 | 36-hole facility |
+| Emerald Greens (Silver) | Hastings | 18 | Facility 19202, Schedule 1308 | 36-hole facility |
+```
+
+**Platforms needing API investigation section** — change the Teesnap bullet to:
+
+```
+- **Teesnap:** 2 courses. Adapter implemented.
+```
+
+Add a new bullet:
+
+```
+- **MemberSports:** 1 course (River Oaks). Adapter implemented.
+```
+
+### Step 5: Run full test suite + type check
+
+Run: `npm test && npx tsc --noEmit`
+Expected: ALL PASS, no type errors
+
+### Step 6: Commit (two separate commits)
 
 ```bash
+git add src/adapters/index.ts src/config/courses.json scripts/seed.sql
+git commit -m "feat: register Teesnap/MemberSports adapters and add 5 courses to catalog"
+
 git add dev/research/tc-courses-platforms.md
 git commit -m "docs: update platform catalog — River Oaks to MemberSports, Emerald Greens to ForeUp"
 ```
 
+BEFORE marking this task complete:
+1. Verify `npx tsx scripts/seed.ts` outputs exactly 49 courses
+2. Run `npm test && npx tsc --noEmit` and confirm ALL PASS
+3. Verify the adapters array in `index.ts` has 8 entries (6 existing + 2 new)
+
 ---
 
-## Task 10: Smoke Tests
+## Task 4: Smoke Tests + Final Verification
+
+BEFORE starting work:
+1. Read `src/adapters/eagle-club.smoke.test.ts` as the exact pattern to follow
+2. Read `src/lib/format.ts` for the `todayCT()` function used to compute test dates
 
 **Files:**
 - Create: `src/adapters/teesnap.smoke.test.ts`
 - Create: `src/adapters/membersports.smoke.test.ts`
 
-**Context:** Follow the pattern in `src/adapters/eagle-club.smoke.test.ts`. These hit live APIs and are NOT run in CI — they're for manual verification. Use `describe.skip` so they don't run in `npm test`.
+### Step 1: Write Teesnap smoke test
 
-**Step 1: Write Teesnap smoke test**
+Create `src/adapters/teesnap.smoke.test.ts` with this exact content:
 
-Test against StoneRidge (active course, courseId 1320). Verify:
-- HTTP 200 response
-- Response has `teeTimes.teeTimes` array
-- Each tee time has `teeTime`, `prices`, `teeOffSections`
-- Adapter returns valid `TeeTime[]` with expected fields
+```typescript
+// ABOUTME: Live API smoke tests for the Teesnap adapter against StoneRidge.
+// ABOUTME: Validates adapter execution, raw API contract, and parsed output fields.
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { TeensnapAdapter } from "./teesnap";
+import type { CourseConfig, TeeTime } from "@/types";
+import { todayCT } from "@/lib/format";
 
-**Step 2: Write MemberSports smoke test**
+const testDate = (() => {
+  const [y, m, d] = todayCT().split("-").map(Number);
+  const future = new Date(Date.UTC(y, m - 1, d + 3));
+  return future.toISOString().split("T")[0];
+})();
 
-Test against River Oaks (golfClubId 9431, golfCourseId 11701). Verify:
-- HTTP 200 response
-- Response is an array of slots with `teeTime` (number) and `items`
-- Adapter returns valid `TeeTime[]` with expected fields
+const config: CourseConfig = {
+  id: "stoneridge",
+  name: "StoneRidge",
+  platform: "teesnap",
+  platformConfig: {
+    subdomain: "stoneridgegc",
+    courseId: "1320",
+  },
+  bookingUrl: "https://stoneridgegc.teesnap.net",
+};
 
-**Step 3: Run smoke tests manually to verify**
+let captured: { url: string; body: unknown }[];
+let originalFetch: typeof globalThis.fetch;
 
-Run: `npx vitest run src/adapters/teesnap.smoke.test.ts` (after removing `.skip`)
-Run: `npx vitest run src/adapters/membersports.smoke.test.ts` (after removing `.skip`)
+beforeEach(() => {
+  captured = [];
+  originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init?) => {
+    const response = await originalFetch(input, init);
+    const clone = response.clone();
+    try {
+      captured.push({ url: String(input), body: await clone.json() });
+    } catch {
+      /* non-JSON response */
+    }
+    return response;
+  };
+});
 
-**Step 4: Commit**
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
+async function fetchTeeTimes(adapter: TeensnapAdapter): Promise<TeeTime[]> {
+  captured = [];
+  return adapter.fetchTeeTimes(config, testDate);
+}
+
+describe.skip("Teesnap - live API smoke tests", () => {
+  const adapter = new TeensnapAdapter();
+
+  it(
+    "Level 1: adapter returns TeeTime[] without throwing",
+    async () => {
+      const results = await fetchTeeTimes(adapter);
+      expect(Array.isArray(results)).toBe(true);
+    },
+    15000
+  );
+});
+
+describe.skip("Teesnap - API contract validation", () => {
+  const adapter = new TeensnapAdapter();
+
+  it(
+    "Level 2: raw API response matches expected contract",
+    async (ctx) => {
+      const results = await fetchTeeTimes(adapter);
+
+      if (results.length === 0) {
+        console.warn(
+          "Teesnap Level 2: No tee times available — skipping contract validation"
+        );
+        ctx.skip();
+        return;
+      }
+
+      expect(captured.length).toBeGreaterThanOrEqual(1);
+
+      const response = captured[captured.length - 1];
+      const data = response.body as {
+        teeTimes: {
+          teeTimes: { teeTime: string; prices: unknown[]; teeOffSections: unknown[] }[];
+          bookings: unknown[];
+        };
+      };
+
+      expect(Array.isArray(data.teeTimes.teeTimes)).toBe(true);
+      expect(Array.isArray(data.teeTimes.bookings)).toBe(true);
+
+      for (const tt of data.teeTimes.teeTimes) {
+        expect(typeof tt.teeTime).toBe("string");
+        expect(tt.teeTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+        expect(Array.isArray(tt.prices)).toBe(true);
+        expect(Array.isArray(tt.teeOffSections)).toBe(true);
+      }
+    },
+    15000
+  );
+});
+
+describe.skip("Teesnap - parsed output validation", () => {
+  const adapter = new TeensnapAdapter();
+
+  it(
+    "Level 3: parsed TeeTime objects have valid fields",
+    async (ctx) => {
+      const results = await fetchTeeTimes(adapter);
+
+      if (results.length === 0) {
+        console.warn(
+          "Teesnap Level 3: No tee times available — skipping output validation"
+        );
+        ctx.skip();
+        return;
+      }
+
+      for (const tt of results) {
+        expect(tt.courseId).toBe(config.id);
+        expect(tt.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+        expect(new Date(tt.time).getTime()).not.toBeNaN();
+
+        if (tt.price !== null) {
+          expect(typeof tt.price).toBe("number");
+          expect(Number.isNaN(tt.price)).toBe(false);
+        }
+
+        expect([9, 18]).toContain(tt.holes);
+        expect(Number.isInteger(tt.openSlots)).toBe(true);
+        expect(tt.openSlots).toBeGreaterThan(0);
+        expect(tt.bookingUrl).toBeTruthy();
+      }
+    },
+    15000
+  );
+});
+```
+
+### Step 2: Write MemberSports smoke test
+
+Create `src/adapters/membersports.smoke.test.ts` with this exact content:
+
+```typescript
+// ABOUTME: Live API smoke tests for the MemberSports adapter against River Oaks.
+// ABOUTME: Validates adapter execution, raw API contract, and parsed output fields.
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { MemberSportsAdapter } from "./membersports";
+import type { CourseConfig, TeeTime } from "@/types";
+import { todayCT } from "@/lib/format";
+
+const testDate = (() => {
+  const [y, m, d] = todayCT().split("-").map(Number);
+  const future = new Date(Date.UTC(y, m - 1, d + 3));
+  return future.toISOString().split("T")[0];
+})();
+
+const config: CourseConfig = {
+  id: "river-oaks",
+  name: "River Oaks Municipal",
+  platform: "membersports",
+  platformConfig: {
+    golfClubId: "9431",
+    golfCourseId: "11701",
+  },
+  bookingUrl: "https://app.membersports.com/tee-times/9431/11701/0",
+};
+
+let captured: { url: string; body: unknown }[];
+let originalFetch: typeof globalThis.fetch;
+
+beforeEach(() => {
+  captured = [];
+  originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init?) => {
+    const response = await originalFetch(input, init);
+    const clone = response.clone();
+    try {
+      captured.push({ url: String(input), body: await clone.json() });
+    } catch {
+      /* non-JSON response */
+    }
+    return response;
+  };
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
+async function fetchTeeTimes(
+  adapter: MemberSportsAdapter
+): Promise<TeeTime[]> {
+  captured = [];
+  return adapter.fetchTeeTimes(config, testDate);
+}
+
+describe.skip("MemberSports - live API smoke tests", () => {
+  const adapter = new MemberSportsAdapter();
+
+  it(
+    "Level 1: adapter returns TeeTime[] without throwing",
+    async () => {
+      const results = await fetchTeeTimes(adapter);
+      expect(Array.isArray(results)).toBe(true);
+    },
+    15000
+  );
+});
+
+describe.skip("MemberSports - API contract validation", () => {
+  const adapter = new MemberSportsAdapter();
+
+  it(
+    "Level 2: raw API response matches expected contract",
+    async (ctx) => {
+      const results = await fetchTeeTimes(adapter);
+
+      if (results.length === 0) {
+        console.warn(
+          "MemberSports Level 2: No tee times available — skipping contract validation"
+        );
+        ctx.skip();
+        return;
+      }
+
+      expect(captured.length).toBeGreaterThanOrEqual(1);
+
+      const response = captured[captured.length - 1];
+      const data = response.body as {
+        teeTime: number;
+        items: { teeTime: number; price: number; playerCount: number }[];
+      }[];
+
+      expect(Array.isArray(data)).toBe(true);
+
+      for (const slot of data) {
+        expect(typeof slot.teeTime).toBe("number");
+        expect(slot.teeTime).toBeGreaterThanOrEqual(0);
+        expect(slot.teeTime).toBeLessThan(1440); // minutes in a day
+        expect(Array.isArray(slot.items)).toBe(true);
+
+        for (const item of slot.items) {
+          expect(typeof item.teeTime).toBe("number");
+          expect(typeof item.price).toBe("number");
+          expect(typeof item.playerCount).toBe("number");
+        }
+      }
+    },
+    15000
+  );
+});
+
+describe.skip("MemberSports - parsed output validation", () => {
+  const adapter = new MemberSportsAdapter();
+
+  it(
+    "Level 3: parsed TeeTime objects have valid fields",
+    async (ctx) => {
+      const results = await fetchTeeTimes(adapter);
+
+      if (results.length === 0) {
+        console.warn(
+          "MemberSports Level 3: No tee times available — skipping output validation"
+        );
+        ctx.skip();
+        return;
+      }
+
+      for (const tt of results) {
+        expect(tt.courseId).toBe(config.id);
+        expect(tt.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+        expect(new Date(tt.time).getTime()).not.toBeNaN();
+
+        if (tt.price !== null) {
+          expect(typeof tt.price).toBe("number");
+          expect(Number.isNaN(tt.price)).toBe(false);
+        }
+
+        expect([9, 18]).toContain(tt.holes);
+        expect(Number.isInteger(tt.openSlots)).toBe(true);
+        expect(tt.openSlots).toBeGreaterThan(0);
+        expect(tt.bookingUrl).toBeTruthy();
+      }
+    },
+    15000
+  );
+});
+```
+
+### Step 3: Run smoke tests manually
+
+Remove `.skip` from each describe block one at a time, run, then re-add `.skip`:
+
+```bash
+npx vitest run src/adapters/teesnap.smoke.test.ts
+npx vitest run src/adapters/membersports.smoke.test.ts
+```
+
+Expected: ALL PASS (or skip if course is closed for season — this is acceptable for MN courses in winter)
+
+### Step 4: Final verification
+
+Run: `npm test && npx tsc --noEmit && npm run lint`
+Expected: ALL PASS, no type errors, no lint errors
+
+### Step 5: Commit
 
 ```bash
 git add src/adapters/teesnap.smoke.test.ts src/adapters/membersports.smoke.test.ts
 git commit -m "test: add Teesnap and MemberSports smoke tests"
 ```
 
----
-
-## Task 11: Final Verification
-
-**Step 1: Run full test suite**
-
-Run: `npm test`
-Expected: ALL PASS (should be 509 + new tests)
-
-**Step 2: Type check**
-
-Run: `npx tsc --noEmit`
-Expected: Clean
-
-**Step 3: Lint**
-
-Run: `npm run lint`
-Expected: No errors
-
-**Step 4: Verify local polling (optional)**
-
-Run dev server and trigger a refresh for StoneRidge or River Oaks to verify end-to-end.
+BEFORE marking this task complete:
+1. Verify smoke tests use `describe.skip` (they must NOT run in CI)
+2. Verify smoke tests follow the 3-level pattern (adapter execution, API contract, parsed output)
+3. Run `npm test` and confirm no regressions (smoke tests should be skipped)
+4. Run `npx tsc --noEmit` and confirm clean
 
 ---
 
-## Dependency Graph
+### Review Loop: After Tasks 3-4
 
-```
-Task 1 (Teesnap fixture) → Task 2 (Teesnap tests) → Task 3 (Teesnap impl)
-Task 4 (MemberSports fixture) → Task 5 (MemberSports tests) → Task 6 (MemberSports impl)
-Task 3 + Task 6 → Task 7 (register adapters)
-Task 7 → Task 8 (catalog entries)
-Task 8 → Task 9 (docs update)
-Task 3 + Task 6 → Task 10 (smoke tests)
-Task 8 + Task 9 + Task 10 → Task 11 (final verification)
-```
+After completing Tasks 3 and 4:
+You MUST carefully review the batch of work from multiple perspectives and revise/refine as appropriate. Repeat this review loop (you must do a minimum of three review rounds; if you still find substantive issues in the third review, keep going with additional rounds until there are no findings) until you're confident there aren't any more issues. Then update your private journal and continue onto the next tasks.
 
-Tasks 1-3 and Tasks 4-6 are independent and can be parallelized.
+Review checklist:
+- Does `src/adapters/index.ts` have exactly 8 adapter entries?
+- Does `src/config/courses.json` have exactly 49 entries?
+- Does `scripts/seed.sql` have exactly 49 INSERT statements?
+- Do the new catalog entries match the platformConfig format expected by their adapters?
+- Do the Emerald Greens ForeUp entries use `facilityId` + `scheduleId` (matching the existing ForeUp pattern)?
+- Does `tc-courses-platforms.md` have consistent counts in the summary table vs the individual sections?
+- Run `npm test && npx tsc --noEmit && npm run lint` — all clean?
