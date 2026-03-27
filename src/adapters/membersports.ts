@@ -73,6 +73,7 @@ export class MemberSportsAdapter implements PlatformAdapter {
       const item = slot.items[0];
       if (item.bookingNotAllowed || item.hide) continue;
 
+      // availableCount is always 0 in unauthenticated responses; use standard foursome max
       const openSlots = 4 - item.playerCount;
       if (openSlots <= 0) continue;
 

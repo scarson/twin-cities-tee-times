@@ -1,4 +1,3 @@
-// @vitest-environment node
 // ABOUTME: Tests for the Teesnap platform adapter.
 // ABOUTME: Covers availability calculation, price mapping, held sections, and error handling.
 import { describe, it, expect, vi, beforeEach } from "vitest";

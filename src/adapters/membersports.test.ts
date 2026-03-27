@@ -1,4 +1,3 @@
-// @vitest-environment node
 // ABOUTME: Tests for the MemberSports platform adapter.
 // ABOUTME: Covers time conversion, slot filtering, availability calculation, and error handling.
 import { describe, it, expect, vi, beforeEach } from "vitest";
