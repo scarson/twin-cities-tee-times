@@ -42,6 +42,8 @@ Follow TDD: write failing test → implement fix → verify green.
 - Create: `src/adapters/teesnap.test.ts`
 - Create: `src/adapters/teesnap.ts`
 
+**Scope boundary:** Do NOT modify any files outside the ones listed above. Do NOT add the adapter to `src/adapters/index.ts` or modify `src/config/courses.json` — those happen in Task 3.
+
 ### Step 1: Create the test fixture
 
 Create `src/test/fixtures/teesnap-tee-times.json` with this exact content:
@@ -288,6 +290,17 @@ describe("TeensnapAdapter", () => {
     expect(results).toEqual([]);
   });
 
+  // PITFALL (testing-pitfalls.md §6.4): Unexpected response shape must throw, not return [].
+  it("throws when response is missing teeTimes property entirely", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ unexpected: "shape" }), { status: 200 })
+    );
+
+    await expect(
+      adapter.fetchTeeTimes(mockConfig, "2026-04-15")
+    ).rejects.toThrow();
+  });
+
   it("builds correct API URL", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -480,8 +493,8 @@ export class TeensnapAdapter implements PlatformAdapter {
       return [];
     }
 
-    if (!data.teeTimes?.teeTimes) {
-      return [];
+    if (!data.teeTimes) {
+      throw new Error("Teesnap API returned unexpected response shape");
     }
 
     // Build booking lookup: bookingId -> golfer count
@@ -520,7 +533,9 @@ export class TeensnapAdapter implements PlatformAdapter {
       results.push({
         courseId: config.id,
         time: tt.teeTime,
-        price: selectedPrice ? parseFloat(selectedPrice.price) : null,
+        price: selectedPrice && !Number.isNaN(parseFloat(selectedPrice.price))
+          ? parseFloat(selectedPrice.price)
+          : null,
         holes: eighteenPrice ? 18 : 9,
         openSlots,
         bookingUrl: config.bookingUrl,
@@ -535,7 +550,7 @@ export class TeensnapAdapter implements PlatformAdapter {
 ### Step 5: Run tests to verify they pass
 
 Run: `npx vitest run src/adapters/teesnap.test.ts`
-Expected: ALL PASS (16 tests)
+Expected: ALL PASS (17 tests)
 
 ### Step 6: Commit
 
@@ -564,6 +579,8 @@ Follow TDD: write failing test → implement fix → verify green.
 - Create: `src/test/fixtures/membersports-tee-times.json`
 - Create: `src/adapters/membersports.test.ts`
 - Create: `src/adapters/membersports.ts`
+
+**Scope boundary:** Do NOT modify any files outside the ones listed above. Do NOT add the adapter to `src/adapters/index.ts` or modify `src/config/courses.json` — those happen in Task 3.
 
 ### Step 1: Create the test fixture
 
@@ -959,12 +976,17 @@ export class MemberSportsAdapter implements PlatformAdapter {
     if (!golfClubId) throw new Error("Missing golfClubId in platformConfig");
     if (!golfCourseId) throw new Error("Missing golfCourseId in platformConfig");
 
+    const clubId = parseInt(golfClubId, 10);
+    const courseId = parseInt(golfCourseId, 10);
+    if (Number.isNaN(clubId)) throw new Error("Invalid golfClubId in platformConfig");
+    if (Number.isNaN(courseId)) throw new Error("Invalid golfCourseId in platformConfig");
+
     const body = {
       configurationTypeId: 0,
       date,
       golfClubGroupId: 0,
-      golfClubId: parseInt(golfClubId, 10),
-      golfCourseId: parseInt(golfCourseId, 10),
+      golfClubId: clubId,
+      golfCourseId: courseId,
       groupSheetTypeId: 0,
       memberProfileId: 0,
     };
@@ -1049,16 +1071,20 @@ Review checklist:
 - Does every error path throw (not return `[]`)?
 - Are the only `return []` paths for known "no data" responses (not errors)?
 - Do tests cover: happy path, partial data, filtered-out slots, HTTP error, network error, malformed JSON, missing config?
-- Run `npm test` to confirm no regressions across the full suite.
+- Run `npm test` to confirm no regressions across the full suite. (The new adapter tests are self-contained — they mock fetch and don't require adapter registration in `index.ts`, which happens in Task 3.)
 
 ---
 
 ## Task 3: Register Adapters + Catalog + Documentation
 
+**Prerequisite:** This task requires `src/adapters/teesnap.ts` and `src/adapters/membersports.ts` to exist. If either is missing, STOP — Tasks 1 and 2 must complete first.
+
 BEFORE starting work:
 1. Read `src/adapters/index.ts` for the registration pattern
-2. Read `src/config/courses.json` for the catalog entry format — look at existing ForeUp entries for the Emerald Greens pattern
+2. Read `src/config/courses.json` for the catalog entry format — look at existing ForeUp entries (search for `"platform": "foreup"`) for the Emerald Greens pattern
 3. Read `dev/research/tc-courses-platforms.md` for the documentation format
+
+**Scope boundary:** Make ONLY the changes listed below. Do NOT modify any other sections of `tc-courses-platforms.md` beyond the specific edits listed. Do NOT "improve" or reformat existing content.
 
 **Files:**
 - Modify: `src/adapters/index.ts`
@@ -1084,7 +1110,7 @@ new MemberSportsAdapter(),
 
 ### Step 2: Add five courses to `src/config/courses.json`
 
-Insert these entries **before** the first SD test course (the entry with `"id": "sd-balboa-park"`). The last MN course currently is Ft. Snelling at index 43.
+Insert these entries after the closing `}` of the Ft. Snelling entry (`"id": "ft-snelling"`, currently the last MN course at index 43) and before the opening `{` of the first SD test course (`"id": "sd-balboa-park"`). Search for `"ft-snelling"` to find the exact location.
 
 ```json
 {
@@ -1560,11 +1586,13 @@ describe.skip("MemberSports - parsed output validation", () => {
 
 ### Step 3: Run smoke tests manually
 
-Remove `.skip` from each describe block one at a time, run, then re-add `.skip`:
+**IMPORTANT:** Smoke tests use `describe.skip` so they don't run in CI (`npm test`). To run them manually, temporarily remove `.skip` from the `describe` blocks, run the test, then **restore `.skip` immediately**. Do NOT commit with `.skip` removed — leaving them unskipped would cause CI to make live API calls on every test run.
 
 ```bash
+# Temporarily remove .skip, then:
 npx vitest run src/adapters/teesnap.smoke.test.ts
 npx vitest run src/adapters/membersports.smoke.test.ts
+# Restore .skip before committing
 ```
 
 Expected: ALL PASS (or skip if course is closed for season — this is acceptable for MN courses in winter)
