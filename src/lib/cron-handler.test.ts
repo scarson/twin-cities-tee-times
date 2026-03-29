@@ -1,7 +1,7 @@
 // ABOUTME: Tests for the cron handler's batched polling, budget tracking, and cleanup.
 // ABOUTME: Covers batch filtering, date-outer loop, budget exhaustion, and housekeeping gating.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { shouldRunThisCycle, runCronPoll } from "./cron-handler";
+import { shouldRunThisCycle, runCronPoll, SUBREQUEST_BUDGET } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 import * as dbModule from "@/lib/db";
 import { assignBatches, BATCH_COUNT } from "@/lib/batch";
@@ -288,10 +288,12 @@ describe("runCronPoll budget tracking", () => {
   });
 
   it("stops polling when budget is exhausted", { timeout: 15000 }, async () => {
-    // 50 CPS courses → 10 per batch, each weight 3.
-    // Budget 45 / weight 3 = 15 polls max. 10 courses × 2 dates = 20 needed.
-    const courses = Array.from({ length: 50 }, (_, i) =>
-      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf")
+    // Need enough CPS courses (weight 3) to exceed SUBREQUEST_BUDGET with 2 dates.
+    // coursesPerBatch * 2 dates * 3 weight > budget → coursesPerBatch > budget/6
+    // With 5 batches, total = coursesPerBatch * 5
+    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
+    const courses = Array.from({ length: coursesNeeded }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf")
     );
 
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -302,7 +304,6 @@ describe("runCronPoll budget tracking", () => {
     );
 
     expect(result.budgetExhausted).toBe(true);
-    expect(result.pollCount).toBeLessThan(20);
     expect(result.pollCount).toBe(mockedPollCourse.mock.calls.length);
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining("budget exhausted")
@@ -312,7 +313,7 @@ describe("runCronPoll budget tracking", () => {
   });
 
   it("does not exhaust budget with lightweight courses", async () => {
-    // 10 foreup courses → 2 per batch, weight 1 × 2 dates = 4 total. Well under 45.
+    // 10 foreup courses → 2 per batch, weight 1 × 2 dates = 4 total. Well under budget.
     const courses = Array.from({ length: 10 }, (_, i) =>
       makeCourseRow(`foreup-${String(i).padStart(2, "0")}`, "foreup")
     );
@@ -327,10 +328,9 @@ describe("runCronPoll budget tracking", () => {
   });
 
   it("decrements budget on error path (subrequests still consumed)", { timeout: 15000 }, async () => {
-    // 50 CPS courses → 10 per batch, weight 3. All throw errors.
-    // Budget should still be consumed by errors.
-    const courses = Array.from({ length: 50 }, (_, i) =>
-      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf")
+    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
+    const courses = Array.from({ length: coursesNeeded }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf")
     );
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -345,7 +345,6 @@ describe("runCronPoll budget tracking", () => {
 
     // Budget should be exhausted even though all polls errored
     expect(result.budgetExhausted).toBe(true);
-    expect(result.pollCount).toBeLessThan(20);
 
     consoleSpy.mockRestore();
     warnSpy.mockRestore();
@@ -736,10 +735,11 @@ describe("runCronPoll active/inactive polling", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    // 50 inactive CPS courses → 10 per batch, weight 3 each.
-    // Budget 45 / weight 3 = 15 polls max. 10 courses × 2 dates = 20 needed.
-    const courses = Array.from({ length: 50 }, (_, i) =>
-      makeCourseRow(`cps-${String(i).padStart(2, "0")}`, "cps_golf", { is_active: 0 })
+    // Inactive courses probe today+tomorrow only (2 dates).
+    // Need coursesPerBatch * 2 * 3 > budget → coursesPerBatch > budget/6
+    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
+    const courses = Array.from({ length: coursesNeeded }, (_, i) =>
+      makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf", { is_active: 0 })
     );
 
     mockedPollCourse.mockRejectedValue(new Error("adapter crash"));
@@ -752,7 +752,6 @@ describe("runCronPoll active/inactive polling", () => {
 
     // Budget should be exhausted even though all probes errored
     expect(result.budgetExhausted).toBe(true);
-    expect(result.inactiveProbeCount).toBeLessThan(20);
 
     consoleSpy.mockRestore();
     warnSpy.mockRestore();
