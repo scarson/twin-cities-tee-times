@@ -48,17 +48,20 @@ export async function proxyFetch(
     signal: AbortSignal.timeout(12000),
   });
 
+  const data = (await response.json().catch(() => null)) as
+    | (ProxyResponse & { proxyError?: boolean; message?: string })
+    | null;
+
+  if (data?.proxyError) {
+    throw new Error(`Proxy: ${data.message}`);
+  }
+
   if (!response.ok) {
     throw new Error(`Proxy HTTP ${response.status}`);
   }
 
-  const data = (await response.json()) as ProxyResponse & {
-    proxyError?: boolean;
-    message?: string;
-  };
-
-  if (data.proxyError) {
-    throw new Error(`Proxy: ${data.message}`);
+  if (!data) {
+    throw new Error("Proxy returned unparseable response");
   }
 
   return { status: data.status, headers: data.headers, body: data.body };

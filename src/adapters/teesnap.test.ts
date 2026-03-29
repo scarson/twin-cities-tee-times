@@ -151,7 +151,7 @@ describe("TeensnapAdapter", () => {
     );
   });
 
-  it("sends browser-like User-Agent header", async () => {
+  it("sends browser-like headers including Referer", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
         JSON.stringify({ teeTimes: { teeTimes: [], bookings: [] } }),
@@ -163,6 +163,9 @@ describe("TeensnapAdapter", () => {
 
     const headers = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
     expect(headers["User-Agent"]).toMatch(/Mozilla/);
+    expect(headers.Accept).toBe("application/json, text/plain, */*");
+    expect(headers["Accept-Language"]).toBe("en-US,en;q=0.9");
+    expect(headers.Referer).toBe("https://stoneridgegc.teesnap.net/");
   });
 
   // PITFALL (testing-pitfalls.md §1.1): HTTP errors must THROW, never return [].
