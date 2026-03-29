@@ -1,6 +1,7 @@
 // ABOUTME: Teesnap platform adapter for fetching tee times.
 // ABOUTME: Calculates availability from booking/golfer data; handles seasonal closures.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
 interface TeensnapBooking {
   bookingId: number;
@@ -39,7 +40,7 @@ export class TeensnapAdapter implements PlatformAdapter {
   async fetchTeeTimes(
     config: CourseConfig,
     date: string,
-    _env?: CloudflareEnv
+    env?: CloudflareEnv
   ): Promise<TeeTime[]> {
     const { subdomain, courseId } = config.platformConfig;
 
@@ -50,19 +51,20 @@ export class TeensnapAdapter implements PlatformAdapter {
       `https://${subdomain}.teesnap.net/customer-api/teetimes-day` +
       `?course=${courseId}&date=${date}&players=1&holes=18&addons=off`;
 
-    const response = await fetch(url, {
+    const proxy = this.getProxyConfig(env);
+    const response = await this.doFetch(url, {
+      method: "GET",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      signal: AbortSignal.timeout(10000),
-    });
+    }, proxy);
 
     if (!response.ok) {
       throw new Error(`Teesnap API returned HTTP ${response.status}`);
     }
 
-    const data: TeensnapResponse = await response.json();
+    const data = (await response.json()) as TeensnapResponse;
 
     // date_not_allowed means the course is closed for the season — not an error
     if (data.errors === "date_not_allowed") {
@@ -119,5 +121,45 @@ export class TeensnapAdapter implements PlatformAdapter {
     }
 
     return results;
+  }
+
+  private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
+    const hasUrl = !!env?.FETCH_PROXY_URL;
+    const hasKey = !!env?.AWS_ACCESS_KEY_ID;
+    const hasSecret = !!env?.AWS_SECRET_ACCESS_KEY;
+
+    if (hasUrl && hasKey && hasSecret) {
+      return {
+        proxyUrl: env.FETCH_PROXY_URL!,
+        accessKeyId: env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
+      };
+    }
+
+    return null;
+  }
+
+  private async doFetch(
+    url: string,
+    init: { method: string; headers: Record<string, string> },
+    proxy: ProxyConfig | null
+  ): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
+    if (proxy) {
+      const result = await proxyFetch(
+        { url, method: init.method, headers: init.headers },
+        proxy
+      );
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        json: () => Promise.resolve(JSON.parse(result.body)),
+      };
+    }
+    const response = await fetch(url, {
+      method: init.method,
+      headers: init.headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    return { ok: response.ok, status: response.status, json: () => response.json() };
   }
 }
