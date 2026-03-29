@@ -34,6 +34,9 @@ Thumbs.db
 .playwright-mcp/
 .private-journal/
 
+# Local reference docs
+dev/cloudflare-limits.md
+
 # Claude Code local settings
 .claude/settings.json
 .claude/settings.local.json
