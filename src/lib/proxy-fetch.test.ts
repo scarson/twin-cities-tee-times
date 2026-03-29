@@ -78,7 +78,20 @@ describe("proxyFetch", () => {
     ).rejects.toThrow("Proxy: Host not allowed");
   });
 
-  it("throws when Lambda returns non-OK HTTP status", async () => {
+  it("throws on non-OK status with proxyError body (prefers detail)", async () => {
+    mockAwsFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({ proxyError: true, message: "Host not allowed: evil.teesnap.net" }),
+        { status: 403 }
+      )
+    );
+
+    await expect(
+      proxyFetch({ url: "https://evil.teesnap.net/api", method: "GET", headers: {} }, proxyConfig)
+    ).rejects.toThrow("Proxy: Host not allowed: evil.teesnap.net");
+  });
+
+  it("throws generic error when Lambda returns non-OK with non-JSON body", async () => {
     mockAwsFetch.mockResolvedValue(new Response("Forbidden", { status: 403 }));
 
     await expect(
