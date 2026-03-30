@@ -85,7 +85,7 @@ function CourseBrowser() {
     if (!location || !courseDistances) return visibleCourses;
     return visibleCourses.filter((course) => {
       const dist = courseDistances.get(course.name);
-      return dist != null && dist <= radiusMiles;
+      return dist != null && (radiusMiles === 0 || dist <= radiusMiles);
     });
   }, [visibleCourses, location, courseDistances, radiusMiles]);
 

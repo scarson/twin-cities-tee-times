@@ -137,7 +137,7 @@ export default function Home() {
         ...tt,
         distance: courseDistances.get(tt.course_id),
       }))
-      .filter((tt) => tt.distance != null && tt.distance <= radiusMiles);
+      .filter((tt) => tt.distance != null && (radiusMiles === 0 || tt.distance <= radiusMiles));
 
     // Sort by distance (nearest course first), then by time within each course
     filtered.sort((a, b) => {

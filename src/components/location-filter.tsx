@@ -37,8 +37,9 @@ export function LocationFilter() {
     }
   };
 
+  const radiusLabel = radiusMiles === 0 ? "any distance" : `${radiusMiles} mi`;
   const toggleLabel = hasLocation
-    ? `📍 Within ${radiusMiles} mi of ${location.label}`
+    ? `📍 Within ${radiusLabel} of ${location.label}`
     : "📍 Filter by location";
 
   return (
@@ -91,7 +92,7 @@ export function LocationFilter() {
             >
               {RADIUS_OPTIONS.map((r) => (
                 <option key={r} value={r}>
-                  {r} mi
+                  {r === 0 ? "Any" : `${r} mi`}
                 </option>
               ))}
             </select>
