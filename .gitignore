@@ -18,6 +18,7 @@ out/
 .env
 .env.local
 .env.*.local
+.dev.vars
 
 # Local images
 .img/
