@@ -262,6 +262,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 - **`.dev.vars` for local secrets**: Store `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` here for local dev. Already gitignored.
 - **Cookie prefix `tct-`**: All app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
 - **Never use `datetime()` in SQL comparisons**: SQLite's `datetime()` returns space-separated timestamps (`2026-03-11 12:00:00`), but JS `toISOString()` returns `T`-separated (`2026-03-11T12:00:00.000Z`). Lexicographic comparison between these formats is always wrong. Use `sqliteIsoNow()` from `src/lib/db.ts` instead — it returns a `strftime()` expression that produces ISO 8601 format.
+- **Lambda proxy is deployed from source by CI**: The deploy workflow (`.github/workflows/deploy.yml`) deploys the Lambda from `lambda/fetch-proxy/` on every merge to main. Never hotfix the Lambda with `aws lambda update-function-code` — the next deploy will overwrite it. Always update `lambda/fetch-proxy/index.mjs` in the repo.
 
 ## Linter Suppressions
 
