@@ -55,7 +55,7 @@ export default function AboutPage() {
               </tr>
               <tr>
                 <td className="py-2 pr-4">4–7 days out</td>
-                <td className="py-2">A few times per day</td>
+                <td className="py-2">Every hour</td>
               </tr>
             </tbody>
           </table>
