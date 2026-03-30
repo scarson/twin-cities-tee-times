@@ -96,7 +96,7 @@ export class TeensnapAdapter implements PlatformAdapter {
       for (const section of tt.teeOffSections) {
         if (section.isHeld) continue;
         allHeld = false;
-        for (const bookingId of section.bookings) {
+        for (const bookingId of section.bookings ?? []) {
           totalBooked += golferCounts.get(bookingId) ?? 0;
         }
       }

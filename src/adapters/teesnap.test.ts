@@ -78,6 +78,33 @@ describe("TeensnapAdapter", () => {
     expect(times).not.toContain("2026-04-15T08:27:00");
   });
 
+  it("handles sections with null bookings array", async () => {
+    const nullBookingsFixture = {
+      teeTimes: {
+        bookings: [],
+        teeTimes: [
+          {
+            teeTime: "2026-04-15T09:00:00",
+            prices: [
+              { roundType: "EIGHTEEN_HOLE", rackRatePrice: "55.00", price: "50.00" },
+            ],
+            teeOffSections: [
+              { teeOff: "FRONT_NINE", bookings: null, isHeld: false },
+            ],
+          },
+        ],
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(nullBookingsFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].openSlots).toBe(4);
+  });
+
   it("uses 18-hole promotional price (not rack rate) when available", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
