@@ -72,18 +72,14 @@ export default function CoursePage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && (
-        <CourseHeader course={course} dates={dates} teeTimes={teeTimes} onRefreshed={() => fetchData(false)} />
-      )}
-
-      {catalogEntry?.address && course && (
-        <a
-          href={mapsUrl(course.name, course.city, catalogEntry.state ?? "MN")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-xs text-gray-400 hover:text-green-700 lg:text-sm"
-        >
-          {catalogEntry.address}
-        </a>
+        <CourseHeader
+          course={course}
+          address={catalogEntry?.address}
+          mapsUrl={catalogEntry?.address ? mapsUrl(course.name, course.city, catalogEntry.state ?? "MN") : undefined}
+          dates={dates}
+          teeTimes={teeTimes}
+          onRefreshed={() => fetchData(false)}
+        />
       )}
 
       {course?.display_notes && (
