@@ -2,7 +2,7 @@
 // ABOUTME: Covers formatTime, formatAge, and staleAge with boundary conditions.
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatTime, formatAge, staleAge, todayCT } from "./format";
+import { formatTime, formatAge, staleAge, todayCT, nowTimeCT } from "./format";
 
 describe("formatTime", () => {
   it("formats morning time", () => {
@@ -114,5 +114,22 @@ describe("todayCT", () => {
     // 4:30 UTC on July 15 = 11:30pm CDT on July 14 (CDT = UTC-5)
     vi.setSystemTime(new Date("2026-07-15T04:30:00Z"));
     expect(todayCT()).toBe("2026-07-14");
+  });
+});
+
+describe("nowTimeCT", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns HH:MM format", () => {
+    expect(nowTimeCT()).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  it("returns Central Time, not UTC", () => {
+    vi.useFakeTimers();
+    // 18:30 UTC = 1:30pm CDT (UTC-5) in summer
+    vi.setSystemTime(new Date("2026-07-15T18:30:00Z"));
+    expect(nowTimeCT()).toBe("13:30");
   });
 });

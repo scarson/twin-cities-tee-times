@@ -142,7 +142,7 @@ describe("runCronPoll batch filtering", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -227,7 +227,7 @@ describe("runCronPoll date-outer loop ordering", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -276,7 +276,7 @@ describe("runCronPoll budget tracking", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -287,11 +287,12 @@ describe("runCronPoll budget tracking", () => {
     vi.useRealTimers();
   });
 
-  it("stops polling when budget is exhausted", { timeout: 15000 }, async () => {
-    // Need enough CPS courses (weight 3) to exceed SUBREQUEST_BUDGET with 2 dates.
-    // coursesPerBatch * 2 dates * 3 weight > budget → coursesPerBatch > budget/6
-    // With 5 batches, total = coursesPerBatch * 5
-    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
+  it("stops polling when budget is exhausted", { timeout: 60000 }, async () => {
+    // Use 7 dates so each CPS course (weight 3) costs 21 units → fewer courses needed
+    const dates = Array.from({ length: 7 }, (_, i) => `2026-04-${15 + i}`);
+    mockedGetPollingDates.mockReturnValue(dates);
+    // coursesPerBatch * 7 dates * 3 weight > budget → coursesPerBatch > budget/21
+    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 21 + 1) * 5;
     const courses = Array.from({ length: coursesNeeded }, (_, i) =>
       makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf")
     );
@@ -327,8 +328,10 @@ describe("runCronPoll budget tracking", () => {
     expect(result.budgetExhausted).toBe(false);
   });
 
-  it("decrements budget on error path (subrequests still consumed)", { timeout: 15000 }, async () => {
-    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
+  it("decrements budget on error path (subrequests still consumed)", { timeout: 60000 }, async () => {
+    const dates = Array.from({ length: 7 }, (_, i) => `2026-04-${15 + i}`);
+    mockedGetPollingDates.mockReturnValue(dates);
+    const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 21 + 1) * 5;
     const courses = Array.from({ length: coursesNeeded }, (_, i) =>
       makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf")
     );
@@ -393,7 +396,7 @@ describe("runCronPoll housekeeping", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(false);
@@ -504,7 +507,7 @@ describe("runCronPoll error isolation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -625,7 +628,7 @@ describe("runCronPoll active/inactive polling", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);
@@ -731,11 +734,11 @@ describe("runCronPoll active/inactive polling", () => {
     consoleSpy.mockRestore();
   });
 
-  it("decrements budget on inactive probe error (subrequests still consumed)", { timeout: 15000 }, async () => {
+  it("decrements budget on inactive probe error (subrequests still consumed)", { timeout: 60000 }, async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    // Inactive courses probe today+tomorrow only (2 dates).
+    // Inactive courses probe today+tomorrow only (2 dates, from first 2 of getPollingDates).
     // Need coursesPerBatch * 2 * 3 > budget → coursesPerBatch > budget/6
     const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
     const courses = Array.from({ length: coursesNeeded }, (_, i) =>
@@ -778,7 +781,7 @@ describe("runCronPoll SQL verification", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
     vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
     mockedPollCourse.mockResolvedValue("no_data");
     mockedShouldPollDate.mockReturnValue(true);

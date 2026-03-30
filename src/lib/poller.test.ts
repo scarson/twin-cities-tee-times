@@ -31,12 +31,10 @@ describe("shouldPollDate", () => {
     expect(shouldPollDate(3, 30)).toBe(true);
   });
 
-  it("polls days 5-7 only at 8am and 6pm", () => {
-    // This is controlled by the cron caller, but the function
-    // uses minutesSinceLast with a 10-hour threshold
-    expect(shouldPollDate(4, 60)).toBe(false);
-    expect(shouldPollDate(4, 600)).toBe(true);
-    expect(shouldPollDate(6, 601)).toBe(true);
+  it("polls days 5-7 hourly", () => {
+    expect(shouldPollDate(4, 30)).toBe(false);
+    expect(shouldPollDate(4, 60)).toBe(true);
+    expect(shouldPollDate(6, 61)).toBe(true);
   });
 });
 
