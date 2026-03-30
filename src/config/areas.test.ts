@@ -140,6 +140,36 @@ describe("groupByArea", () => {
     expect(groupByArea([])).toEqual([]);
   });
 
+  it("sorts courses by distance when distances are provided", () => {
+    const courses = [
+      { name: "Far Away", city: "Minneapolis" },
+      { name: "Close By", city: "Minneapolis" },
+      { name: "Medium", city: "Minneapolis" },
+    ];
+    const distances = new Map([
+      ["Far Away", 50],
+      ["Close By", 5],
+      ["Medium", 25],
+    ]);
+    const groups = groupByArea(courses, distances);
+    const mpls = groups.find((g) => g.area === "Minneapolis")!;
+    expect(mpls.courses.map((c) => c.name)).toEqual([
+      "Close By",
+      "Medium",
+      "Far Away",
+    ]);
+  });
+
+  it("falls back to alphabetical sort when no distances provided", () => {
+    const courses = [
+      { name: "Zeta", city: "Minneapolis" },
+      { name: "Alpha", city: "Minneapolis" },
+    ];
+    const groups = groupByArea(courses);
+    const mpls = groups.find((g) => g.area === "Minneapolis")!;
+    expect(mpls.courses.map((c) => c.name)).toEqual(["Alpha", "Zeta"]);
+  });
+
   it("preserves extra fields on course objects", () => {
     const courses = [
       { name: "Braemar", city: "Edina", id: "braemar", address: "123 Main St" },

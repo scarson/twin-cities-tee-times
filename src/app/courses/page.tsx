@@ -2,10 +2,13 @@
 // ABOUTME: Supports favoriting and collapsible area sections.
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useFavorites } from "@/hooks/use-favorites";
 import { groupByArea, mapsUrl } from "@/config/areas";
+import { LocationFilter } from "@/components/location-filter";
+import { useLocation } from "@/hooks/use-location";
+import { haversineDistance } from "@/lib/distance";
 import courseCatalog from "@/config/courses.json";
 
 const COLLAPSED_KEY = "tct-collapsed-areas";
@@ -43,6 +46,7 @@ function saveCollapsedAreas(areas: string[]) {
 
 function CourseBrowser() {
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { location, radiusMiles } = useLocation();
   const [collapsed, setCollapsed] = useState<string[]>(getCollapsedAreas);
   const [search, setSearch] = useState("");
 
@@ -63,7 +67,29 @@ function CourseBrowser() {
     return c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q);
   });
 
-  const groups = groupByArea(visibleCourses);
+  const courseDistances = useMemo(() => {
+    if (!location) return null;
+    const distances = new Map<string, number>();
+    for (const course of courseCatalog as Array<{ id: string; name: string; latitude?: number; longitude?: number }>) {
+      if (course.latitude != null && course.longitude != null) {
+        distances.set(
+          course.name,
+          haversineDistance(location.lat, location.lng, course.latitude, course.longitude)
+        );
+      }
+    }
+    return distances;
+  }, [location]);
+
+  const filteredCourses = useMemo(() => {
+    if (!location || !courseDistances) return visibleCourses;
+    return visibleCourses.filter((course) => {
+      const dist = courseDistances.get(course.name);
+      return dist != null && dist <= radiusMiles;
+    });
+  }, [visibleCourses, location, courseDistances, radiusMiles]);
+
+  const groups = groupByArea(filteredCourses, courseDistances ?? undefined);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
@@ -79,6 +105,7 @@ function CourseBrowser() {
         onChange={(e) => setSearch(e.target.value)}
         className="mt-4 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 lg:text-base"
       />
+      <LocationFilter />
 
       <div className="mt-6 space-y-6">
         {groups.map(({ area, courses }) => {
@@ -129,6 +156,11 @@ function CourseBrowser() {
                             >
                               {course.address}
                             </a>
+                          )}
+                          {courseDistances && (
+                            <span className="text-xs text-green-700 lg:text-sm">
+                              {courseDistances.get(course.name)?.toFixed(1)} mi
+                            </span>
                           )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
