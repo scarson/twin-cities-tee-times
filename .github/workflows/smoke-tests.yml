@@ -12,6 +12,9 @@ on:
       - 'vitest.smoke.config.ts'
       - '.github/workflows/smoke-tests.yml'
 
+permissions:
+  contents: read
+
 jobs:
   smoke-test:
     name: Adapter Smoke Tests
