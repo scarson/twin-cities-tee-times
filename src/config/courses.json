@@ -6,6 +6,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "1301 Theodore Wirth Pkwy, Minneapolis, MN 55422",
+    "latitude": 44.9918,
+    "longitude": -93.323,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolistheodorewirth",
@@ -21,6 +23,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "2201 St. Anthony Blvd, Minneapolis, MN 55418",
+    "latitude": 45.0192,
+    "longitude": -93.2293,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolisgrossnational",
@@ -36,6 +40,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "201 Meadowbrook Rd, Hopkins, MN 55343",
+    "latitude": 44.9076,
+    "longitude": -93.4028,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolismeadowbrook",
@@ -51,6 +57,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "3300 Central Ave NE, Minneapolis, MN 55418",
+    "latitude": 45.0277,
+    "longitude": -93.2475,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapoliscolumbia",
@@ -66,6 +74,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "4553 Longfellow Ave, Minneapolis, MN 55407",
+    "latitude": 44.9212,
+    "longitude": -93.2459,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "minneapolishiawatha",
@@ -81,6 +91,8 @@
     "city": "St. Paul",
     "state": "MN",
     "address": "1615 Phalen Dr E, St. Paul, MN 55106",
+    "latitude": 44.9933,
+    "longitude": -93.0654,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "phalen",
@@ -96,6 +108,8 @@
     "city": "Chaska",
     "state": "MN",
     "address": "3000 Town Course Dr, Chaska, MN 55318",
+    "latitude": 44.8287,
+    "longitude": -93.6315,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "chaska",
@@ -111,6 +125,8 @@
     "city": "Brooklyn Park",
     "state": "MN",
     "address": "8700 Edinbrook Crossing, Brooklyn Park, MN 55443",
+    "latitude": 45.1111,
+    "longitude": -93.3278,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "edinburghusa",
@@ -127,6 +143,8 @@
     "city": "Stillwater",
     "state": "MN",
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
+    "latitude": 45.0671,
+    "longitude": -92.8305,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "oakglen",
@@ -143,6 +161,8 @@
     "city": "Stillwater",
     "state": "MN",
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
+    "latitude": 45.0671,
+    "longitude": -92.8305,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "oakglen",
@@ -159,6 +179,8 @@
     "city": "St. Paul",
     "state": "MN",
     "address": "1403 Montreal Ave, St. Paul, MN 55116",
+    "latitude": 44.9125,
+    "longitude": -93.1571,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "highlandnationalmn",
@@ -174,6 +196,8 @@
     "city": "St. Paul",
     "state": "MN",
     "address": "1403 Montreal Ave, St. Paul, MN 55116",
+    "latitude": 44.9125,
+    "longitude": -93.1571,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "highlandnationalmn",
@@ -189,6 +213,8 @@
     "city": "St. Paul",
     "state": "MN",
     "address": "1431 N Lexington Pkwy, St. Paul, MN 55103",
+    "latitude": 44.9859,
+    "longitude": -93.1444,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "como",
@@ -204,6 +230,8 @@
     "city": "Blaine",
     "state": "MN",
     "address": "2010 105th Ave NE, Blaine, MN 55449",
+    "latitude": 45.1607,
+    "longitude": -93.2206,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "victorylinksmn",
@@ -220,6 +248,8 @@
     "city": "White Bear Lake",
     "state": "MN",
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
+    "latitude": 45.0635,
+    "longitude": -93.0313,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "gem",
@@ -236,6 +266,8 @@
     "city": "White Bear Lake",
     "state": "MN",
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
+    "latitude": 45.0635,
+    "longitude": -93.0313,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "gem",
@@ -252,6 +284,8 @@
     "city": "Edina",
     "state": "MN",
     "address": "6364 John Harris Dr, Edina, MN 55439",
+    "latitude": 44.868,
+    "longitude": -93.3822,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "21445",
@@ -266,6 +300,8 @@
     "city": "Coon Rapids",
     "state": "MN",
     "address": "12800 Bunker Prairie Rd NW, Coon Rapids, MN 55448",
+    "latitude": 45.2006,
+    "longitude": -93.2816,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "20252",
@@ -280,6 +316,8 @@
     "city": "Roseville",
     "state": "MN",
     "address": "2323 Hamline Ave N, Roseville, MN 55113",
+    "latitude": 45.0112,
+    "longitude": -93.1566,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "22244",
@@ -294,6 +332,8 @@
     "city": "Maplewood",
     "state": "MN",
     "address": "2166 Maplewood Dr, Maplewood, MN 55109",
+    "latitude": 45.0028,
+    "longitude": -93.0615,
     "platform": "teeitup",
     "platformConfig": {
       "alias": "ramsey-county-golf",
@@ -309,6 +349,8 @@
     "city": "Maple Plain",
     "state": "MN",
     "address": "705 Copeland Rd, Maple Plain, MN 55359",
+    "latitude": 44.9896,
+    "longitude": -93.7474,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "pioneercreek",
@@ -324,6 +366,8 @@
     "city": "Apple Valley",
     "state": "MN",
     "address": "4851 McAndrews Rd, Apple Valley, MN 55124",
+    "latitude": 44.7681,
+    "longitude": -93.1585,
     "platform": "eagle_club",
     "platformConfig": {
       "dbname": "mnvalleywood20250115"
@@ -337,6 +381,8 @@
     "city": "Golden Valley",
     "state": "MN",
     "address": "200 Brookview Pkwy, Golden Valley, MN 55426",
+    "latitude": 44.9798,
+    "longitude": -93.3861,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "brookview",
@@ -353,6 +399,8 @@
     "city": "Golden Valley",
     "state": "MN",
     "address": "200 Brookview Pkwy, Golden Valley, MN 55426",
+    "latitude": 44.9798,
+    "longitude": -93.3861,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "brookview",
@@ -369,6 +417,8 @@
     "city": "Inver Grove Heights",
     "state": "MN",
     "address": "1850 70th St E, Inver Grove Heights, MN 55077",
+    "latitude": 44.8477,
+    "longitude": -93.069,
     "platform": "teewire",
     "platformConfig": {
       "tenant": "inverwood",
@@ -383,6 +433,8 @@
     "city": "Inver Grove Heights",
     "state": "MN",
     "address": "1850 70th St E, Inver Grove Heights, MN 55077",
+    "latitude": 44.8477,
+    "longitude": -93.069,
     "platform": "teewire",
     "platformConfig": {
       "tenant": "inverwood",
@@ -397,6 +449,8 @@
     "city": "Minneapolis",
     "state": "MN",
     "address": "49 Hwy 5, St. Paul, MN 55111",
+    "latitude": 44.8889,
+    "longitude": -93.1922,
     "disabled": 1,
     "displayNotes": "Tee times for this course are available on GolfNow. Select 'Book online' to view and book.",
     "platform": "golfnow",
@@ -412,6 +466,8 @@
     "city": "Dayton",
     "state": "MN",
     "address": "14730 Lawndale Ln N, Dayton, MN 55327",
+    "latitude": 45.2216,
+    "longitude": -93.5029,
     "platform": "teesnap",
     "platformConfig": {
       "subdomain": "daytonagolfclub",
@@ -426,6 +482,8 @@
     "city": "Stillwater",
     "state": "MN",
     "address": "13600 Hudson Blvd N, Stillwater, MN 55082",
+    "latitude": 44.9491,
+    "longitude": -92.8339,
     "platform": "teesnap",
     "platformConfig": {
       "subdomain": "stoneridgegc",
@@ -440,6 +498,8 @@
     "city": "Cottage Grove",
     "state": "MN",
     "address": "11099 S Robert Trail, Cottage Grove, MN 55016",
+    "latitude": 44.8069,
+    "longitude": -92.9149,
     "platform": "membersports",
     "platformConfig": {
       "golfClubId": "9431",
@@ -454,6 +514,8 @@
     "city": "Hastings",
     "state": "MN",
     "address": "14425 Goodwin Ave, Hastings, MN 55033",
+    "latitude": 44.7389,
+    "longitude": -92.9543,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19202",
@@ -468,6 +530,8 @@
     "city": "Hastings",
     "state": "MN",
     "address": "14425 Goodwin Ave, Hastings, MN 55033",
+    "latitude": 44.7389,
+    "longitude": -92.9543,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19202",
@@ -483,6 +547,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "2600 Golf Course Dr, San Diego, CA 92102",
+    "latitude": 32.7196,
+    "longitude": -117.1382,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19348",
@@ -498,6 +564,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "2323 Goat Hill Dr, Oceanside, CA 92054",
+    "latitude": 33.1977,
+    "longitude": -117.3587,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "20906",
@@ -513,6 +581,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "825 Douglas Dr, Oceanside, CA 92058",
+    "latitude": 33.2522,
+    "longitude": -117.3217,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "19162",
@@ -528,6 +598,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "1580 Sun Valley Rd, Solana Beach, CA 92075",
+    "latitude": 33.0003,
+    "longitude": -117.2407,
     "platform": "teeitup",
     "platformConfig": {
       "alias": "lomas-santa-fe-executive-golf-course",
@@ -544,6 +616,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "2000 Visalia Row, Coronado, CA 92118",
+    "latitude": 32.685,
+    "longitude": -117.1681,
     "platform": "teeitup",
     "platformConfig": {
       "alias": "coronado-gc-3-14-be",
@@ -560,6 +634,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "1275 Quail Gardens Dr, Encinitas, CA 92024",
+    "latitude": 33.0684,
+    "longitude": -117.2768,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
@@ -579,6 +655,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "1425 N Twin Oaks Valley Rd, San Marcos, CA 92069",
+    "latitude": 33.1714,
+    "longitude": -117.1609,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
@@ -598,6 +676,8 @@
     "state": "CA",
     "disabled": 1,
     "address": "17550 Bernardo Oaks Dr, San Diego, CA 92128",
+    "latitude": 33.0297,
+    "longitude": -117.0671,
     "platform": "cps_golf",
     "platformConfig": {
       "subdomain": "jcgsc5",
@@ -616,6 +696,8 @@
     "city": "Medina",
     "state": "MN",
     "address": "2935 Parkview Dr, Medina, MN 55340",
+    "latitude": 45.032,
+    "longitude": -93.6043,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "baker-national-golf-club",
@@ -630,6 +712,8 @@
     "city": "Medina",
     "state": "MN",
     "address": "2935 Parkview Dr, Medina, MN 55340",
+    "latitude": 45.032,
+    "longitude": -93.6043,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "baker-national-golf-club",
@@ -644,6 +728,8 @@
     "city": "Bloomington",
     "state": "MN",
     "address": "3301 W 108th St, Bloomington, MN 55431",
+    "latitude": 44.8083,
+    "longitude": -93.322,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "dwan-golf-club",
@@ -658,6 +744,8 @@
     "city": "Chaska",
     "state": "MN",
     "address": "1025 County Rd 17, Chaska, MN 55318",
+    "latitude": 44.8207,
+    "longitude": -93.5421,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "bluff-creek-golf-course-minnesota",
@@ -672,6 +760,8 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "latitude": 45.2214,
+    "longitude": -93.2829,
     "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
@@ -687,6 +777,8 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "latitude": 45.2214,
+    "longitude": -93.2829,
     "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
@@ -702,6 +794,8 @@
     "city": "Ham Lake",
     "state": "MN",
     "address": "701 Bunker Lake Blvd, Ham Lake, MN 55304",
+    "latitude": 45.2214,
+    "longitude": -93.2829,
     "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
@@ -717,6 +811,8 @@
     "city": "Maple Grove",
     "state": "MN",
     "address": "7801 CR 101, Maple Grove, MN 55311",
+    "latitude": 45.0966,
+    "longitude": -93.5125,
     "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
@@ -732,6 +828,8 @@
     "city": "Anoka",
     "state": "MN",
     "address": "2800 Greenhaven Rd, Anoka, MN 55303",
+    "latitude": 45.2086,
+    "longitude": -93.3999,
     "platform": "foreup",
     "platformConfig": {
       "facilityId": "21694",
