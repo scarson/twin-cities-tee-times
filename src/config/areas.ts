@@ -58,7 +58,8 @@ export function getArea(city: string): string {
 
 /** Group courses by area, returning entries in AREA_ORDER then "Other" */
 export function groupByArea<T extends { name: string; city: string }>(
-  courses: T[]
+  courses: T[],
+  distances?: Map<string, number>
 ): { area: string; courses: T[] }[] {
   const groups = new Map<string, T[]>();
 
@@ -70,7 +71,11 @@ export function groupByArea<T extends { name: string; city: string }>(
   }
 
   for (const list of groups.values()) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
+    if (distances) {
+      list.sort((a, b) => (distances.get(a.name) ?? Infinity) - (distances.get(b.name) ?? Infinity));
+    } else {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
   }
 
   const result: { area: string; courses: T[] }[] = [];
@@ -84,6 +89,6 @@ export function groupByArea<T extends { name: string; city: string }>(
   return result;
 }
 
-export function mapsUrl(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+export function mapsUrl(name: string, city: string, state: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${city} ${state}`)}`;
 }

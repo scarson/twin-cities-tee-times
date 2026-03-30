@@ -2,12 +2,15 @@
 // ABOUTME: Supports favorites toggle to filter to user's preferred courses.
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { ShareDialog } from "@/components/share-dialog";
+import { LocationFilter } from "@/components/location-filter";
+import { useLocation } from "@/hooks/use-location";
+import { haversineDistance } from "@/lib/distance";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
@@ -24,6 +27,7 @@ export default function Home() {
   const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const { location, radiusMiles } = useLocation();
 
   // Auto-enable favorites filter once favorites load from localStorage (one-shot)
   const favoritesInitialized = useRef(false);
@@ -113,6 +117,39 @@ export default function Home() {
     fetchTeeTimes();
   }, [dates, startTime, endTime, favoritesOnly, favorites]);
 
+  const displayTeeTimes = useMemo(() => {
+    if (!location) return teeTimes;
+
+    // Build a map of course distances
+    const courseDistances = new Map<string, number>();
+    for (const course of courseCatalog as Array<{ id: string; latitude?: number; longitude?: number }>) {
+      if (course.latitude != null && course.longitude != null) {
+        courseDistances.set(
+          course.id,
+          haversineDistance(location.lat, location.lng, course.latitude, course.longitude)
+        );
+      }
+    }
+
+    // Filter by radius and add distance to each tee time
+    const filtered = teeTimes
+      .map((tt) => ({
+        ...tt,
+        distance: courseDistances.get(tt.course_id),
+      }))
+      .filter((tt) => tt.distance != null && tt.distance <= radiusMiles);
+
+    // Sort by distance (nearest course first), then by time within each course
+    filtered.sort((a, b) => {
+      const distDiff = (a.distance ?? 0) - (b.distance ?? 0);
+      if (Math.abs(distDiff) > 0.01) return distDiff;
+      return `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`);
+    });
+
+    return filtered;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- courseCatalog is a static JSON import
+  }, [teeTimes, location, radiusMiles]);
+
   const hasFavorites = favorites.length > 0;
   const [showFavList, setShowFavList] = useState(false);
   const favListRef = useRef<HTMLDivElement>(null);
@@ -175,6 +212,8 @@ export default function Home() {
         />
       </div>
 
+      <LocationFilter />
+
       {hasFavorites && (
         <div className="relative mt-2 text-sm text-gray-600 lg:text-base" ref={favListRef}>
           Showing:{" "}
@@ -234,7 +273,7 @@ export default function Home() {
       )}
 
       <div className="mt-4">
-        <TeeTimeList teeTimes={teeTimes} loading={loading} />
+        <TeeTimeList teeTimes={displayTeeTimes} loading={loading} />
       </div>
 
       {sharedCourses.length > 0 && (

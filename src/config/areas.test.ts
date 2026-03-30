@@ -140,6 +140,36 @@ describe("groupByArea", () => {
     expect(groupByArea([])).toEqual([]);
   });
 
+  it("sorts courses by distance when distances are provided", () => {
+    const courses = [
+      { name: "Far Away", city: "Minneapolis" },
+      { name: "Close By", city: "Minneapolis" },
+      { name: "Medium", city: "Minneapolis" },
+    ];
+    const distances = new Map([
+      ["Far Away", 50],
+      ["Close By", 5],
+      ["Medium", 25],
+    ]);
+    const groups = groupByArea(courses, distances);
+    const mpls = groups.find((g) => g.area === "Minneapolis")!;
+    expect(mpls.courses.map((c) => c.name)).toEqual([
+      "Close By",
+      "Medium",
+      "Far Away",
+    ]);
+  });
+
+  it("falls back to alphabetical sort when no distances provided", () => {
+    const courses = [
+      { name: "Zeta", city: "Minneapolis" },
+      { name: "Alpha", city: "Minneapolis" },
+    ];
+    const groups = groupByArea(courses);
+    const mpls = groups.find((g) => g.area === "Minneapolis")!;
+    expect(mpls.courses.map((c) => c.name)).toEqual(["Alpha", "Zeta"]);
+  });
+
   it("preserves extra fields on course objects", () => {
     const courses = [
       { name: "Braemar", city: "Edina", id: "braemar", address: "123 Main St" },
@@ -155,16 +185,16 @@ describe("groupByArea", () => {
 });
 
 describe("mapsUrl", () => {
-  it("builds a Google Maps search URL from an address", () => {
-    const url = mapsUrl("1301 Theodore Wirth Pkwy, Minneapolis, MN 55422");
+  it("builds a Google Maps search URL from course name, city, and state", () => {
+    const url = mapsUrl("Columbia Golf Club", "Minneapolis", "MN");
     expect(url).toBe(
-      "https://www.google.com/maps/search/?api=1&query=1301%20Theodore%20Wirth%20Pkwy%2C%20Minneapolis%2C%20MN%2055422"
+      "https://www.google.com/maps/search/?api=1&query=Columbia%20Golf%20Club%20Minneapolis%20MN"
     );
   });
 
-  it("encodes special characters in addresses", () => {
-    const url = mapsUrl("123 Main St #4, City & County");
-    expect(url).toContain("%23"); // # encoded
-    expect(url).toContain("%26"); // & encoded
+  it("encodes special characters", () => {
+    const url = mapsUrl("Ft. Snelling", "St. Paul", "MN");
+    expect(url).toContain("Ft.%20Snelling");
+    expect(url).toContain("St.%20Paul");
   });
 });

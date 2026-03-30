@@ -70,10 +70,13 @@ describe("About page", () => {
     expect(screen.getByText(/local favorites are not affected/)).toBeDefined();
   });
 
-  it("includes the SD test courses note", () => {
+  it("explains location filtering privacy", () => {
     render(<AboutPage />);
     expect(
-      screen.getByText(/San Diego courses are included temporarily/)
+      screen.getByText(/How does location filtering work/)
+    ).toBeDefined();
+    expect(
+      screen.getByText(/never sent to our servers/)
     ).toBeDefined();
   });
 

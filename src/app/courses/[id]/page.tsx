@@ -8,6 +8,8 @@ import { DatePicker } from "@/components/date-picker";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { CourseHeader } from "@/components/course-header";
 import { todayCT } from "@/lib/format";
+import courseCatalog from "@/config/courses.json";
+import { mapsUrl } from "@/config/areas";
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>();
@@ -65,10 +67,23 @@ export default function CoursePage() {
     );
   }
 
+  const catalogEntry = courseCatalog.find((c) => c.id === id) as { address?: string; state?: string } | undefined;
+
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
       {course && (
         <CourseHeader course={course} dates={dates} teeTimes={teeTimes} onRefreshed={() => fetchData(false)} />
+      )}
+
+      {catalogEntry?.address && course && (
+        <a
+          href={mapsUrl(course.name, course.city, catalogEntry.state ?? "MN")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-xs text-gray-400 hover:text-green-700 lg:text-sm"
+        >
+          {catalogEntry.address}
+        </a>
       )}
 
       {course?.display_notes && (
