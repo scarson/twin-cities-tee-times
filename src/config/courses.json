@@ -14,7 +14,8 @@
       "courseIds": "17",
       "websiteId": "8265e495-5c83-44e5-93d8-c9e3f3a40529"
     },
-    "bookingUrl": "https://minneapolistheodorewirth.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolistheodorewirth.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJT5lGap8zs1IRwDPPY7dmWQc"
   },
   {
     "index": 7,
@@ -31,7 +32,8 @@
       "websiteId": "1e0f7a08-230e-4f7d-ab46-08d92aa86feb",
       "courseIds": "5,7"
     },
-    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolisgrossnational.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJn_nZiDgss1IRi35yUtPs1sU"
   },
   {
     "index": 10,
@@ -48,7 +50,8 @@
       "websiteId": "fe7da0af-a15d-466a-3739-08d92b64e4e2",
       "courseIds": "14"
     },
-    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolismeadowbrook.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJJbDTxu8g9ocRSyd34pplEng"
   },
   {
     "index": 3,
@@ -65,7 +68,8 @@
       "websiteId": "17dac0fe-afed-4cf4-1f32-08d92b5af5a4",
       "courseIds": "3,4"
     },
-    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapoliscolumbia.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJ5czD0Akus1IRQYXa0oN7QyU"
   },
   {
     "index": 8,
@@ -82,7 +86,8 @@
       "websiteId": "96956dba-fa03-4fff-66e6-08d92b5bc8b5",
       "courseIds": "11"
     },
-    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb"
+    "bookingUrl": "https://minneapolishiawatha.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJId5A2mAo9ocRfN8bBw7Ng4w"
   },
   {
     "index": 12,
@@ -99,7 +104,8 @@
       "websiteId": "6bec5c51-fe87-403d-020f-08da90168fb2",
       "courseIds": "2,6"
     },
-    "bookingUrl": "https://phalen.cps.golf/onlineresweb"
+    "bookingUrl": "https://phalen.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJHenj-QLVslIRnZhjJtJEQ2g"
   },
   {
     "index": 2,
@@ -116,7 +122,8 @@
       "websiteId": "9004916a-da08-4ba1-37a6-08daf43f0ffa",
       "courseIds": "1"
     },
-    "bookingUrl": "https://chaska.cps.golf/onlineresweb"
+    "bookingUrl": "https://chaska.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJHc16tK0F9ocRTNXP6-6CNME"
   },
   {
     "index": 5,
@@ -134,7 +141,8 @@
       "courseIds": "1,2",
       "authType": "v4"
     },
-    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb"
+    "bookingUrl": "https://edinburghusa.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJI5mhnGY6s1IRsGPQHoRNcNE"
   },
   {
     "index": 11,
@@ -152,7 +160,8 @@
       "courseIds": "6",
       "authType": "v4"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJi9NmGwfJslIR35kfvEKgzrQ"
   },
   {
     "index": 36,
@@ -170,7 +179,8 @@
       "courseIds": "7",
       "authType": "v4"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb"
+    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJi9NmGwfJslIR35kfvEKgzrQ"
   },
   {
     "index": 9,
@@ -187,7 +197,8 @@
       "websiteId": "482d82a7-43b7-45f5-62af-08d8eb0c3cdf",
       "courseIds": "3"
     },
-    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJGfRRvMsr9ocRFsDFADOB-yU"
   },
   {
     "index": 37,
@@ -204,7 +215,8 @@
       "websiteId": "482d82a7-43b7-45f5-62af-08d8eb0c3cdf",
       "courseIds": "4"
     },
-    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb"
+    "bookingUrl": "https://highlandnationalmn.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJGfRRvMsr9ocRFsDFADOB-yU"
   },
   {
     "index": 4,
@@ -221,7 +233,8 @@
       "websiteId": "55e14a0d-2bda-4336-0210-08da90168fb2",
       "courseIds": "1,8"
     },
-    "bookingUrl": "https://como.cps.golf/onlineresweb"
+    "bookingUrl": "https://como.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJ22qhMgUrs1IR4U9CXWOrdzg"
   },
   {
     "index": 18,
@@ -239,7 +252,8 @@
       "courseIds": "6,7",
       "authType": "v4"
     },
-    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb"
+    "bookingUrl": "https://victorylinksmn.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJcY00exUks1IR9qZTHx2rjcE"
   },
   {
     "index": 6,
@@ -257,7 +271,8 @@
       "courseIds": "9",
       "authType": "v4"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb"
+    "bookingUrl": "https://gem.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJD4mnsdHWslIR3vYA8VGpgGE"
   },
   {
     "index": 38,
@@ -275,7 +290,8 @@
       "courseIds": "8",
       "authType": "v4"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb"
+    "bookingUrl": "https://gem.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJD4mnsdHWslIR3vYA8VGpgGE"
   },
   {
     "index": 0,
@@ -291,7 +307,8 @@
       "facilityId": "21445",
       "scheduleId": "7829"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21445/7829"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21445/7829",
+    "googlePlaceId": "ChIJ9wX6Wi4i9ocRnCZZTETT8e8"
   },
   {
     "index": 1,
@@ -307,7 +324,8 @@
       "facilityId": "20252",
       "scheduleId": "5010"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20252",
+    "googlePlaceId": "ChIJaesS5Mw8s1IRu6q0m0WJvTg"
   },
   {
     "index": 13,
@@ -323,7 +341,8 @@
       "facilityId": "22244",
       "scheduleId": "10216"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22244/10216",
+    "googlePlaceId": "ChIJ795QUr8rs1IRPuxIj4t6xTA"
   },
   {
     "index": 24,
@@ -340,7 +359,8 @@
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "17055"
     },
-    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=17055"
+    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=17055",
+    "googlePlaceId": "ChIJLU5gFk7UslIRHyu_ZKmyI9A"
   },
   {
     "index": 25,
@@ -357,7 +377,8 @@
       "websiteId": "07ecdaf7-4af5-4b9f-40c3-08dc8bc4f610",
       "courseIds": "5"
     },
-    "bookingUrl": "https://pioneercreek.cps.golf/onlineresweb"
+    "bookingUrl": "https://pioneercreek.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJFelDeYlVs1IRhUoBmrup3z0"
   },
   {
     "index": 35,
@@ -372,7 +393,8 @@
     "platformConfig": {
       "dbname": "mnvalleywood20250115"
     },
-    "bookingUrl": "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115"
+    "bookingUrl": "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115",
+    "googlePlaceId": "ChIJDaoyczUy9ocRqYKZHUouy5s"
   },
   {
     "index": 39,
@@ -390,7 +412,8 @@
       "courseIds": "1,2",
       "authType": "v4"
     },
-    "bookingUrl": "https://brookview.cps.golf/onlineresweb"
+    "bookingUrl": "https://brookview.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJjx6YGAM1s1IRnsgc-DlXZ3U"
   },
   {
     "index": 40,
@@ -408,7 +431,8 @@
       "courseIds": "3",
       "authType": "v4"
     },
-    "bookingUrl": "https://brookview.cps.golf/onlineresweb"
+    "bookingUrl": "https://brookview.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJs_1qH6M1s1IRZbOZFmL4uXM"
   },
   {
     "index": 41,
@@ -424,7 +448,8 @@
       "tenant": "inverwood",
       "calendarId": "3"
     },
-    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=3&view=list"
+    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=3&view=list",
+    "googlePlaceId": "ChIJJ8EPH-fS94cRcxoF6Gq4fWY"
   },
   {
     "index": 42,
@@ -440,7 +465,8 @@
       "tenant": "inverwood",
       "calendarId": "16"
     },
-    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=16&view=list"
+    "bookingUrl": "https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=16&view=list",
+    "googlePlaceId": "ChIJJ8EPH-fS94cRcxoF6Gq4fWY"
   },
   {
     "index": 43,
@@ -457,7 +483,8 @@
     "platformConfig": {
       "facilityId": "18122"
     },
-    "bookingUrl": "https://www.golfnow.com/tee-times/facility/18122-fort-snelling-golf-club-9-holes/search"
+    "bookingUrl": "https://www.golfnow.com/tee-times/facility/18122-fort-snelling-golf-club-9-holes/search",
+    "googlePlaceId": "ChIJAf7Zn1kp9ocRjaVD4lFoafc"
   },
   {
     "index": 44,
@@ -473,7 +500,8 @@
       "subdomain": "daytonagolfclub",
       "courseId": "1163"
     },
-    "bookingUrl": "https://daytonagolfclub.teesnap.net"
+    "bookingUrl": "https://daytonagolfclub.teesnap.net",
+    "googlePlaceId": "ChIJTQJ4HrJBs1IRyrlcF6JQLTM"
   },
   {
     "index": 45,
@@ -489,7 +517,8 @@
       "subdomain": "stoneridgegc",
       "courseId": "1320"
     },
-    "bookingUrl": "https://stoneridgegc.teesnap.net"
+    "bookingUrl": "https://stoneridgegc.teesnap.net",
+    "googlePlaceId": "ChIJZ_vNn5Lf94cRR5xMkX3Oh4I"
   },
   {
     "index": 46,
@@ -505,7 +534,8 @@
       "golfClubId": "9431",
       "golfCourseId": "11701"
     },
-    "bookingUrl": "https://app.membersports.com/tee-times/9431/11701/0"
+    "bookingUrl": "https://app.membersports.com/tee-times/9431/11701/0",
+    "googlePlaceId": "ChIJpWlCGOTE94cROlPmPmbxE5k"
   },
   {
     "index": 47,
@@ -521,7 +551,8 @@
       "facilityId": "19202",
       "scheduleId": "1266"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1266"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1266",
+    "googlePlaceId": "ChIJHYhb9rTI94cRyzHTMJmcovk"
   },
   {
     "index": 48,
@@ -537,7 +568,8 @@
       "facilityId": "19202",
       "scheduleId": "1308"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1308"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19202/1308",
+    "googlePlaceId": "ChIJHYhb9rTI94cRyzHTMJmcovk"
   },
   {
     "index": 14,
@@ -554,7 +586,8 @@
       "facilityId": "19348",
       "scheduleId": "1470"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19348/1470"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19348/1470",
+    "googlePlaceId": "ChIJ4flusIJU2YARS1o6ph016yc"
   },
   {
     "index": 15,
@@ -571,7 +604,8 @@
       "facilityId": "20906",
       "scheduleId": "6161"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20906/6161"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/20906/6161",
+    "googlePlaceId": "ChIJ3QpwaCdu3IAR2H5PP-pfrnQ"
   },
   {
     "index": 16,
@@ -588,7 +622,8 @@
       "facilityId": "19162",
       "scheduleId": "1202"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/19162/1202",
+    "googlePlaceId": "ChIJV-nMqX1w3IARDrRcJswXqLk"
   },
   {
     "index": 19,
@@ -606,7 +641,8 @@
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "1241"
     },
-    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com"
+    "bookingUrl": "https://lomas-santa-fe-executive-golf-course.book.teeitup.com",
+    "googlePlaceId": "ChIJf5PmQRcJ3IAR4R-GRvP25fs"
   },
   {
     "index": 20,
@@ -624,7 +660,8 @@
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "10985"
     },
-    "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com"
+    "bookingUrl": "https://coronado-gc-3-14-be.book.teeitup.com",
+    "googlePlaceId": "ChIJ17GNxDNT2YARYMauj9NbVPo"
   },
   {
     "index": 21,
@@ -645,7 +682,8 @@
       "courseIds": "6",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJr0-wY4YM3IARcoSzI38BZiI"
   },
   {
     "index": 22,
@@ -666,7 +704,8 @@
       "courseIds": "4",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJ4_goHI6K24ARSEiUubxrIbk"
   },
   {
     "index": 23,
@@ -687,7 +726,8 @@
       "courseIds": "2",
       "timezone": "America/Los_Angeles"
     },
-    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb"
+    "bookingUrl": "https://jcgsc5.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJfTZyLCbx24ARvu0mdyJ7goY"
   },
   {
     "index": 26,
@@ -703,7 +743,8 @@
       "clubSlug": "baker-national-golf-club",
       "courseId": "e9d8899b-a26b-44fa-a6f6-ebaec3db1656"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes",
+    "googlePlaceId": "ChIJXVFQLe9Rs1IROAIbraohd0o"
   },
   {
     "index": 27,
@@ -719,7 +760,8 @@
       "clubSlug": "baker-national-golf-club",
       "courseId": "49987288-e1cd-415b-b1cc-a3e8b243ee40"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/baker-national-golf-club#teetimes",
+    "googlePlaceId": "ChIJXVFQLe9Rs1IROAIbraohd0o"
   },
   {
     "index": 28,
@@ -735,7 +777,8 @@
       "clubSlug": "dwan-golf-club",
       "courseId": "9223cfc2-bb40-4dab-8d7d-4e8fced53271"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/dwan-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/dwan-golf-club#teetimes",
+    "googlePlaceId": "ChIJszZfXUs79ocR9uQI0cvHfEg"
   },
   {
     "index": 29,
@@ -751,7 +794,8 @@
       "clubSlug": "bluff-creek-golf-course-minnesota",
       "courseId": "665c37fd-4898-4df0-9e4e-acc94898db1a"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/bluff-creek-golf-course-minnesota#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/bluff-creek-golf-course-minnesota#teetimes",
+    "googlePlaceId": "ChIJmZpAdvAa9ocR1uslU84O16I"
   },
   {
     "index": 30,
@@ -768,7 +812,8 @@
       "clubSlug": "majestic-oaks-golf-club",
       "courseId": "cce24258-1fd8-455e-94d3-64c0998f0727"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes",
+    "googlePlaceId": "ChIJW7yWbv8is1IRBtB605lu_Xc"
   },
   {
     "index": 31,
@@ -785,7 +830,8 @@
       "clubSlug": "majestic-oaks-golf-club",
       "courseId": "9a5a2a0e-82f1-4c9c-8e26-858b7d2122bb"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes",
+    "googlePlaceId": "ChIJW7yWbv8is1IRBtB605lu_Xc"
   },
   {
     "index": 32,
@@ -802,7 +848,8 @@
       "clubSlug": "majestic-oaks-golf-club",
       "courseId": "c3a9fc28-dfc9-452b-af2e-51d23bed8f53"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/majestic-oaks-golf-club#teetimes",
+    "googlePlaceId": "ChIJW7yWbv8is1IRBtB605lu_Xc"
   },
   {
     "index": 33,
@@ -819,7 +866,8 @@
       "clubSlug": "rush-creek-golf-club",
       "courseId": "533475d8-cac9-40f1-bc8b-71113277aa70"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/rush-creek-golf-club#teetimes"
+    "bookingUrl": "https://www.chronogolf.com/club/rush-creek-golf-club#teetimes",
+    "googlePlaceId": "ChIJr-EL7f5Fs1IRvLUhQ3j80Ts"
   },
   {
     "index": 34,
@@ -835,6 +883,7 @@
       "facilityId": "21694",
       "scheduleId": "8609"
     },
-    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21694/8609"
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21694/8609",
+    "googlePlaceId": "ChIJ8VyHnfc-s1IRXVgLTnh52P4"
   }
 ]

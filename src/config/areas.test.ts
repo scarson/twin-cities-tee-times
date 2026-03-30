@@ -197,4 +197,16 @@ describe("mapsUrl", () => {
     expect(url).toContain("Ft.%20Snelling");
     expect(url).toContain("St.%20Paul");
   });
+
+  it("includes query_place_id when placeId is provided", () => {
+    const url = mapsUrl("Braemar", "Edina", "MN", "ChIJ9wX6WS4i9ocRnCZZTETx8e8");
+    expect(url).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Braemar%20Edina%20MN&query_place_id=ChIJ9wX6WS4i9ocRnCZZTETx8e8"
+    );
+  });
+
+  it("omits query_place_id when placeId is undefined", () => {
+    const url = mapsUrl("Braemar", "Edina", "MN");
+    expect(url).not.toContain("query_place_id");
+  });
 });

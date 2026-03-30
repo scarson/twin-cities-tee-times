@@ -67,7 +67,7 @@ export default function CoursePage() {
     );
   }
 
-  const catalogEntry = courseCatalog.find((c) => c.id === id) as { address?: string; state?: string } | undefined;
+  const catalogEntry = courseCatalog.find((c) => c.id === id) as { address?: string; state?: string; googlePlaceId?: string } | undefined;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 lg:max-w-3xl lg:py-8">
@@ -75,7 +75,7 @@ export default function CoursePage() {
         <CourseHeader
           course={course}
           address={catalogEntry?.address}
-          mapsUrl={catalogEntry?.address ? mapsUrl(course.name, course.city, catalogEntry.state ?? "MN") : undefined}
+          mapsUrl={catalogEntry?.address ? mapsUrl(course.name, course.city, catalogEntry.state ?? "MN", catalogEntry.googlePlaceId) : undefined}
           dates={dates}
           teeTimes={teeTimes}
           onRefreshed={() => fetchData(false)}

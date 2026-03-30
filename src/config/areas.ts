@@ -89,6 +89,10 @@ export function groupByArea<T extends { name: string; city: string }>(
   return result;
 }
 
-export function mapsUrl(name: string, city: string, state: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${city} ${state}`)}`;
+export function mapsUrl(name: string, city: string, state: string, placeId?: string): string {
+  const query = encodeURIComponent(`${name} ${city} ${state}`);
+  if (placeId) {
+    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${placeId}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
