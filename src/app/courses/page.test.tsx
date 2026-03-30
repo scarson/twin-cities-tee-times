@@ -25,6 +25,23 @@ vi.mock("next/link", () => ({
     React.createElement("a", { href, ...props }, children),
 }));
 
+vi.mock("@/hooks/use-location", () => ({
+  useLocation: () => ({
+    location: null,
+    zip: "",
+    radiusMiles: 25,
+    gpsLoading: false,
+    gpsError: null,
+    setZip: vi.fn(),
+    requestGps: vi.fn(),
+    setRadiusMiles: vi.fn(),
+    clearLocation: vi.fn(),
+  }),
+  RADIUS_OPTIONS: [5, 10, 25, 50, 100],
+  DEFAULT_RADIUS: 25,
+  isValidZip: (zip: string) => /^\d{5}$/.test(zip),
+}));
+
 import CoursesPage from "./page";
 
 beforeAll(() => {
