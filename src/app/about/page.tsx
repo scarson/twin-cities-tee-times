@@ -140,6 +140,29 @@ export default function AboutPage() {
 
         <section>
           <h2 className="text-lg font-semibold lg:text-xl">
+            How does location filtering work?
+          </h2>
+          <p className="mt-2 text-gray-700">
+            You can filter courses by distance from your location. Two options
+            are available: using your device&rsquo;s GPS, or entering a zip
+            code.
+          </p>
+          <p className="mt-2 text-gray-700">
+            <strong>GPS:</strong> Your precise coordinates are used only in your
+            browser to calculate distances. They are never sent to our servers
+            or stored anywhere &mdash; not even in your browser&rsquo;s local
+            storage.
+          </p>
+          <p className="mt-2 text-gray-700">
+            <strong>Zip code:</strong> If you enter a zip code, it&rsquo;s
+            saved in your browser so you don&rsquo;t have to re-enter it.
+            Distance is calculated entirely in your browser using the zip
+            code&rsquo;s approximate center point.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold lg:text-xl">
             How do I delete my account?
           </h2>
           <p className="mt-2 text-gray-700">
@@ -151,17 +174,6 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <h2 className="text-lg font-semibold lg:text-xl">
-            Why am I seeing San Diego courses?
-          </h2>
-          <p className="mt-2 text-gray-700">
-            Minnesota courses are still closed for the season. A few San Diego
-            courses are included temporarily for testing while we wait for Twin
-            Cities courses to open. They&rsquo;ll be removed once the local
-            season starts.
-          </p>
-        </section>
       </div>
 
       {process.env.NEXT_PUBLIC_BUILD_SHA && (
