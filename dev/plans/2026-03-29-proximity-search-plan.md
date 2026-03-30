@@ -158,7 +158,11 @@ Note: The Census API returns `x` = longitude, `y` = latitude (GIS convention).
 
 Add a 500ms delay between requests to be polite to the free API.
 
+Round coordinates to 4 decimal places (~11m accuracy — more than enough for "how far is this golf course" and avoids bloating the JSON).
+
 If a geocode fails (no `addressMatches`), log a warning and skip that course — we'll look up those coordinates manually.
+
+**If the Census Bureau API is unreachable or returns errors**, log the error and exit the script. Do NOT try alternative geocoding APIs or workarounds — flag it for Sam.
 
 **Step 2: Run the geocoding script**
 
@@ -286,22 +290,23 @@ import courseCatalog from "@/config/courses.json";
 import { mapsUrl } from "@/config/areas";
 ```
 
+Inside the component, derive the address from the catalog (do NOT use an inline IIFE in JSX — extract it as a const before the return):
+```typescript
+const catalogEntry = courseCatalog.find((c) => c.id === id) as { address?: string; state?: string; name?: string } | undefined;
+```
+
 After the city paragraph (line 79 `<p className="text-sm text-gray-500 ...`), add the address:
 ```typescript
-{(() => {
-  const catalogEntry = courseCatalog.find((c) => c.id === course.id) as { address?: string; state?: string } | undefined;
-  if (!catalogEntry?.address) return null;
-  return (
-    <a
-      href={mapsUrl(course.name, course.city, catalogEntry.state ?? "MN")}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block text-xs text-gray-400 hover:text-green-700 lg:text-sm"
-    >
-      {catalogEntry.address}
-    </a>
-  );
-})()}
+{catalogEntry?.address && (
+  <a
+    href={mapsUrl(course.name, course.city, catalogEntry.state ?? "MN")}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="block text-xs text-gray-400 hover:text-green-700 lg:text-sm"
+  >
+    {catalogEntry.address}
+  </a>
+)}
 ```
 
 **Step 7: Run full tests and type-check**
@@ -343,6 +348,14 @@ Create `scripts/generate-zip-coords.ts`. This script:
 5. Using `[lat, lng]` tuples instead of objects saves significant file size
 
 The array format `{ "zip": [lat, lng] }` is compact — roughly 30 bytes per entry vs 55 for `{ "zip": { "lat": n, "lng": n } }`.
+
+Round coordinates to 4 decimal places (~11m accuracy — more than enough for zip centroid purposes, and reduces file size significantly).
+
+Note: ZCTAs (Zip Code Tabulation Areas) don't cover every zip code — PO box and military zips may be absent. This is fine; the UI will show "Zip code not found" for those.
+
+**The gazetteer file header has whitespace-padded column names.** Use `.trim()` on all parsed values.
+
+**If the Census Bureau download URL is unreachable**, log the error and exit. Do NOT try alternative data sources — flag it for Sam.
 
 **Step 2: Run the generation script**
 
@@ -406,7 +419,7 @@ Follow TDD: write failing test → implement fix → verify green.
 - `zip: string` — the stored zip code (persisted)
 - `radiusMiles: number` — selected radius (persisted)
 - `setZip(zip: string)` — sets location from a zip code (looks up coords from zip-coords.json)
-- `useGps()` — requests browser geolocation and sets location
+- `requestGps()` — requests browser geolocation and sets location
 - `setRadiusMiles(r: number)` — updates radius
 - `clearLocation()` — clears the active location
 - `gpsLoading: boolean` — whether GPS is being requested
@@ -508,7 +521,7 @@ Create `src/context/location-provider.tsx`:
 // ABOUTME: React context providing shared location state across pages.
 // ABOUTME: Manages GPS, zip code lookup, radius selection, and localStorage persistence.
 
-import { createContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { isValidZip, DEFAULT_RADIUS } from "@/hooks/use-location";
 
 export interface LocationState {
@@ -524,7 +537,7 @@ export interface LocationContextValue {
   gpsLoading: boolean;
   gpsError: string | null;
   setZip: (zip: string) => Promise<void>;
-  useGps: () => void;
+  requestGps: () => void;
   setRadiusMiles: (r: number) => void;
   clearLocation: () => void;
 }
@@ -573,12 +586,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
-  // On mount, if we have a stored zip, resolve it to coordinates
-  const initialized = useRef(false);
-  if (!initialized.current && typeof window !== "undefined") {
+  // On mount, if we have a stored zip, resolve it to coordinates.
+  // IMPORTANT: This MUST be in useEffect, not during render — React 18
+  // concurrent mode can interrupt and restart renders, and setting state
+  // from a .then() during an abandoned render causes bugs.
+  useEffect(() => {
     const storedZip = readStoredZip();
     if (isValidZip(storedZip)) {
-      // Kick off async resolution — location will update when ready
       loadZipCoords().then((coords) => {
         const entry = coords[storedZip];
         if (entry) {
@@ -588,8 +602,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         // Zip coords failed to load — no location, that's fine
       });
     }
-    initialized.current = true;
-  }
+  }, []);
 
   const setZip = useCallback(async (newZip: string) => {
     if (!isValidZip(newZip)) return;
@@ -610,7 +623,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const useGps = useCallback(() => {
+  const requestGps = useCallback(() => {
     if (!navigator.geolocation) {
       setGpsError("Geolocation is not supported by your browser");
       return;
@@ -651,6 +664,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Intentionally keeps radius in localStorage when clearing —
+  // users shouldn't have to re-select their preferred radius each time.
   const clearLocation = useCallback(() => {
     setLocation(null);
     setZipState("");
@@ -671,7 +686,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         gpsLoading,
         gpsError,
         setZip,
-        useGps,
+        requestGps,
         setRadiusMiles,
         clearLocation,
       }}
@@ -776,7 +791,7 @@ Create `src/components/location-filter.tsx`:
 // ABOUTME: Collapsible location filter for proximity-based course filtering.
 // ABOUTME: Provides GPS and zip code input with radius selection.
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useLocation } from "@/hooks/use-location";
 import { RADIUS_OPTIONS } from "@/hooks/use-location";
 
@@ -788,20 +803,20 @@ export function LocationFilter() {
     gpsLoading,
     gpsError,
     setZip,
-    useGps,
+    requestGps,
     setRadiusMiles,
     clearLocation,
   } = useLocation();
 
   const [expanded, setExpanded] = useState(false);
   const [zipInput, setZipInput] = useState(zip);
-  const zipRef = useRef<HTMLInputElement>(null);
 
   const hasLocation = location !== null;
 
   const handleZipSubmit = () => {
     const trimmed = zipInput.trim();
-    if (trimmed.length === 5) {
+    // Only trigger lookup if zip changed (avoids redundant fetches on blur)
+    if (trimmed.length === 5 && trimmed !== zip) {
       setZip(trimmed);
     }
   };
@@ -855,7 +870,7 @@ export function LocationFilter() {
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
-          onClick={useGps}
+          onClick={requestGps}
           disabled={gpsLoading}
           className="rounded bg-stone-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-stone-200 disabled:opacity-50 lg:text-sm"
         >
@@ -864,7 +879,6 @@ export function LocationFilter() {
 
         <div className="flex items-center gap-1">
           <input
-            ref={zipRef}
             type="text"
             inputMode="numeric"
             maxLength={5}
@@ -947,13 +961,17 @@ BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
 2. Read `dev/testing-pitfalls.md`
 
-**Context:** The tee times page currently groups tee times by date, sorted by time. When proximity is active, we need to:
+**Context:** The tee times page currently shows a flat time-sorted list (no course grouping). When proximity is active, we need to:
 1. Calculate distance from user to each course
 2. Filter out courses beyond the radius
-3. Sort courses within results by distance (nearest first), keeping times within each course sorted by time
-4. Show distance badges next to course names
+3. Sort remaining tee times by distance (nearest course first), then by time within each course
+4. Show distance badges next to course names on each row
+
+**IMPORTANT: Do NOT add course group headers or change the TeeTimeList component structure.** The existing flat list naturally clusters by course when sorted by distance. Each row already shows the course name inline — just add a distance badge next to it.
 
 The tee time data comes back from the API with `course_id`, `course_name`, `course_city` on each item. We need to look up course lat/lng from the static `courses.json` catalog to calculate distance.
+
+**Note on `courseCatalog` in useMemo deps:** `courseCatalog` is a static JSON import that never changes at runtime. It's safe to omit from the useMemo dependency array. If ESLint's `exhaustive-deps` rule warns about it, add `// eslint-disable-next-line react-hooks/exhaustive-deps` with a comment explaining it's a static import.
 
 **Step 1: Read the current files**
 
@@ -1080,9 +1098,11 @@ BEFORE marking this task complete:
 - Modify: `src/app/courses/page.tsx` — add LocationFilter, distance sort within areas
 - Modify: `src/config/areas.ts` — update `groupByArea()` to support distance sorting
 
-This task depends on: Tasks 1 (distance.ts), 2 (courses.json with coords), 5 (useLocation hook), 6 (LocationFilter component).
+This task depends on: Tasks 1 (distance.ts), 2 (courses.json with coords), **3 (mapsUrl signature change)**, 5 (useLocation hook), 6 (LocationFilter component).
 
-**Important: This task modifies `src/config/areas.ts` which is also modified in Task 3. If running in parallel, Task 3 and Task 8 MUST be sequenced (Task 3 first).**
+**Important: This task modifies `src/config/areas.ts` which is also modified in Task 3. Task 3 MUST complete before Task 8 starts.** Task 8's changes to `groupByArea` build on the file state left by Task 3's `mapsUrl` change.
+
+**Note on distance map keying:** The `courseDistances` map is keyed by course `name` (not `id`) because `groupByArea`'s generic constraint is `{ name: string; city: string }` and doesn't know about `id`. Course names are unique in the current dataset. Do NOT refactor `groupByArea`'s generic constraint to add `id` — that's scope creep.
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
@@ -1313,10 +1333,9 @@ Add a new `<section>` after the existing "What data do you collect?" section (li
   </p>
   <p className="mt-2 text-gray-700">
     <strong>Zip code:</strong> If you enter a zip code, it&rsquo;s
-    saved in your browser so you don&rsquo;t have to re-enter it. If
-    you&rsquo;re signed in, it&rsquo;s also saved to your account
-    settings. Distance is calculated entirely in your browser using
-    the zip code&rsquo;s approximate center point.
+    saved in your browser so you don&rsquo;t have to re-enter it.
+    Distance is calculated entirely in your browser using the zip
+    code&rsquo;s approximate center point.
   </p>
 </section>
 ```
@@ -1377,7 +1396,8 @@ Test the following scenarios:
 **Step 5: Final commit if any fixes were needed**
 
 ```bash
-git add -A  # only after git status review
+git status  # review what changed
+git add <specific-changed-files>  # add only the files you fixed — NEVER git add -A blindly
 git commit -m "fix: integration test fixes for proximity search"
 ```
 
@@ -1408,34 +1428,33 @@ Final verification:
 ## Task Dependency Graph
 
 ```
-Task 1 (Haversine)          Task 2 (Course coords)     Task 4 (Zip lookup)
-     │                            │                          │
-     └──────────┬─────────────────┘                          │
-                │                                            │
-           Task 3 (Maps links)                               │
-                                                             │
-                ┌────────────────────────────────────────────┘
-                │
-           Task 5 (Location context)
-                │
-           Task 6 (LocationFilter UI)
-                │
-        ┌───────┴───────┐
-        │               │
-   Task 7 (Tee times)  Task 8 (Courses page)     Task 9 (About page)
-        │               │                              │
-        └───────┬───────┘──────────────────────────────┘
-                │
-           Task 10 (Integration test)
+Task 1 (Haversine)     Task 2 (Course coords)     Task 4 (Zip lookup)     Task 9 (About page)
+     │                       │                          │
+     │                  Task 3 (Maps links)             │
+     │                       │                          │
+     │                       │              ┌───────────┘
+     │                       │              │
+     └───────────────────────┴──── Task 5 (Location context)
+                                       │
+                                  Task 6 (LocationFilter UI)
+                                       │
+                               ┌───────┴───────┐
+                               │               │
+                          Task 7 (Tee times)  Task 8 (Courses page)
+                               │               │     [requires Task 3 first]
+                               └───────┬───────┘
+                                       │
+                                  Task 10 (Integration test)
 ```
 
 **Parallelizable groups:**
 - Group A (fully parallel): Tasks 1, 2, 4, 9
-- Group B (after Group A): Tasks 3, 5
-- Group C (after 5): Task 6
-- Group D (after 6, parallel): Tasks 7, 8
+- Group B (after Group A): Task 3 (needs no deps but runs after Task 2 ideally), Task 5 (needs Task 4)
+- Group C (after Task 5): Task 6
+- Group D (after Task 6, parallel): Task 7, Task 8 (but Task 8 MUST wait for Task 3 — both touch `areas.ts`)
 - Group E (after all): Task 10
 
 **File conflict risks:**
-- Tasks 3 and 8 both modify `src/config/areas.ts` → must be sequenced (3 before 8)
-- Tasks 7 modifies `src/app/page.tsx`, Task 8 modifies `src/app/courses/page.tsx` → safe to parallelize
+- Tasks 3 and 8 both modify `src/config/areas.ts` → Task 3 MUST complete before Task 8 starts
+- Task 7 modifies `src/app/page.tsx`, Task 8 modifies `src/app/courses/page.tsx` → safe to parallelize
+- Task 3 modifies `src/app/courses/[id]/page.tsx` which no other task touches → no conflict
