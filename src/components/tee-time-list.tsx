@@ -81,8 +81,13 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
     );
   };
 
+  const courseCount = new Set(teeTimes.map((tt) => tt.course_id)).size;
+
   return (
     <div className="space-y-4">
+      <p className="text-xs text-gray-400 lg:text-sm">
+        {teeTimes.length} tee {teeTimes.length === 1 ? "time" : "times"} at {courseCount} {courseCount === 1 ? "course" : "courses"}
+      </p>
       {dateGroups.map(({ date, items }) => {
         const isCollapsed = collapsed.includes(date);
 

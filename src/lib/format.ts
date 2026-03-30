@@ -35,3 +35,13 @@ export function staleAge(fetchedAt: string): string {
 export function todayCT(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 }
+
+/** Current time as HH:MM in Central Time. */
+export function nowTimeCT(): string {
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "America/Chicago",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}

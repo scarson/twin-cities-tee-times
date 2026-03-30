@@ -9,6 +9,11 @@ vi.mock("@opennextjs/cloudflare", () => ({
   getCloudflareContext: vi.fn(),
 }));
 
+vi.mock("@/lib/format", () => ({
+  todayCT: vi.fn(() => "2026-04-15"),
+  nowTimeCT: vi.fn(() => "14:00"),
+}));
+
 import { GET } from "./route";
 
 function makeRequest(params: Record<string, string>): NextRequest {
@@ -111,5 +116,22 @@ describe("GET /api/tee-times", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("minSlots");
+  });
+
+  it("filters out past tee times when date is today", async () => {
+    mockAll.mockResolvedValueOnce({ results: [] });
+    // todayCT mock returns "2026-04-15", nowTimeCT mock returns "14:00"
+    await GET(makeRequest({ date: "2026-04-15" }));
+
+    const sql = db.prepare.mock.calls[0][0] as string;
+    expect(sql).toContain("t.time >");
+  });
+
+  it("does not filter past tee times for future dates", async () => {
+    mockAll.mockResolvedValueOnce({ results: [] });
+    await GET(makeRequest({ date: "2026-04-16" }));
+
+    const sql = db.prepare.mock.calls[0][0] as string;
+    expect(sql).not.toContain("t.time >");
   });
 });

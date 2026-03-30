@@ -2,6 +2,7 @@
 // ABOUTME: Returns tee times joined with course metadata.
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
+import { todayCT, nowTimeCT } from "@/lib/format";
 
 export async function GET(request: NextRequest) {
   const { env } = await getCloudflareContext();
@@ -67,6 +68,12 @@ export async function GET(request: NextRequest) {
     const placeholders = courseIds.map(() => "?").join(",");
     query += ` AND t.course_id IN (${placeholders})`;
     bindings.push(...courseIds);
+  }
+
+  // Hide tee times that have already passed when viewing today
+  if (date === todayCT()) {
+    query += " AND t.time > ?";
+    bindings.push(nowTimeCT());
   }
 
   if (startTime) {

@@ -25,7 +25,7 @@ describe("isValidZip", () => {
 
 describe("RADIUS_OPTIONS", () => {
   it("contains the specified radius values", () => {
-    expect(RADIUS_OPTIONS).toEqual([5, 10, 25, 50, 100]);
+    expect(RADIUS_OPTIONS).toEqual([0, 5, 10, 25, 50, 100]);
   });
 });
 

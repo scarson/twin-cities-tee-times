@@ -37,7 +37,7 @@ vi.mock("@/hooks/use-location", () => ({
     setRadiusMiles: vi.fn(),
     clearLocation: vi.fn(),
   }),
-  RADIUS_OPTIONS: [5, 10, 25, 50, 100],
+  RADIUS_OPTIONS: [0, 5, 10, 25, 50, 100],
   DEFAULT_RADIUS: 25,
   isValidZip: (zip: string) => /^\d{5}$/.test(zip),
 }));

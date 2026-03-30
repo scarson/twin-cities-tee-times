@@ -131,4 +131,55 @@ describe("TeeTimeList rendering", () => {
     expect(bookLink.getAttribute("href")).toBe("https://example.com/book-it");
     expect(bookLink.getAttribute("target")).toBe("_blank");
   });
+
+  it("shows results count with tee time and course totals", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "course-a", time: "08:00" }),
+      makeTeeTimeItem({ course_id: "course-a", time: "08:30" }),
+      makeTeeTimeItem({ course_id: "course-b", time: "09:00" }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.getByText("3 tee times at 2 courses")).toBeDefined();
+  });
+
+  it("uses singular forms for 1 tee time at 1 course", () => {
+    render(<TeeTimeList teeTimes={[makeTeeTimeItem()]} loading={false} />);
+    expect(screen.getByText("1 tee time at 1 course")).toBeDefined();
+  });
+
+  it("updates count when teeTimes prop changes", () => {
+    const { rerender } = render(
+      <TeeTimeList teeTimes={[makeTeeTimeItem()]} loading={false} />
+    );
+    expect(screen.getByText("1 tee time at 1 course")).toBeDefined();
+
+    rerender(
+      <TeeTimeList
+        teeTimes={[
+          makeTeeTimeItem({ course_id: "a", time: "08:00" }),
+          makeTeeTimeItem({ course_id: "b", time: "09:00" }),
+          makeTeeTimeItem({ course_id: "c", time: "10:00" }),
+        ]}
+        loading={false}
+      />
+    );
+    expect(screen.getByText("3 tee times at 3 courses")).toBeDefined();
+    expect(screen.queryByText("1 tee time")).toBeNull();
+  });
+
+  it("does not show count when loading", () => {
+    render(<TeeTimeList teeTimes={[]} loading={true} />);
+    expect(screen.queryByText(/\d+ tee time/)).toBeNull();
+  });
+
+  it("does not show count when no results", () => {
+    render(<TeeTimeList teeTimes={[]} loading={false} />);
+    expect(screen.queryByText(/0 tee times/)).toBeNull();
+  });
+
+  it("shows distance badge when distance is present", () => {
+    const tt = { ...makeTeeTimeItem(), distance: 4.2 };
+    render(<TeeTimeList teeTimes={[tt]} loading={false} />);
+    expect(screen.getByText("4.2 mi")).toBeDefined();
+  });
 });

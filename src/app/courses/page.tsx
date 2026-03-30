@@ -22,6 +22,7 @@ interface CatalogCourse {
   bookingUrl: string;
   disabled?: number;
   displayNotes?: string;
+  googlePlaceId?: string;
 }
 
 function getCollapsedAreas(): string[] {
@@ -85,7 +86,7 @@ function CourseBrowser() {
     if (!location || !courseDistances) return visibleCourses;
     return visibleCourses.filter((course) => {
       const dist = courseDistances.get(course.name);
-      return dist != null && dist <= radiusMiles;
+      return dist != null && (radiusMiles === 0 || dist <= radiusMiles);
     });
   }, [visibleCourses, location, courseDistances, radiusMiles]);
 
@@ -149,7 +150,7 @@ function CourseBrowser() {
                           </Link>
                           {course.address && (
                             <a
-                              href={mapsUrl(course.name, course.city, course.state ?? "MN")}
+                              href={mapsUrl(course.name, course.city, course.state ?? "MN", course.googlePlaceId)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="block truncate text-xs text-gray-400 hover:text-green-700 lg:text-sm"

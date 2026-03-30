@@ -263,6 +263,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 - **Cookie prefix `tct-`**: All app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
 - **Never use `datetime()` in SQL comparisons**: SQLite's `datetime()` returns space-separated timestamps (`2026-03-11 12:00:00`), but JS `toISOString()` returns `T`-separated (`2026-03-11T12:00:00.000Z`). Lexicographic comparison between these formats is always wrong. Use `sqliteIsoNow()` from `src/lib/db.ts` instead — it returns a `strftime()` expression that produces ISO 8601 format.
 - **Lambda proxy is deployed from source by CI**: The deploy workflow (`.github/workflows/deploy.yml`) deploys the Lambda from `lambda/fetch-proxy/` on every merge to main. Never hotfix the Lambda with `aws lambda update-function-code` — the next deploy will overwrite it. Always update `lambda/fetch-proxy/index.mjs` in the repo.
+- **New courses need three data fields**: When adding a course to `courses.json`, it needs `latitude`/`longitude` (geocode from address) and `googlePlaceId` (look up via `scripts/lookup-place-ids.ts` — requires `GOOGLE_MAPS_API_KEY` in `.dev.vars`). Without these, proximity filtering and Google Maps links won't work correctly for that course.
 
 ## Linter Suppressions
 

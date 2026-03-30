@@ -5,7 +5,7 @@ import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanup
 import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
-export const SUBREQUEST_BUDGET = 100; // Paid plan allows 10,000; per-batch budget with growth headroom
+export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~80 courses
 
 /**
  * Determine whether this cron invocation should actually poll,

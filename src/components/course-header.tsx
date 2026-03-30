@@ -14,12 +14,14 @@ interface CourseHeaderProps {
     booking_url: string;
     last_polled: string | null;
   };
+  address?: string;
+  mapsUrl?: string;
   dates: string[];
   teeTimes: { fetched_at: string }[];
   onRefreshed: () => void;
 }
 
-export function CourseHeader({ course, dates, teeTimes, onRefreshed }: CourseHeaderProps) {
+export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTimes, onRefreshed }: CourseHeaderProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
   const [coolingDown, setCoolingDown] = useState(false);
@@ -77,6 +79,16 @@ export function CourseHeader({ course, dates, teeTimes, onRefreshed }: CourseHea
       <div className="min-w-0">
         <h1 className="text-2xl font-bold lg:text-3xl">{course.name}</h1>
         <p className="text-sm text-gray-500 lg:text-base">{course.city}</p>
+        {address && mapsHref && (
+          <a
+            href={mapsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-green-700 lg:text-sm"
+          >
+            {address}
+          </a>
+        )}
         <p className="mt-1 text-xs text-gray-400 lg:text-sm">
           {displayTimestamp ? (
             <>

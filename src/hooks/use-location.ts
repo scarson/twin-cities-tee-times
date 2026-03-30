@@ -5,7 +5,7 @@
 import { useContext } from "react";
 import { LocationContext } from "@/context/location-provider";
 
-export const RADIUS_OPTIONS = [5, 10, 25, 50, 100] as const;
+export const RADIUS_OPTIONS = [0, 5, 10, 25, 50, 100] as const;
 export const DEFAULT_RADIUS = 25;
 
 export function isValidZip(zip: string): boolean {
