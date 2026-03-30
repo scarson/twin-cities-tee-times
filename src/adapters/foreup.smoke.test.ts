@@ -112,7 +112,7 @@ describe("ForeUp - API contract validation", () => {
 
         expect(typeof entry.available_spots).toBe("number");
 
-        expect(typeof entry.holes).toBe("number");
+        expect(["number", "string"]).toContain(typeof entry.holes);
       }
     },
     15000

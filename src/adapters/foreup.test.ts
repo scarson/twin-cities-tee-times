@@ -180,6 +180,36 @@ describe("ForeUpAdapter", () => {
     expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("parses string holes value '9/18' as 18", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "45.00",
+        holes: "9/18",
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("parses string holes value '9' as 9", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "25.00",
+        holes: "9",
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results[0].holes).toBe(9);
+  });
+
   it("returns null price for non-numeric green_fee", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([{
