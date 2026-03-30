@@ -6,7 +6,7 @@ interface ForeUpTeeTime {
   time: string; // "YYYY-MM-DD HH:MM"
   available_spots: number;
   green_fee: string | null;
-  holes: number;
+  holes: number | string;
   schedule_id: number;
   teesheet_side_name?: string | null;
   reround_teesheet_side_name?: string | null;
@@ -62,7 +62,7 @@ export class ForeUpAdapter implements PlatformAdapter {
         price: tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
           ? parseFloat(tt.green_fee)
           : null,
-        holes: tt.holes === 9 ? 9 : 18,
+        holes: Number(tt.holes) === 9 ? 9 : 18,
         openSlots: tt.available_spots,
         bookingUrl: config.bookingUrl,
         ...(nines && { nines }),
