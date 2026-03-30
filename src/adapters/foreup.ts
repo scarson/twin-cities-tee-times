@@ -52,7 +52,9 @@ export class ForeUpAdapter implements PlatformAdapter {
     const data: ForeUpTeeTime[] = await response.json();
 
     return data.map((tt) => {
-      const nines = tt.teesheet_side_name && tt.reround_teesheet_side_name
+      const isInformative = (name: string | null | undefined): name is string =>
+        !!name && name !== "New Tee Sheet";
+      const nines = isInformative(tt.teesheet_side_name) && isInformative(tt.reround_teesheet_side_name)
         ? `${tt.teesheet_side_name}/${tt.reround_teesheet_side_name}`
         : undefined;
 
