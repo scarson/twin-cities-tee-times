@@ -15,6 +15,7 @@ interface CatalogCourse {
   name: string;
   city: string;
   address?: string;
+  state?: string;
   bookingUrl: string;
   disabled?: number;
   displayNotes?: string;
@@ -121,7 +122,7 @@ function CourseBrowser() {
                           </Link>
                           {course.address && (
                             <a
-                              href={mapsUrl(course.address)}
+                              href={mapsUrl(course.name, course.city, course.state ?? "MN")}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="block truncate text-xs text-gray-400 hover:text-green-700 lg:text-sm"

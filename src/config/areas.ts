@@ -84,6 +84,6 @@ export function groupByArea<T extends { name: string; city: string }>(
   return result;
 }
 
-export function mapsUrl(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+export function mapsUrl(name: string, city: string, state: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${city} ${state}`)}`;
 }
