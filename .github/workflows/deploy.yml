@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm test
@@ -58,7 +58,7 @@ jobs:
           function-name: tee-times-fetch-proxy
           code-artifacts-dir: lambda/fetch-proxy
           handler: index.handler
-          runtime: nodejs22.x
+          runtime: nodejs24.x
           timeout: 15
           memory-size: 128
 
