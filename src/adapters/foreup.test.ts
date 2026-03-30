@@ -152,6 +152,23 @@ describe("ForeUpAdapter", () => {
     expect(results[0].nines).toBeUndefined();
   });
 
+  it("omits nines when side names are non-informative placeholders", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "16.25",
+        holes: 9,
+        available_spots: 4,
+        schedule_id: 7829,
+        teesheet_side_name: "New Tee Sheet",
+        reround_teesheet_side_name: "New Tee Sheet",
+      }]), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results[0].nines).toBeUndefined();
+  });
+
   it("omits nines when only teesheet_side_name is set", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([{
