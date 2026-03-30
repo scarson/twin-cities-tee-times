@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { AuthProvider } from "@/components/auth-provider";
+import { LocationProvider } from "@/context/location-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,8 +21,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-[#faf7f2] text-gray-900">
         <AuthProvider>
-          <Nav />
-          {children}
+          <LocationProvider>
+            <Nav />
+            {children}
+          </LocationProvider>
         </AuthProvider>
       </body>
     </html>
