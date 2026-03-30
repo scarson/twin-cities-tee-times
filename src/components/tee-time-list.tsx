@@ -19,6 +19,7 @@ interface TeeTimeItem {
   booking_url: string;
   fetched_at: string;
   nines?: string | null;
+  distance?: number;
 }
 
 interface TeeTimeListProps {
@@ -126,6 +127,11 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
                           {tt.course_name}
                         </Link>
                         <span className="text-xs text-gray-400 lg:text-sm">{tt.course_city}</span>
+                        {tt.distance != null && (
+                          <span className="text-xs text-green-700 lg:text-sm">
+                            {tt.distance.toFixed(1)} mi
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5 flex gap-3 text-xs text-gray-500 lg:text-sm lg:gap-4">
                         <span>{tt.holes} holes{tt.nines ? ` (${tt.nines})` : ""}</span>
