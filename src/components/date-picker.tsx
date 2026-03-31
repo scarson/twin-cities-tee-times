@@ -175,7 +175,7 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded px-2 py-1 text-[11px] transition-colors lg:px-2.5 lg:py-1.5 lg:text-xs ${
+            className={`flex flex-col items-center rounded px-2.5 py-1 text-[11px] transition-colors lg:px-3 lg:py-1 lg:text-xs ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
