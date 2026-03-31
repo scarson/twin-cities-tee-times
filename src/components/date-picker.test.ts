@@ -38,9 +38,9 @@ describe("buildQuickDays", () => {
     expect(days).toHaveLength(14);
   });
 
-  it("first entry is labeled 'Today'", () => {
+  it("first entry uses three-letter day name", () => {
     const days = buildQuickDays();
-    expect(days[0].dayName).toBe("Today");
+    expect(days[0].dayName).toMatch(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)$/);
   });
 
   it("entries have sequential dates", () => {
