@@ -28,7 +28,7 @@ export function buildQuickDays(): { value: string; dayName: string; dayNum: numb
     d.setUTCDate(d.getUTCDate() + i);
     days.push({
       value: toDateStr(d),
-      dayName: i === 0 ? "Today" : DAY_NAMES[d.getUTCDay()],
+      dayName: DAY_NAMES[d.getUTCDay()],
       dayNum: d.getUTCDate(),
     });
   }
