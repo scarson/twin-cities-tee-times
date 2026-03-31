@@ -266,7 +266,7 @@ export default function Home() {
       )}
 
       <div className="mt-4">
-        <TeeTimeList teeTimes={displayTeeTimes} loading={loading} />
+        <TeeTimeList teeTimes={displayTeeTimes} loading={loading} selectedDateCount={dates.length} />
       </div>
 
       {sharedCourses.length > 0 && (

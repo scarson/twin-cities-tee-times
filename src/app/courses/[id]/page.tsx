@@ -93,7 +93,7 @@ export default function CoursePage() {
       </div>
 
       <div className="mt-6">
-        <TeeTimeList teeTimes={teeTimes} loading={loading} />
+        <TeeTimeList teeTimes={teeTimes} loading={loading} selectedDateCount={dates.length} />
       </div>
     </main>
   );

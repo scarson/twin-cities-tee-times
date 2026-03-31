@@ -182,4 +182,22 @@ describe("TeeTimeList rendering", () => {
     render(<TeeTimeList teeTimes={[tt]} loading={false} />);
     expect(screen.getByText("4.2 mi")).toBeDefined();
   });
+
+  it("shows date header when selectedDateCount > 1 even with single-date data", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ date: "2026-04-06", time: "08:00" }),
+      makeTeeTimeItem({ date: "2026-04-06", time: "09:00" }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} selectedDateCount={3} />);
+    expect(screen.getByText("Monday, April 6")).toBeDefined();
+  });
+
+  it("does not show date header for single-date data without selectedDateCount", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ date: "2026-04-06", time: "08:00" }),
+      makeTeeTimeItem({ date: "2026-04-06", time: "09:00" }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.queryByText("Monday, April 6")).toBeNull();
+  });
 });

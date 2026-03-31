@@ -25,6 +25,7 @@ interface TeeTimeItem {
 interface TeeTimeListProps {
   teeTimes: TeeTimeItem[];
   loading: boolean;
+  selectedDateCount?: number;
 }
 
 function formatDateHeader(dateStr: string): string {
@@ -38,7 +39,7 @@ function formatDateHeader(dateStr: string): string {
   });
 }
 
-export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
+export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeListProps) {
   const { isLoggedIn } = useAuth();
   const [collapsed, setCollapsed] = useState<string[]>([]);
 
@@ -71,7 +72,7 @@ export function TeeTimeList({ teeTimes, loading }: TeeTimeListProps) {
     }
   }
 
-  const hasMultipleDates = dateGroups.length > 1;
+  const hasMultipleDates = dateGroups.length > 1 || (selectedDateCount != null && selectedDateCount > 1);
 
   const toggleDate = (date: string) => {
     setCollapsed((prev) =>
