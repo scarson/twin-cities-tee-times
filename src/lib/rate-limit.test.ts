@@ -23,45 +23,55 @@ function mockDb(results: { courseRecent: boolean; globalCount: number }) {
 describe("checkRefreshAllowed", () => {
   it("allows refresh when no recent poll and under global limit", async () => {
     const db = mockDb({ courseRecent: false, globalCount: 0 });
-    const result = await checkRefreshAllowed(db, "sd-oceanside");
+    const result = await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
     expect(result.allowed).toBe(true);
   });
 
-  it("blocks refresh when course was recently polled", async () => {
+  it("blocks refresh when course+date was recently polled", async () => {
     const db = mockDb({ courseRecent: true, globalCount: 0 });
-    const result = await checkRefreshAllowed(db, "sd-oceanside");
+    const result = await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.reason).toMatch(/recently/i);
   });
 
   it("blocks refresh when global rate limit exceeded", async () => {
     const db = mockDb({ courseRecent: false, globalCount: GLOBAL_MAX_PER_MINUTE + 1 });
-    const result = await checkRefreshAllowed(db, "sd-oceanside");
+    const result = await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.reason).toMatch(/busy/i);
   });
 
-  it("checks course cooldown before global limit", async () => {
+  it("checks course+date cooldown before global limit", async () => {
     const db = mockDb({ courseRecent: true, globalCount: GLOBAL_MAX_PER_MINUTE + 1 });
-    const result = await checkRefreshAllowed(db, "sd-oceanside");
+    const result = await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
     expect(result.allowed).toBe(false);
     // Should mention "recently" (course-level), not "busy" (global)
     if (!result.allowed) expect(result.reason).toMatch(/recently/i);
   });
 
-  it("queries use correct cooldown intervals", async () => {
+  it("queries use correct cooldown intervals and include date", async () => {
     const db = mockDb({ courseRecent: false, globalCount: 0 });
-    await checkRefreshAllowed(db, "sd-oceanside");
+    await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
 
-    // First prepare call: per-course cooldown query
+    // First prepare call: per-course+date cooldown query
     const courseQuery = db.prepare.mock.calls[0][0] as string;
     expect(courseQuery).toContain(
       sqliteIsoNow(`-${COURSE_COOLDOWN_SECONDS} seconds`)
     );
-    expect(courseQuery).not.toContain("date =");
+    expect(courseQuery).toContain("date = ?");
+
+    // Bindings should include both courseId and date
+    expect(db.bind.mock.calls[0]).toEqual(["sd-oceanside", "2026-04-06"]);
 
     // Second prepare call: global rate limit query
     const globalQuery = db.prepare.mock.calls[1][0] as string;
     expect(globalQuery).toContain(sqliteIsoNow("-60 seconds"));
+  });
+
+  it("scopes cooldown to the specific date", async () => {
+    // Course was recently polled for a DIFFERENT date — should still allow
+    const db = mockDb({ courseRecent: false, globalCount: 0 });
+    const result = await checkRefreshAllowed(db, "sd-oceanside", "2026-04-06");
+    expect(result.allowed).toBe(true);
   });
 });

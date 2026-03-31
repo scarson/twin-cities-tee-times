@@ -24,12 +24,12 @@ interface CourseHeaderProps {
 export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTimes, onRefreshed }: CourseHeaderProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
-  const [coolingDown, setCoolingDown] = useState(false);
-  const cooldownTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const [refreshedDates, setRefreshedDates] = useState<Set<string>>(new Set());
+  const cooldownTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     return () => {
-      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+      for (const timer of cooldownTimers.current.values()) clearTimeout(timer);
     };
   }, []);
 
@@ -39,27 +39,46 @@ export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTim
     toggleFavorite(course.id, course.name);
   };
 
-  const refreshDisabled = refreshing || coolingDown;
+  const datesToRefresh = dates.filter((d) => !refreshedDates.has(d));
+  const refreshDisabled = refreshing || datesToRefresh.length === 0;
 
   const handleRefresh = async () => {
     if (refreshDisabled) return;
     setRefreshing(true);
     try {
       const responses = await Promise.all(
-        dates.map((date) =>
+        datesToRefresh.map((date) =>
           fetch(`/api/courses/${course.id}/refresh?date=${date}`, {
             method: "POST",
-          })
+          }).then((r) => ({ date, ok: r.ok, status: r.status }))
         )
       );
-      // 429 = rate-limited (data is fresh), not a real failure
       const failed = responses.filter((r) => !r.ok && r.status !== 429);
       if (failed.length > 0) {
         console.error(`Refresh failed for ${failed.length}/${responses.length} dates`);
       }
+      // Track successfully refreshed dates (200 or 429 = data is fresh)
+      const succeeded = responses.filter((r) => r.ok || r.status === 429).map((r) => r.date);
+      setRefreshedDates((prev) => {
+        const next = new Set(prev);
+        for (const d of succeeded) next.add(d);
+        return next;
+      });
+      for (const d of succeeded) {
+        const timer = setTimeout(() => {
+          setRefreshedDates((prev) => {
+            const next = new Set(prev);
+            next.delete(d);
+            return next;
+          });
+          cooldownTimers.current.delete(d);
+        }, 30_000);
+        // Clear any existing timer for this date
+        const existing = cooldownTimers.current.get(d);
+        if (existing) clearTimeout(existing);
+        cooldownTimers.current.set(d, timer);
+      }
       onRefreshed();
-      setCoolingDown(true);
-      cooldownTimer.current = setTimeout(() => setCoolingDown(false), 30_000);
     } finally {
       setRefreshing(false);
     }
@@ -96,7 +115,7 @@ export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTim
               {" · "}
               {refreshing ? (
                 <span className="text-gray-400">Refreshing…</span>
-              ) : coolingDown ? null : (
+              ) : datesToRefresh.length === 0 ? null : (
                 <button
                   onClick={handleRefresh}
                   className="text-green-700 hover:underline"
