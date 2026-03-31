@@ -33,9 +33,9 @@ describe("buildQuickDays", () => {
     vi.useRealTimers();
   });
 
-  it("returns 7 entries", () => {
+  it("returns 14 entries", () => {
     const days = buildQuickDays();
-    expect(days).toHaveLength(7);
+    expect(days).toHaveLength(14);
   });
 
   it("first entry is labeled 'Today'", () => {
@@ -52,6 +52,7 @@ describe("buildQuickDays", () => {
     expect(days[0].value).toBe("2026-03-15");
     expect(days[1].value).toBe("2026-03-16");
     expect(days[6].value).toBe("2026-03-21");
+    expect(days[13].value).toBe("2026-03-28");
   });
 });
 
