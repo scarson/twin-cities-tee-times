@@ -1,4 +1,4 @@
-// ABOUTME: Date selector with quick 7-day buttons and a calendar for later dates.
+// ABOUTME: Date selector with quick 14-day buttons (two rows) and a calendar for later dates.
 // ABOUTME: Supports multi-select (quick buttons) and date range (calendar).
 "use client";
 
@@ -23,7 +23,7 @@ export function fromDateStr(s: string): Date {
 export function buildQuickDays(): { value: string; dayName: string; dayNum: number }[] {
   const days: { value: string; dayName: string; dayNum: number }[] = [];
   const today = fromDateStr(toDateStr(new Date()));
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setUTCDate(d.getUTCDate() + i);
     days.push({
@@ -136,10 +136,13 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
 
   const defaultClassNames = getDefaultClassNames();
 
+  const week1 = quickDays.slice(0, 7);
+  const week2 = quickDays.slice(7);
+
   return (
     <div className="relative">
       <div className="flex items-center gap-1 lg:gap-1.5">
-        {quickDays.map((day) => (
+        {week1.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
@@ -153,7 +156,9 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
             <span className="text-[11px] lg:text-xs">{day.dayNum}</span>
           </button>
         ))}
-        <button
+        {/* Hidden while quick buttons cover the full polling range (MAX_HORIZON=14).
+           Re-enable when MAX_HORIZON increases beyond the quick button count. */}
+        {false && <button
           ref={moreButtonRef}
           onClick={handleMoreClick}
           className={`flex items-center rounded px-2.5 py-1.5 text-xs font-medium transition-colors lg:px-3 lg:py-2 lg:text-sm ${
@@ -163,7 +168,23 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           }`}
         >
           More Dates
-        </button>
+        </button>}
+      </div>
+      <div className="mt-1 flex items-center gap-1 lg:gap-1.5">
+        {week2.map((day) => (
+          <button
+            key={day.value}
+            onClick={() => handleQuickToggle(day.value)}
+            className={`flex flex-col items-center rounded px-2 py-1 text-[11px] transition-colors lg:px-2.5 lg:py-1.5 lg:text-xs ${
+              !inCalendarMode && selected.includes(day.value)
+                ? "bg-green-600 text-white"
+                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
+            }`}
+          >
+            <span className="font-medium">{day.dayName}</span>
+            <span className="text-[10px] lg:text-[11px]">{day.dayNum}</span>
+          </button>
+        ))}
       </div>
 
       {/* Reserve space so content below doesn't jump */}
