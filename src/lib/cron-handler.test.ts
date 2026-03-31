@@ -968,11 +968,7 @@ describe("runHorizonProbe", () => {
       (args) => (args[0] as string).includes("booking_horizon_days")
     );
     expect(updateCalls.length).toBeGreaterThan(0);
-    // Verify the actual value bound is 11 (dayOffset 10 + 1)
-    const bindCall = updateCalls[0];
-    const boundArgs = db.prepare(bindCall[0]).bind.mock.calls;
-    // The bind is chained: prepare(sql).bind(maxFound, courseId, maxFound)
-    // Since our mock returns a new object each time, check via the log message
+    // Verify the actual value (11 = dayOffset 10 + 1) via the log message
     expect(consoleSpy).toHaveBeenCalledWith("Horizon probe: probe-test extended to 11 days");
     consoleSpy.mockRestore();
   });
