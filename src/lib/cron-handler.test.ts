@@ -952,6 +952,7 @@ describe("runHorizonProbe", () => {
   });
 
   it("extends horizon when tee times found beyond current horizon", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const course = makeCourseRow("probe-test", "foreup", { booking_horizon_days: 7 });
     // Return success for day offset 10 (the 11th day out → "2026-04-25")
     mockedPollCourse.mockImplementation(async (_db, _course, date) => {
@@ -962,11 +963,18 @@ describe("runHorizonProbe", () => {
     const result = await runHorizonProbe(db as any, [course], "2026-04-15", { remaining: 500 });
 
     expect(result.updatedCourses).toContain("probe-test");
-    // booking_horizon_days UPDATE should have been issued
+    // booking_horizon_days UPDATE should write dayOffset + 1 = 11
     const updateCalls = db.prepare.mock.calls.filter(
       (args) => (args[0] as string).includes("booking_horizon_days")
     );
     expect(updateCalls.length).toBeGreaterThan(0);
+    // Verify the actual value bound is 11 (dayOffset 10 + 1)
+    const bindCall = updateCalls[0];
+    const boundArgs = db.prepare(bindCall[0]).bind.mock.calls;
+    // The bind is chained: prepare(sql).bind(maxFound, courseId, maxFound)
+    // Since our mock returns a new object each time, check via the log message
+    expect(consoleSpy).toHaveBeenCalledWith("Horizon probe: probe-test extended to 11 days");
+    consoleSpy.mockRestore();
   });
 
   it("does not lower horizon when no tee times found", async () => {

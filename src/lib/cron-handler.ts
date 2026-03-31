@@ -57,11 +57,12 @@ export async function runHorizonProbe(
     try {
       let maxFound = course.booking_horizon_days;
 
+      const weight = platformWeight(course.platform);
+      const [year, month, day] = todayStr.split("-").map(Number);
+
       for (let dayOffset = course.booking_horizon_days; dayOffset < MAX_HORIZON; dayOffset++) {
-        const weight = platformWeight(course.platform);
         if (budget.remaining < weight) break;
 
-        const [year, month, day] = todayStr.split("-").map(Number);
         const d = new Date(Date.UTC(year, month - 1, day + dayOffset));
         const dateStr = d.toISOString().split("T")[0];
 
