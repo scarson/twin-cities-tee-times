@@ -141,12 +141,12 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+      <div className="flex gap-1 lg:gap-1.5">
         {week1.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded py-1.5 text-xs transition-colors lg:py-2 lg:text-sm ${
+            className={`flex flex-1 flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors lg:px-3 lg:py-2 lg:text-sm ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
@@ -156,11 +156,13 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
             <span className="text-[11px] lg:text-xs">{day.dayNum}</span>
           </button>
         ))}
+      </div>
+      <div className="mt-1 flex gap-1 lg:gap-1.5">
         {week2.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded py-1 text-[11px] transition-colors lg:py-1 lg:text-xs ${
+            className={`flex flex-1 flex-col items-center rounded px-2.5 py-1 text-[11px] transition-colors lg:px-3 lg:py-1 lg:text-xs ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
