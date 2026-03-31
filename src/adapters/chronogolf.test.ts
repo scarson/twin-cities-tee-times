@@ -119,6 +119,58 @@ describe("ChronogolfAdapter", () => {
     expect(results[3].time).toBe("2026-03-28T11:03:00");
   });
 
+  it("fetches all pages when results span multiple pages", async () => {
+    const page1 = {
+      status: "open",
+      teetimes: Array.from({ length: 24 }, (_, i) => ({
+        start_time: `${7 + Math.floor(i / 4)}:${(i % 4) * 15 || "00"}`,
+        date: "2026-04-06",
+        max_player_size: 4,
+        default_price: { green_fee: 30, bookable_holes: 18 },
+      })),
+    };
+    const page2 = {
+      status: "open",
+      teetimes: Array.from({ length: 10 }, (_, i) => ({
+        start_time: `${13 + Math.floor(i / 4)}:${(i % 4) * 15 || "00"}`,
+        date: "2026-04-06",
+        max_player_size: 4,
+        default_price: { green_fee: 30, bookable_holes: 18 },
+      })),
+    };
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(page1), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(page2), { status: 200 }));
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-06");
+
+    expect(results).toHaveLength(34);
+    // Page 2 returned < 24 results, so no page 3 fetch needed
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[0][0]).toContain("page=1");
+    expect(fetchSpy.mock.calls[1][0]).toContain("page=2");
+  });
+
+  it("stops paginating when a page returns fewer than 24 results", async () => {
+    const page1 = {
+      status: "open",
+      teetimes: Array.from({ length: 20 }, (_, i) => ({
+        start_time: `${7 + Math.floor(i / 4)}:${(i % 4) * 15 || "00"}`,
+        date: "2026-04-06",
+        max_player_size: 4,
+        default_price: { green_fee: 30, bookable_holes: 18 },
+      })),
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(page1), { status: 200 }));
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-06");
+
+    expect(results).toHaveLength(20);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("passes AbortSignal.timeout to fetch", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify({ status: "open", teetimes: [] }), { status: 200 }),

@@ -20,6 +20,9 @@ interface ChronogolfResponse {
 export class ChronogolfAdapter implements PlatformAdapter {
   readonly platformId = "chronogolf";
 
+  private static readonly PAGE_SIZE = 24;
+  private static readonly MAX_PAGES = 10;
+
   async fetchTeeTimes(
     config: CourseConfig,
     date: string,
@@ -31,35 +34,45 @@ export class ChronogolfAdapter implements PlatformAdapter {
       throw new Error("Missing courseId in platformConfig");
     }
 
-    const params = new URLSearchParams({
-      start_date: date,
-      course_ids: courseId,
-      holes: "9,18",
-      start_time: "00:00",
-      page: "1",
-    });
+    const allTeeTimes: TeeTime[] = [];
 
-    const url = `https://www.chronogolf.com/marketplace/v2/teetimes?${params}`;
+    for (let page = 1; page <= ChronogolfAdapter.MAX_PAGES; page++) {
+      const params = new URLSearchParams({
+        start_date: date,
+        course_ids: courseId,
+        holes: "9,18",
+        start_time: "00:00",
+        page: String(page),
+      });
 
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-      headers: { Accept: "application/json" },
-    });
+      const url = `https://www.chronogolf.com/marketplace/v2/teetimes?${params}`;
 
-    if (!response.ok) {
-      throw new Error(`Chronogolf API returned HTTP ${response.status}`);
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chronogolf API returned HTTP ${response.status}`);
+      }
+
+      const data: ChronogolfResponse = await response.json();
+
+      for (const tt of data.teetimes) {
+        allTeeTimes.push({
+          courseId: config.id,
+          time: this.toIso(tt.date, tt.start_time),
+          price: tt.default_price.green_fee,
+          holes: tt.default_price.bookable_holes === 9 ? 9 : 18,
+          openSlots: tt.max_player_size,
+          bookingUrl: config.bookingUrl,
+        });
+      }
+
+      if (data.teetimes.length < ChronogolfAdapter.PAGE_SIZE) break;
     }
 
-    const data: ChronogolfResponse = await response.json();
-
-    return data.teetimes.map((tt) => ({
-      courseId: config.id,
-      time: this.toIso(tt.date, tt.start_time),
-      price: tt.default_price.green_fee,
-      holes: tt.default_price.bookable_holes === 9 ? 9 : 18,
-      openSlots: tt.max_player_size,
-      bookingUrl: config.bookingUrl,
-    }));
+    return allTeeTimes;
   }
 
   /** Convert date "YYYY-MM-DD" and start_time "H:MM" → "YYYY-MM-DDTHH:MM:00" */
