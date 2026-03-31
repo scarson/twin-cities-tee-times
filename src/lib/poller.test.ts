@@ -80,6 +80,8 @@ describe("pollCourse", () => {
     city: "Edina",
     state: "MN",
     last_had_tee_times: null,
+    booking_horizon_days: 7,
+    last_horizon_probe: null,
   };
 
   beforeEach(() => {

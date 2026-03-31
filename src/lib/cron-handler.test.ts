@@ -15,6 +15,8 @@ function makeCourseRow(
   overrides: Partial<{
     is_active: number;
     last_had_tee_times: string | null;
+    booking_horizon_days: number;
+    last_horizon_probe: string | null;
     name: string;
     city: string;
   }> = {}
@@ -31,6 +33,8 @@ function makeCourseRow(
     disabled: 0,
     display_notes: null,
     last_had_tee_times: overrides.last_had_tee_times ?? null,
+    booking_horizon_days: overrides.booking_horizon_days ?? 7,
+    last_horizon_probe: overrides.last_horizon_probe ?? null,
   };
 }
 
