@@ -78,6 +78,7 @@ vi.mock("@/lib/poller", () => ({
   pollCourse: vi.fn(),
   shouldPollDate: vi.fn().mockReturnValue(false),
   getPollingDates: vi.fn().mockReturnValue(["2026-04-15"]),
+  MAX_HORIZON: 14,
 }));
 
 // Partial mock of db module: pass through real implementations, allow per-test overrides
@@ -762,6 +763,64 @@ describe("runCronPoll active/inactive polling", () => {
 
     consoleSpy.mockRestore();
     warnSpy.mockRestore();
+  });
+});
+
+describe("runCronPoll per-course horizon", () => {
+  const makeMockDb = (courses: ReturnType<typeof makeCourseRow>[]) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses") ? courses : [],
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    // Return 14 dates to match MAX_HORIZON
+    mockedGetPollingDates.mockReturnValue(
+      Array.from({ length: 14 }, (_, i) => {
+        const d = new Date(Date.UTC(2026, 3, 15 + i));
+        return d.toISOString().split("T")[0];
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("only polls dates up to each course's booking_horizon_days", async () => {
+    const course7 = makeCourseRow("horizon-7", "foreup", { booking_horizon_days: 7 });
+    const db = makeMockDb([course7]);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    const dates7 = mockedPollCourse.mock.calls
+      .filter((c) => c[1].id === "horizon-7")
+      .map((c) => c[2]);
+    expect(dates7).toHaveLength(7);
+    expect(dates7[dates7.length - 1]).toBe("2026-04-21");
+  });
+
+  it("polls up to 14 days for courses with extended horizon", async () => {
+    const course14 = makeCourseRow("horizon-14", "foreup", { booking_horizon_days: 14 });
+    const db = makeMockDb([course14]);
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    const dates14 = mockedPollCourse.mock.calls
+      .filter((c) => c[1].id === "horizon-14")
+      .map((c) => c[2]);
+    expect(dates14).toHaveLength(14);
+    expect(dates14[dates14.length - 1]).toBe("2026-04-28");
   });
 });
 

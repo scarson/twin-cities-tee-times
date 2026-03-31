@@ -1,6 +1,6 @@
 // ABOUTME: Cron polling orchestrator that distributes courses across 5 batched invocations.
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
-import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
+import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON } from "@/lib/poller";
 import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
 import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
 import type { CourseRow } from "@/types";
@@ -82,7 +82,7 @@ export async function runCronPoll(
     const todayStr = now.toLocaleDateString("en-CA", {
       timeZone: "America/Chicago",
     }); // YYYY-MM-DD
-    const dates = getPollingDates(todayStr);
+    const dates = getPollingDates(todayStr, MAX_HORIZON);
 
     // Batch-fetch the most recent poll time for every course+date combo
     const recentPolls = await db
@@ -107,6 +107,7 @@ export async function runCronPoll(
     // --- Active courses: date-outer, course-inner ---
     for (let i = 0; i < dates.length && !budgetExhausted; i++) {
       for (const course of activeCourses) {
+        if (i >= course.booking_horizon_days) continue;
         const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
         const minutesSinceLast = lastPolled
           ? (Date.now() - new Date(lastPolled).getTime()) / 60000
