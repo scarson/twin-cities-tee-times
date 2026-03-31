@@ -18,11 +18,11 @@ export function shouldPollDate(
     // Today + tomorrow: always poll (frequency controlled by time-of-day cron)
     return true;
   }
-  if (dayOffset <= 3) {
-    // Offsets 2-3 (day after tomorrow + next): every 30 minutes
+  if (dayOffset <= 7) {
+    // Days 2-7: every 30 minutes
     return minutesSinceLastPoll >= 30;
   }
-  // Offsets 4-6 (5-7 days out): hourly
+  // Days 8+: hourly
   return minutesSinceLastPoll >= 60;
 }
 

@@ -19,22 +19,31 @@ import { upsertTeeTimes, logPoll } from "@/lib/db";
 
 describe("shouldPollDate", () => {
   it("always polls today and tomorrow", () => {
-    expect(shouldPollDate(0, 0)).toBe(true); // offset 0 = today
-    expect(shouldPollDate(1, 0)).toBe(true); // offset 1 = tomorrow
+    expect(shouldPollDate(0, 0)).toBe(true);
+    expect(shouldPollDate(1, 0)).toBe(true);
   });
 
-  it("polls days 3-4 every 30 min", () => {
-    // minutesSinceLast < 30 → skip
+  it("polls days 2-7 every 30 min", () => {
+    // Under 30 min → skip
     expect(shouldPollDate(2, 20)).toBe(false);
-    // minutesSinceLast >= 30 → poll
-    expect(shouldPollDate(2, 31)).toBe(true);
-    expect(shouldPollDate(3, 30)).toBe(true);
+    expect(shouldPollDate(5, 29)).toBe(false);
+    expect(shouldPollDate(7, 15)).toBe(false);
+    // At or over 30 min → poll
+    expect(shouldPollDate(2, 30)).toBe(true);
+    expect(shouldPollDate(3, 31)).toBe(true);
+    expect(shouldPollDate(5, 45)).toBe(true);
+    expect(shouldPollDate(7, 30)).toBe(true);
   });
 
-  it("polls days 5-7 hourly", () => {
-    expect(shouldPollDate(4, 30)).toBe(false);
-    expect(shouldPollDate(4, 60)).toBe(true);
-    expect(shouldPollDate(6, 61)).toBe(true);
+  it("polls days 8+ hourly", () => {
+    // Under 60 min → skip
+    expect(shouldPollDate(8, 30)).toBe(false);
+    expect(shouldPollDate(10, 59)).toBe(false);
+    expect(shouldPollDate(13, 45)).toBe(false);
+    // At or over 60 min → poll
+    expect(shouldPollDate(8, 60)).toBe(true);
+    expect(shouldPollDate(10, 61)).toBe(true);
+    expect(shouldPollDate(13, 120)).toBe(true);
   });
 });
 
