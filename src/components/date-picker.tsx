@@ -156,7 +156,9 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
             <span className="text-[11px] lg:text-xs">{day.dayNum}</span>
           </button>
         ))}
-        <button
+        {/* Hidden while quick buttons cover the full polling range (MAX_HORIZON=14).
+           Re-enable when MAX_HORIZON increases beyond the quick button count. */}
+        {false && <button
           ref={moreButtonRef}
           onClick={handleMoreClick}
           className={`flex items-center rounded px-2.5 py-1.5 text-xs font-medium transition-colors lg:px-3 lg:py-2 lg:text-sm ${
@@ -166,7 +168,7 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           }`}
         >
           More Dates
-        </button>
+        </button>}
       </div>
       <div className="mt-1 flex items-center gap-1 lg:gap-1.5">
         {week2.map((day) => (
