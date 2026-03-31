@@ -3,18 +3,21 @@
 // ABOUTME: Provides GPS and zip code input with radius selection.
 
 import { useState } from "react";
-import { useLocation, RADIUS_OPTIONS } from "@/hooks/use-location";
+import { useLocation, RADIUS_OPTIONS, SORT_OPTIONS } from "@/hooks/use-location";
+import type { SortOrder } from "@/hooks/use-location";
 
 export function LocationFilter() {
   const {
     location,
     zip,
     radiusMiles,
+    sortOrder,
     gpsLoading,
     gpsError,
     setZip,
     requestGps,
     setRadiusMiles,
+    setSortOrder,
     clearLocation,
   } = useLocation();
 
@@ -109,6 +112,27 @@ export function LocationFilter() {
               </button>
             )}
           </div>
+
+          {hasLocation && (
+            <div className="mt-1.5 text-xs text-gray-500 lg:text-sm">
+              Sort by:{" "}
+              {SORT_OPTIONS.map((option, i) => (
+                <span key={option}>
+                  {i > 0 && <span className="mx-1 text-gray-300">|</span>}
+                  <button
+                    onClick={() => setSortOrder(option as SortOrder)}
+                    className={
+                      sortOrder === option
+                        ? "font-medium text-green-700 underline underline-offset-2"
+                        : "text-gray-400 hover:text-gray-600"
+                    }
+                  >
+                    {option === "time" ? "Time" : "Distance"}
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {gpsError && (
             <p className="mt-1 text-xs text-red-500">{gpsError}</p>

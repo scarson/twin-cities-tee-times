@@ -74,6 +74,19 @@ describe("POST /api/courses/[id]/refresh", () => {
     expect(dateArg).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it("passes date to rate limit check", async () => {
+    mockFirst.mockResolvedValueOnce({ id: "braemar", platform: "foreup" });
+    const { request, routeParams } = makeRequest("braemar", {
+      date: "2026-04-15",
+    });
+    await POST(request, routeParams);
+    expect(checkRefreshAllowed).toHaveBeenCalledWith(
+      expect.anything(),
+      "braemar",
+      "2026-04-15"
+    );
+  });
+
   it("returns 429 when rate limited", async () => {
     mockFirst.mockResolvedValueOnce({ id: "braemar", platform: "foreup" });
     vi.mocked(checkRefreshAllowed).mockResolvedValue({

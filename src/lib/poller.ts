@@ -5,6 +5,9 @@ import { upsertTeeTimes, logPoll } from "@/lib/db";
 // D1Database is a global type from @cloudflare/workers-types
 import type { CourseRow, CourseConfig } from "@/types";
 
+export const MAX_HORIZON = 14;
+export const PROBE_INTERVAL_DAYS = 7;
+
 /**
  * Determine whether a given date offset should be polled this cycle.
  * @param dayOffset 0 = today, 1 = tomorrow, etc.
@@ -18,21 +21,21 @@ export function shouldPollDate(
     // Today + tomorrow: always poll (frequency controlled by time-of-day cron)
     return true;
   }
-  if (dayOffset <= 3) {
-    // Offsets 2-3 (day after tomorrow + next): every 30 minutes
+  if (dayOffset <= 7) {
+    // Days 2-7: every 30 minutes
     return minutesSinceLastPoll >= 30;
   }
-  // Offsets 4-6 (5-7 days out): hourly
+  // Days 8+: hourly
   return minutesSinceLastPoll >= 60;
 }
 
 /**
- * Generate an array of 7 date strings starting from the given date.
+ * Generate an array of date strings starting from the given date.
  */
-export function getPollingDates(todayStr: string): string[] {
+export function getPollingDates(todayStr: string, horizonDays: number = 7): string[] {
   const dates: string[] = [];
   const [year, month, day] = todayStr.split("-").map(Number);
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < horizonDays; i++) {
     const d = new Date(Date.UTC(year, month - 1, day + i));
     dates.push(d.toISOString().split("T")[0]);
   }

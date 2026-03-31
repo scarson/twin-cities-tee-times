@@ -39,6 +39,8 @@ export interface CourseRow {
   disabled: number; // SQLite boolean — manual override, never changed by cron
   display_notes: string | null;
   last_had_tee_times: string | null;
+  booking_horizon_days: number;
+  last_horizon_probe: string | null;
 }
 
 /** Tee time row from D1 */

@@ -43,12 +43,14 @@ This app is Central Time everywhere. Every date operation must be tested for tim
 - [ ] **Error isolation within nested loops:** When a loop has an inner loop (e.g., courses × dates), test that a failure in one inner iteration doesn't skip the remaining inner iterations. The try/catch must be *inside* the inner loop, not wrapping it. **🔥 Found in bug hunts:** Active course polling wrapped all 7 dates in one try/catch — a D1 failure on date 2 silently skipped dates 3-7. A `logPoll` throw in the catch block or a `last_had_tee_times` update failure had the same effect.
 - [ ] **Overlapping cron executions:** When a cron cycle could take longer than the cron interval, test that two simultaneous executions don't corrupt data. Two executions reading `poll_log` before either writes creates a TOCTOU window where both poll the same courses. **🔥 Found in bug hunts:** No protection against overlapping `runCronPoll` executions. With 80 courses planned, execution time approaches the 5-minute cron interval.
 - [ ] **Dead poll detection:** When `shouldPollDate` gates whether to poll, test that its freshness check actually prevents redundant polls. If it always returns `true` for certain offsets, the freshness tracking is dead code for those dates. **🔥 Found in bug hunts:** `shouldPollDate` unconditionally returned `true` for today and tomorrow — `minutesSinceLastPoll` was ignored for these offsets.
+- [ ] **Rate limit granularity vs operation scope:** When a rate limit protects a multi-dimensional resource (e.g., course × date), test that operations on one dimension don't block unrelated operations on another. A per-course cooldown that fires during cron polling of March 30 should not block a user's manual refresh for April 6. The rate limit scope must match the scope of the operation it protects. **🔥 Found in bug hunts:** Per-course refresh cooldown blocked user refreshes for dates the cron hadn't polled — the cron's poll for today's date consumed the cooldown, leaving the user unable to fetch data for dates outside the cron's 7-day window.
 - [ ] **Worker timeout resilience:** Cloudflare Workers have execution time limits. Test that a cron handler that approaches the limit fails gracefully — partial results are persisted, and the next cycle picks up where it left off.
 - [ ] **`ctx.waitUntil()` error visibility:** When `scheduled()` uses `ctx.waitUntil()`, errors inside the promise are swallowed by the runtime. Test that errors are logged before they disappear. A cron handler that silently fails every cycle is worse than one that doesn't exist.
 
 ## 6. External API Resilience
 
 - [ ] **Rate limiting behavior:** When an external API returns 429 (rate limited), test that the adapter handles it differently from "no data." A rate-limited response should trigger backoff or retry — not log "no_data" as if the course has no tee times. **🔥 Found in bug hunts:** CPS Golf adapter treated 429 the same as any non-200 response — returned `[]`.
+- [ ] **Paginated API responses:** When an external API paginates results, test that the adapter fetches ALL pages — not just page 1. An adapter that returns 24 of 48 results produces no errors and valid-looking data, making the bug invisible without comparing against the source. Test with: responses that span multiple pages, responses that fit exactly one page (boundary), and empty responses. Include a safety cap on page count to prevent infinite loops if the API misbehaves. **🔥 Found in bug hunts:** Chronogolf adapter only fetched page 1 (24 results), silently dropping ~half the tee times. Baker National had 47-48 tee times for a given day — users saw 24 in our app vs all of them on Chronogolf's site.
 - [ ] **Malformed response handling:** Test adapters with truncated JSON, unexpected response shapes, and missing fields. An adapter that throws on malformed JSON is better than one that silently returns `[]`. At minimum, the error must be logged.
 - [ ] **Timeout behavior:** Test adapter behavior when the external API is slow. A 30-second timeout on one API call can cascade through the cron handler, potentially causing the Worker to hit its execution limit.
 - [ ] **Response validation:** When an adapter parses external API responses, test that it validates expected fields exist before accessing them. `tt.time.split("T")` on an undefined `time` field should not produce a silent `undefined` insertion into D1. **🔥 Found in bug hunts:** `upsertTeeTimes` did `tt.time.split("T")[1].substring(0, 5)` — if `tt.time` lacks "T", this produces `undefined`.
@@ -87,7 +89,23 @@ This app is Central Time everywhere. Every date operation must be tested for tim
 - [ ] **Date parameter validation:** When an API accepts a date string parameter, test with: invalid format (`"not-a-date"`), past dates, dates far in the future, and empty string. The API should return 400 with a clear message — not a 500 from a downstream parse failure.
 - [ ] **Numeric ID validation:** When a route parameter is a numeric ID (`/courses/[id]`), test with: non-numeric strings, negative numbers, zero, and very large numbers. The route should return 404 or 400 — not a D1 error.
 
-## 11. Build & Deploy
+## 11. Test Performance
+
+- [ ] **Never use `shouldAdvanceTime` with fake timers:** `vi.useFakeTimers({ shouldAdvanceTime: true })` still advances time in near-real-time — each pending timer waits for a real event loop tick. With production code that calls `sleep(250)` between iterations, budget-exhaustion tests that create hundreds of polls wait through hundreds of real 250ms delays. Use plain `vi.useFakeTimers()` and flush timers programmatically. **🔥 Found in bug hunts:** `cron-handler.test.ts` took 156 seconds (98% of the entire suite) because `shouldAdvanceTime: true, advanceTimeDelta: 250` caused real-time waiting through ~170 sequential sleep calls per budget-exhaustion test.
+- [ ] **Flush fake timers concurrently with async code under test:** When production code awaits `sleep()` internally (not called from test code), tests can't call `vi.advanceTimersByTimeAsync()` after `await`ing the function — the `await` never resolves because the timer never fires. Run a timer-flushing loop concurrently with the promise:
+  ```typescript
+  async function withTimers<T>(fn: () => Promise<T>): Promise<T> {
+    let done = false;
+    const promise = fn().finally(() => { done = true; });
+    while (!done) {
+      await vi.advanceTimersByTimeAsync(250);
+    }
+    return promise;
+  }
+  ```
+  Then wrap calls: `await withTimers(() => runCronPoll(...))`. This resolves all pending timers instantly via microtasks instead of real-time delays.
+
+## 12. Build & Deploy
 
 - [ ] **Type-check coverage:** Run `npx tsc --noEmit` after every change. TypeScript errors that don't surface in `next dev` (which uses SWC and skips type-checking) can still break the CI build.
 - [ ] **OpenNext compatibility:** Test that the production build (`npx @opennextjs/cloudflare build`) succeeds after changes. Features that work in `next dev` may not work on Cloudflare Workers (e.g., `process.env`, Node.js APIs, dynamic imports).

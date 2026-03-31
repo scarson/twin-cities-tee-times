@@ -1,7 +1,7 @@
 // ABOUTME: Tests for location hook utility functions.
 // ABOUTME: Validates zip code format validation and radius options.
 import { describe, it, expect } from "vitest";
-import { isValidZip, RADIUS_OPTIONS, DEFAULT_RADIUS } from "@/hooks/use-location";
+import { isValidZip, RADIUS_OPTIONS, DEFAULT_RADIUS, SORT_OPTIONS, DEFAULT_SORT_ORDER } from "@/hooks/use-location";
 
 describe("isValidZip", () => {
   it("accepts 5-digit zip codes", () => {
@@ -32,5 +32,17 @@ describe("RADIUS_OPTIONS", () => {
 describe("DEFAULT_RADIUS", () => {
   it("is 25 miles", () => {
     expect(DEFAULT_RADIUS).toBe(25);
+  });
+});
+
+describe("SORT_OPTIONS", () => {
+  it("contains time and distance", () => {
+    expect(SORT_OPTIONS).toEqual(["time", "distance"]);
+  });
+});
+
+describe("DEFAULT_SORT_ORDER", () => {
+  it("defaults to time", () => {
+    expect(DEFAULT_SORT_ORDER).toBe("time");
   });
 });

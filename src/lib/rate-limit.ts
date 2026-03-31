@@ -11,19 +11,20 @@ type RateLimitResult =
 
 export async function checkRefreshAllowed(
   db: D1Database,
-  courseId: string
+  courseId: string,
+  date: string
 ): Promise<RateLimitResult> {
-  // Per-course cooldown: any date
+  // Per-course+date cooldown
   // Note: COURSE_COOLDOWN_SECONDS is interpolated (not bound) because SQLite's
   // strftime() modifier string cannot accept parameter bindings. The value is a
   // module-level constant, not user input.
   const recentPoll = await db
     .prepare(
       `SELECT polled_at FROM poll_log
-       WHERE course_id = ? AND polled_at > ${sqliteIsoNow(`-${COURSE_COOLDOWN_SECONDS} seconds`)}
+       WHERE course_id = ? AND date = ? AND polled_at > ${sqliteIsoNow(`-${COURSE_COOLDOWN_SECONDS} seconds`)}
        ORDER BY polled_at DESC LIMIT 1`
     )
-    .bind(courseId)
+    .bind(courseId, date)
     .first<{ polled_at: string }>();
 
   if (recentPoll) {

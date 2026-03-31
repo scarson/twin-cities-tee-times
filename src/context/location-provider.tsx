@@ -3,7 +3,7 @@
 // ABOUTME: Manages GPS, zip code lookup, radius selection, and localStorage persistence.
 
 import { createContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import { isValidZip, DEFAULT_RADIUS } from "@/hooks/use-location";
+import { isValidZip, DEFAULT_RADIUS, DEFAULT_SORT_ORDER, type SortOrder } from "@/hooks/use-location";
 
 export interface LocationState {
   lat: number;
@@ -15,11 +15,13 @@ export interface LocationContextValue {
   location: LocationState | null;
   zip: string;
   radiusMiles: number;
+  sortOrder: SortOrder;
   gpsLoading: boolean;
   gpsError: string | null;
   setZip: (zip: string) => Promise<void>;
   requestGps: () => void;
   setRadiusMiles: (r: number) => void;
+  setSortOrder: (order: SortOrder) => void;
   clearLocation: () => void;
 }
 
@@ -63,6 +65,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<LocationState | null>(null);
   const [zip, setZipState] = useState<string>(readStoredZip);
   const [radiusMiles, setRadiusState] = useState<number>(readStoredRadius);
+  const [sortOrder, setSortOrderState] = useState<SortOrder>(DEFAULT_SORT_ORDER);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
@@ -139,6 +142,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const setSortOrder = useCallback((order: SortOrder) => {
+    setSortOrderState(order);
+  }, []);
+
   // Intentionally keeps radius in localStorage when clearing —
   // users shouldn't have to re-select their preferred radius each time.
   const clearLocation = useCallback(() => {
@@ -158,11 +165,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         location,
         zip,
         radiusMiles,
+        sortOrder,
         gpsLoading,
         gpsError,
         setZip,
         requestGps,
         setRadiusMiles,
+        setSortOrder,
         clearLocation,
       }}
     >

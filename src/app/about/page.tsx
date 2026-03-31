@@ -50,12 +50,14 @@ export default function AboutPage() {
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="py-2 pr-4">2–3 days out</td>
-                <td className="py-2">Every 30 min</td>
+                <td className="py-2 pr-4">2–7 days out</td>
+                <td className="py-2">Every 30 min, hourly overnight</td>
               </tr>
               <tr>
-                <td className="py-2 pr-4">4–7 days out</td>
-                <td className="py-2">Every hour</td>
+                <td className="py-2 pr-4">8–14 days out</td>
+                <td className="py-2">
+                  Every hour (for courses that publish this far out)
+                </td>
               </tr>
             </tbody>
           </table>

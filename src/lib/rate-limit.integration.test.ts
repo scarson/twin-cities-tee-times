@@ -14,12 +14,12 @@ describe("checkRefreshAllowed", () => {
   });
 
   it("allows refresh when no recent polls exist", async () => {
-    const result = await checkRefreshAllowed(db, "c1");
+    const result = await checkRefreshAllowed(db, "c1", "2026-03-16");
     expect(result).toEqual({ allowed: true });
   });
 
-  it("rejects refresh within per-course cooldown", async () => {
-    // Insert a poll from right now
+  it("rejects refresh within per-course+date cooldown", async () => {
+    // Insert a poll from right now for this specific date
     await db
       .prepare(
         "INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count) VALUES (?, ?, ?, ?, ?)"
@@ -27,8 +27,22 @@ describe("checkRefreshAllowed", () => {
       .bind("c1", "2026-03-16", new Date().toISOString(), "success", 5)
       .run();
 
-    const result = await checkRefreshAllowed(db, "c1");
+    const result = await checkRefreshAllowed(db, "c1", "2026-03-16");
     expect(result.allowed).toBe(false);
+  });
+
+  it("allows refresh for a different date even when same course was recently polled", async () => {
+    // Insert a poll from right now for a DIFFERENT date
+    await db
+      .prepare(
+        "INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count) VALUES (?, ?, ?, ?, ?)"
+      )
+      .bind("c1", "2026-03-16", new Date().toISOString(), "success", 5)
+      .run();
+
+    // Requesting a different date should be allowed
+    const result = await checkRefreshAllowed(db, "c1", "2026-04-06");
+    expect(result).toEqual({ allowed: true });
   });
 
   it("allows refresh after cooldown expires", async () => {
@@ -41,7 +55,7 @@ describe("checkRefreshAllowed", () => {
       .bind("c1", "2026-03-16", oldTime, "success", 5)
       .run();
 
-    const result = await checkRefreshAllowed(db, "c1");
+    const result = await checkRefreshAllowed(db, "c1", "2026-03-16");
     expect(result).toEqual({ allowed: true });
   });
 
@@ -59,9 +73,9 @@ describe("checkRefreshAllowed", () => {
         .run();
     }
 
-    // Use a different course to avoid per-course cooldown
+    // Use a different course to avoid per-course+date cooldown
     await seedCourse(db, { id: "c3", name: "Course 3" });
-    const result = await checkRefreshAllowed(db, "c3");
+    const result = await checkRefreshAllowed(db, "c3", "2026-04-01");
     expect(result.allowed).toBe(false);
     expect((result as { reason: string }).reason).toContain("busy");
   });

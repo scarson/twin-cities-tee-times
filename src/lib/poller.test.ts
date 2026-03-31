@@ -1,7 +1,7 @@
 // ABOUTME: Tests for polling logic including date frequency, month boundaries, and error handling.
 // ABOUTME: Covers shouldPollDate, getPollingDates, and pollCourse with mocked adapters.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { pollCourse, shouldPollDate, getPollingDates } from "./poller";
+import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON } from "./poller";
 
 // Mock the adapter registry
 vi.mock("@/adapters", () => ({
@@ -19,39 +19,69 @@ import { upsertTeeTimes, logPoll } from "@/lib/db";
 
 describe("shouldPollDate", () => {
   it("always polls today and tomorrow", () => {
-    expect(shouldPollDate(0, 0)).toBe(true); // offset 0 = today
-    expect(shouldPollDate(1, 0)).toBe(true); // offset 1 = tomorrow
+    expect(shouldPollDate(0, 0)).toBe(true);
+    expect(shouldPollDate(1, 0)).toBe(true);
   });
 
-  it("polls days 3-4 every 30 min", () => {
-    // minutesSinceLast < 30 → skip
+  it("polls days 2-7 every 30 min", () => {
+    // Under 30 min → skip
     expect(shouldPollDate(2, 20)).toBe(false);
-    // minutesSinceLast >= 30 → poll
-    expect(shouldPollDate(2, 31)).toBe(true);
-    expect(shouldPollDate(3, 30)).toBe(true);
+    expect(shouldPollDate(5, 29)).toBe(false);
+    expect(shouldPollDate(7, 15)).toBe(false);
+    // At or over 30 min → poll
+    expect(shouldPollDate(2, 30)).toBe(true);
+    expect(shouldPollDate(3, 31)).toBe(true);
+    expect(shouldPollDate(5, 45)).toBe(true);
+    expect(shouldPollDate(7, 30)).toBe(true);
   });
 
-  it("polls days 5-7 hourly", () => {
-    expect(shouldPollDate(4, 30)).toBe(false);
-    expect(shouldPollDate(4, 60)).toBe(true);
-    expect(shouldPollDate(6, 61)).toBe(true);
+  it("polls days 8+ hourly", () => {
+    // Under 60 min → skip
+    expect(shouldPollDate(8, 30)).toBe(false);
+    expect(shouldPollDate(10, 59)).toBe(false);
+    expect(shouldPollDate(13, 45)).toBe(false);
+    // At or over 60 min → poll
+    expect(shouldPollDate(8, 60)).toBe(true);
+    expect(shouldPollDate(10, 61)).toBe(true);
+    expect(shouldPollDate(13, 120)).toBe(true);
   });
 });
 
 describe("getPollingDates", () => {
-  it("returns 7 dates starting from today", () => {
+  it("returns 7 dates by default", () => {
     const dates = getPollingDates("2026-04-15");
     expect(dates).toHaveLength(7);
     expect(dates[0]).toBe("2026-04-15");
     expect(dates[6]).toBe("2026-04-21");
   });
 
-  it("handles month boundary rollover", () => {
+  it("returns specified number of dates when horizonDays is given", () => {
+    const dates = getPollingDates("2026-04-15", 14);
+    expect(dates).toHaveLength(14);
+    expect(dates[0]).toBe("2026-04-15");
+    expect(dates[13]).toBe("2026-04-28");
+  });
+
+  it("handles month boundary rollover with extended horizon", () => {
+    const dates = getPollingDates("2026-03-25", 14);
+    expect(dates[0]).toBe("2026-03-25");
+    expect(dates[6]).toBe("2026-03-31");
+    expect(dates[7]).toBe("2026-04-01");
+    expect(dates[13]).toBe("2026-04-07");
+  });
+
+  it("handles month boundary rollover with default horizon", () => {
     const dates = getPollingDates("2026-03-28");
     expect(dates).toEqual([
       "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31",
       "2026-04-01", "2026-04-02", "2026-04-03",
     ]);
+  });
+});
+
+describe("MAX_HORIZON", () => {
+  it("is 14", () => {
+    expect(MAX_HORIZON).toBe(14);
   });
 });
 
@@ -80,6 +110,8 @@ describe("pollCourse", () => {
     city: "Edina",
     state: "MN",
     last_had_tee_times: null,
+    booking_horizon_days: 7,
+    last_horizon_probe: null,
   };
 
   beforeEach(() => {

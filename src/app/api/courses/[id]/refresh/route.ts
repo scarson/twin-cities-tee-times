@@ -37,7 +37,7 @@ export async function POST(
     );
   }
 
-  const rateCheck = await checkRefreshAllowed(db, id);
+  const rateCheck = await checkRefreshAllowed(db, id, date);
   if (!rateCheck.allowed) {
     return NextResponse.json(
       { message: rateCheck.reason },

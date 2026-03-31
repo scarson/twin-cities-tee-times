@@ -29,6 +29,8 @@ function makeCourseRow(overrides: Partial<CourseRow> = {}): CourseRow {
     disabled: 0,
     display_notes: null,
     last_had_tee_times: null,
+    booking_horizon_days: 7,
+    last_horizon_probe: null,
     ...overrides,
   };
 }
