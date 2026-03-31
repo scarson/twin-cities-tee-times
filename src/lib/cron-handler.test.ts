@@ -1,7 +1,7 @@
 // ABOUTME: Tests for the cron handler's batched polling, budget tracking, and cleanup.
 // ABOUTME: Covers batch filtering, date-outer loop, budget exhaustion, and housekeeping gating.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { shouldRunThisCycle, runCronPoll, SUBREQUEST_BUDGET } from "./cron-handler";
+import { shouldRunThisCycle, runCronPoll, SUBREQUEST_BUDGET, runHorizonProbe } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 import * as dbModule from "@/lib/db";
 import { assignBatches, BATCH_COUNT } from "@/lib/batch";
@@ -79,6 +79,7 @@ vi.mock("@/lib/poller", () => ({
   shouldPollDate: vi.fn().mockReturnValue(false),
   getPollingDates: vi.fn().mockReturnValue(["2026-04-15"]),
   MAX_HORIZON: 14,
+  PROBE_INTERVAL_DAYS: 7,
 }));
 
 // Partial mock of db module: pass through real implementations, allow per-test overrides
@@ -134,7 +135,7 @@ describe("runCronPoll batch filtering", () => {
           })),
           run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
           all: vi.fn().mockResolvedValue({
-            results: sql.includes("FROM courses")
+            results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe")
               ? courses
               : sql.includes("poll_log")
                 ? pollLog
@@ -225,7 +226,7 @@ describe("runCronPoll date-outer loop ordering", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses") ? courses : [],
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe") ? courses : [],
       }),
     })),
   });
@@ -274,7 +275,7 @@ describe("runCronPoll budget tracking", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses") ? courses : [],
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe") ? courses : [],
       }),
     })),
   });
@@ -494,6 +495,26 @@ describe("runCronPoll housekeeping", () => {
 
     consoleSpy.mockRestore();
   });
+
+  it("issues horizon probe query in batch 0", async () => {
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON);
+
+    const probeQuery = preparedStatements.find((sql) =>
+      sql.includes("last_horizon_probe")
+    );
+    expect(probeQuery).toBeDefined();
+  });
+
+  it("does not issue horizon probe query in non-zero batches", async () => {
+    const db = makeMockDb();
+    await runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_1_CRON);
+
+    const probeQuery = preparedStatements.find((sql) =>
+      sql.includes("last_horizon_probe")
+    );
+    expect(probeQuery).toBeUndefined();
+  });
 });
 
 describe("runCronPoll error isolation", () => {
@@ -505,7 +526,7 @@ describe("runCronPoll error isolation", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses") ? courses : [],
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe") ? courses : [],
       }),
     })),
   });
@@ -622,7 +643,7 @@ describe("runCronPoll active/inactive polling", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses")
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe")
           ? courses
           : sql.includes("poll_log")
             ? pollLog
@@ -775,7 +796,7 @@ describe("runCronPoll per-course horizon", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses") ? courses : [],
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe") ? courses : [],
       }),
     })),
   });
@@ -833,7 +854,7 @@ describe("runCronPoll SQL verification", () => {
       })),
       run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
       all: vi.fn().mockResolvedValue({
-        results: sql.includes("FROM courses")
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe")
           ? courses
           : sql.includes("poll_log")
             ? []
@@ -905,5 +926,109 @@ describe("runCronPoll SQL verification", () => {
     );
     expect(activateCall).toBeDefined();
     expect(activateCall![0]).toContain("last_had_tee_times");
+  });
+});
+
+describe("runHorizonProbe", () => {
+  const makeMockDb = () => ({
+    prepare: vi.fn().mockImplementation(() => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({ results: [] }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 250 });
+    vi.setSystemTime(new Date("2026-04-15T02:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("extends horizon when tee times found beyond current horizon", async () => {
+    const course = makeCourseRow("probe-test", "foreup", { booking_horizon_days: 7 });
+    // Return success for day offset 10 (the 11th day out → "2026-04-25")
+    mockedPollCourse.mockImplementation(async (_db, _course, date) => {
+      if (date === "2026-04-25") return "success";
+      return "no_data";
+    });
+    const db = makeMockDb();
+    const result = await runHorizonProbe(db as any, [course], "2026-04-15", { remaining: 500 });
+
+    expect(result.updatedCourses).toContain("probe-test");
+    // booking_horizon_days UPDATE should have been issued
+    const updateCalls = db.prepare.mock.calls.filter(
+      (args) => (args[0] as string).includes("booking_horizon_days")
+    );
+    expect(updateCalls.length).toBeGreaterThan(0);
+  });
+
+  it("does not lower horizon when no tee times found", async () => {
+    const course = makeCourseRow("no-lower", "foreup", { booking_horizon_days: 10 });
+    mockedPollCourse.mockResolvedValue("no_data");
+    const db = makeMockDb();
+    const result = await runHorizonProbe(db as any, [course], "2026-04-15", { remaining: 500 });
+
+    expect(result.updatedCourses).toHaveLength(0);
+    const updateCalls = db.prepare.mock.calls.filter(
+      (args) => (args[0] as string).includes("booking_horizon_days")
+    );
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  it("always updates last_horizon_probe timestamp", async () => {
+    const course = makeCourseRow("probe-ts", "foreup", { booking_horizon_days: 7 });
+    mockedPollCourse.mockResolvedValue("no_data");
+    const db = makeMockDb();
+    await runHorizonProbe(db as any, [course], "2026-04-15", { remaining: 500 });
+
+    const probeCalls = db.prepare.mock.calls.filter(
+      (args) => (args[0] as string).includes("last_horizon_probe")
+    );
+    expect(probeCalls.length).toBeGreaterThan(0);
+  });
+
+  it("respects subrequest budget", async () => {
+    const course = makeCourseRow("budget-test", "cps_golf", { booking_horizon_days: 7 });
+    mockedPollCourse.mockResolvedValue("no_data");
+    // CPS weight = 3, 7 dates to check (days 7-13), needs 21. Give only 9 → 3 polls.
+    const budget = { remaining: 9 };
+    const db = makeMockDb();
+    await runHorizonProbe(db as any, [course], "2026-04-15", budget);
+
+    expect(mockedPollCourse).toHaveBeenCalledTimes(3);
+    expect(budget.remaining).toBe(0);
+  });
+
+  it("continues probing other courses after one throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const course1 = makeCourseRow("fail-probe", "foreup", { booking_horizon_days: 7 });
+    const course2 = makeCourseRow("ok-probe", "foreup", { booking_horizon_days: 7 });
+    mockedPollCourse.mockImplementation(async (_db, course) => {
+      if (course.id === "fail-probe") throw new Error("boom");
+      return "no_data";
+    });
+    const db = makeMockDb();
+    await runHorizonProbe(db as any, [course1, course2], "2026-04-15", { remaining: 500 });
+
+    const probedIds = [...new Set(mockedPollCourse.mock.calls.map((c) => c[1].id))];
+    expect(probedIds).toContain("ok-probe");
+    consoleSpy.mockRestore();
+  });
+
+  it("skips courses already at MAX_HORIZON", async () => {
+    const course = makeCourseRow("at-max", "foreup", { booking_horizon_days: 14 });
+    mockedPollCourse.mockResolvedValue("no_data");
+    const db = makeMockDb();
+    await runHorizonProbe(db as any, [course], "2026-04-15", { remaining: 500 });
+
+    // No dates to check: horizon (14) >= MAX_HORIZON (14), loop body never executes
+    expect(mockedPollCourse).not.toHaveBeenCalled();
   });
 });

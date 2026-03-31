@@ -1,6 +1,6 @@
 // ABOUTME: Cron polling orchestrator that distributes courses across 5 batched invocations.
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
-import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON } from "@/lib/poller";
+import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON, PROBE_INTERVAL_DAYS } from "@/lib/poller";
 import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
 import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
 import type { CourseRow } from "@/types";
@@ -35,6 +35,72 @@ export function shouldRunThisCycle(now: Date): boolean {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Probe dates beyond each course's known booking horizon to detect extended availability.
+ * Runs weekly per course, ratchets horizon up (never down).
+ */
+export async function runHorizonProbe(
+  db: D1Database,
+  courses: CourseRow[],
+  todayStr: string,
+  budget: { remaining: number },
+  env?: CloudflareEnv
+): Promise<{ probeCount: number; updatedCourses: string[] }> {
+  let probeCount = 0;
+  const updatedCourses: string[] = [];
+
+  for (const course of courses) {
+    if (budget.remaining <= 0) break;
+
+    try {
+      let maxFound = course.booking_horizon_days;
+
+      for (let dayOffset = course.booking_horizon_days; dayOffset < MAX_HORIZON; dayOffset++) {
+        const weight = platformWeight(course.platform);
+        if (budget.remaining < weight) break;
+
+        const [year, month, day] = todayStr.split("-").map(Number);
+        const d = new Date(Date.UTC(year, month - 1, day + dayOffset));
+        const dateStr = d.toISOString().split("T")[0];
+
+        try {
+          const status = await pollCourse(db, course, dateStr, env);
+          probeCount++;
+          budget.remaining -= weight;
+
+          if (status === "success" && dayOffset + 1 > maxFound) {
+            maxFound = dayOffset + 1;
+          }
+        } catch (err) {
+          console.error(`Horizon probe error for ${course.id} on ${dateStr}:`, err);
+          probeCount++;
+          budget.remaining -= weight;
+        }
+
+        await sleep(250);
+      }
+
+      if (maxFound > course.booking_horizon_days) {
+        await db
+          .prepare("UPDATE courses SET booking_horizon_days = ? WHERE id = ? AND booking_horizon_days < ?")
+          .bind(maxFound, course.id, maxFound)
+          .run();
+        updatedCourses.push(course.id);
+        console.log(`Horizon probe: ${course.id} extended to ${maxFound} days`);
+      }
+
+      await db
+        .prepare("UPDATE courses SET last_horizon_probe = ? WHERE id = ?")
+        .bind(new Date().toISOString(), course.id)
+        .run();
+    } catch (err) {
+      console.error(`Horizon probe error for course ${course.id}:`, err);
+    }
+  }
+
+  return { probeCount, updatedCourses };
 }
 
 /**
@@ -233,6 +299,33 @@ export async function runCronPoll(
         }
       } catch (err) {
         console.error("session cleanup error:", err);
+      }
+
+      // --- Horizon probe: weekly check for courses publishing beyond their known horizon ---
+      try {
+        const eligibleForProbe = await db
+          .prepare(
+            `SELECT * FROM courses
+             WHERE disabled = 0 AND is_active = 1
+               AND (last_horizon_probe IS NULL OR last_horizon_probe < ${sqliteIsoNow(`-${PROBE_INTERVAL_DAYS} days`)})`
+          )
+          .all<CourseRow>();
+
+        if (eligibleForProbe.results.length > 0) {
+          const probeResult = await runHorizonProbe(
+            db,
+            eligibleForProbe.results,
+            todayStr,
+            { remaining: budget },
+            env
+          );
+
+          if (probeResult.updatedCourses.length > 0) {
+            console.log(`Horizon probe: updated ${probeResult.updatedCourses.length} course(s)`);
+          }
+        }
+      } catch (err) {
+        console.error("Horizon probe error:", err);
       }
     }
 

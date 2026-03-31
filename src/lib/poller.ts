@@ -6,6 +6,7 @@ import { upsertTeeTimes, logPoll } from "@/lib/db";
 import type { CourseRow, CourseConfig } from "@/types";
 
 export const MAX_HORIZON = 14;
+export const PROBE_INTERVAL_DAYS = 7;
 
 /**
  * Determine whether a given date offset should be polled this cycle.
