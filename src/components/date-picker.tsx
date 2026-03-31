@@ -141,12 +141,12 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-1 lg:gap-1.5">
+      <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
         {week1.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded px-2.5 py-1.5 text-xs transition-colors lg:px-3 lg:py-2 lg:text-sm ${
+            className={`flex flex-col items-center rounded py-1.5 text-xs transition-colors lg:py-2 lg:text-sm ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
@@ -156,26 +156,11 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
             <span className="text-[11px] lg:text-xs">{day.dayNum}</span>
           </button>
         ))}
-        {/* Hidden while quick buttons cover the full polling range (MAX_HORIZON=14).
-           Re-enable when MAX_HORIZON increases beyond the quick button count. */}
-        {false && <button
-          ref={moreButtonRef}
-          onClick={handleMoreClick}
-          className={`flex items-center rounded px-2.5 py-1.5 text-xs font-medium transition-colors lg:px-3 lg:py-2 lg:text-sm ${
-            inCalendarMode || calendarOpen
-              ? "bg-green-600 text-white"
-              : "bg-stone-100 text-gray-700 hover:bg-stone-200"
-          }`}
-        >
-          More Dates
-        </button>}
-      </div>
-      <div className="mt-1 flex items-center gap-1 lg:gap-1.5">
         {week2.map((day) => (
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
-            className={`flex flex-col items-center rounded px-2.5 py-1 text-[11px] transition-colors lg:px-3 lg:py-1 lg:text-xs ${
+            className={`flex flex-col items-center rounded py-1 text-[11px] transition-colors lg:py-1 lg:text-xs ${
               !inCalendarMode && selected.includes(day.value)
                 ? "bg-green-600 text-white"
                 : "bg-stone-100 text-gray-700 hover:bg-stone-200"
@@ -186,6 +171,19 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           </button>
         ))}
       </div>
+      {/* Hidden while quick buttons cover the full polling range (MAX_HORIZON=14).
+         Re-enable when MAX_HORIZON increases beyond the quick button count. */}
+      {false && <button
+        ref={moreButtonRef}
+        onClick={handleMoreClick}
+        className={`flex items-center rounded px-2.5 py-1.5 text-xs font-medium transition-colors lg:px-3 lg:py-2 lg:text-sm ${
+          inCalendarMode || calendarOpen
+            ? "bg-green-600 text-white"
+            : "bg-stone-100 text-gray-700 hover:bg-stone-200"
+        }`}
+      >
+        More Dates
+      </button>}
 
       {/* Reserve space so content below doesn't jump */}
       <div className="h-5 mt-1">
