@@ -89,7 +89,23 @@ This app is Central Time everywhere. Every date operation must be tested for tim
 - [ ] **Date parameter validation:** When an API accepts a date string parameter, test with: invalid format (`"not-a-date"`), past dates, dates far in the future, and empty string. The API should return 400 with a clear message — not a 500 from a downstream parse failure.
 - [ ] **Numeric ID validation:** When a route parameter is a numeric ID (`/courses/[id]`), test with: non-numeric strings, negative numbers, zero, and very large numbers. The route should return 404 or 400 — not a D1 error.
 
-## 11. Build & Deploy
+## 11. Test Performance
+
+- [ ] **Never use `shouldAdvanceTime` with fake timers:** `vi.useFakeTimers({ shouldAdvanceTime: true })` still advances time in near-real-time — each pending timer waits for a real event loop tick. With production code that calls `sleep(250)` between iterations, budget-exhaustion tests that create hundreds of polls wait through hundreds of real 250ms delays. Use plain `vi.useFakeTimers()` and flush timers programmatically. **🔥 Found in bug hunts:** `cron-handler.test.ts` took 156 seconds (98% of the entire suite) because `shouldAdvanceTime: true, advanceTimeDelta: 250` caused real-time waiting through ~170 sequential sleep calls per budget-exhaustion test.
+- [ ] **Flush fake timers concurrently with async code under test:** When production code awaits `sleep()` internally (not called from test code), tests can't call `vi.advanceTimersByTimeAsync()` after `await`ing the function — the `await` never resolves because the timer never fires. Run a timer-flushing loop concurrently with the promise:
+  ```typescript
+  async function withTimers<T>(fn: () => Promise<T>): Promise<T> {
+    let done = false;
+    const promise = fn().finally(() => { done = true; });
+    while (!done) {
+      await vi.advanceTimersByTimeAsync(250);
+    }
+    return promise;
+  }
+  ```
+  Then wrap calls: `await withTimers(() => runCronPoll(...))`. This resolves all pending timers instantly via microtasks instead of real-time delays.
+
+## 12. Build & Deploy
 
 - [ ] **Type-check coverage:** Run `npx tsc --noEmit` after every change. TypeScript errors that don't surface in `next dev` (which uses SWC and skips type-checking) can still break the CI build.
 - [ ] **OpenNext compatibility:** Test that the production build (`npx @opennextjs/cloudflare build`) succeeds after changes. Features that work in `next dev` may not work on Cloudflare Workers (e.g., `process.env`, Node.js APIs, dynamic imports).
