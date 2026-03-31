@@ -14,7 +14,7 @@ describe("About page", () => {
   it("includes the polling frequency table", () => {
     render(<AboutPage />);
     expect(screen.getByText("Today & tomorrow")).toBeDefined();
-    expect(screen.getByText("4–7 days out")).toBeDefined();
+    expect(screen.getByText("8–14 days out")).toBeDefined();
   });
 
   it("explains the stale indicator", () => {
