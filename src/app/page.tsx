@@ -11,6 +11,7 @@ import { ShareDialog } from "@/components/share-dialog";
 import { LocationFilter } from "@/components/location-filter";
 import { useLocation } from "@/hooks/use-location";
 import { haversineDistance } from "@/lib/distance";
+import { sortTeeTimes } from "@/lib/sort-tee-times";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useAuth } from "@/components/auth-provider";
 import { todayCT } from "@/lib/format";
@@ -27,7 +28,7 @@ export default function Home() {
   const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const { location, radiusMiles } = useLocation();
+  const { location, radiusMiles, sortOrder } = useLocation();
 
   // Auto-enable favorites filter once favorites load from localStorage (one-shot)
   const favoritesInitialized = useRef(false);
@@ -139,16 +140,8 @@ export default function Home() {
       }))
       .filter((tt) => tt.distance != null && (radiusMiles === 0 || tt.distance <= radiusMiles));
 
-    // Sort by distance (nearest course first), then by time within each course
-    filtered.sort((a, b) => {
-      const distDiff = (a.distance ?? 0) - (b.distance ?? 0);
-      if (Math.abs(distDiff) > 0.01) return distDiff;
-      return `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`);
-    });
-
-    return filtered;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- courseCatalog is a static JSON import
-  }, [teeTimes, location, radiusMiles]);
+    return sortTeeTimes(filtered, sortOrder);
+  }, [teeTimes, location, radiusMiles, sortOrder]);
 
   const hasFavorites = favorites.length > 0;
   const [showFavList, setShowFavList] = useState(false);
