@@ -443,6 +443,8 @@
     "address": "1850 70th St E, Inver Grove Heights, MN 55077",
     "latitude": 44.8477,
     "longitude": -93.069,
+    "disabled": 1,
+    "displayNotes": "Tee times for this course aren't available here. Select 'Book online' to view and book them directly.",
     "platform": "teewire",
     "platformConfig": {
       "tenant": "inverwood",
@@ -460,6 +462,8 @@
     "address": "1850 70th St E, Inver Grove Heights, MN 55077",
     "latitude": 44.8477,
     "longitude": -93.069,
+    "disabled": 1,
+    "displayNotes": "Tee times for this course aren't available here. Select 'Book online' to view and book them directly.",
     "platform": "teewire",
     "platformConfig": {
       "tenant": "inverwood",
@@ -478,7 +482,7 @@
     "latitude": 44.8889,
     "longitude": -93.1922,
     "disabled": 1,
-    "displayNotes": "Tee times for this course are available on GolfNow. Select 'Book online' to view and book.",
+    "displayNotes": "Tee times for this course aren't available here. Select 'Book online' to view and book them directly.",
     "platform": "golfnow",
     "platformConfig": {
       "facilityId": "18122"
