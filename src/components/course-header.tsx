@@ -13,6 +13,7 @@ interface CourseHeaderProps {
     city: string;
     booking_url: string;
     last_polled: string | null;
+    disabled?: number;
   };
   address?: string;
   mapsUrl?: string;
@@ -108,7 +109,7 @@ export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTim
             {address}
           </a>
         )}
-        <p className="mt-1 text-xs text-gray-400 lg:text-sm">
+        {course.disabled ? null : <p className="mt-1 text-xs text-gray-400 lg:text-sm">
           {displayTimestamp ? (
             <>
               Last updated {formatAge(displayTimestamp)}
@@ -135,7 +136,7 @@ export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTim
               Refresh now
             </button>
           )}
-        </p>
+        </p>}
       </div>
       <div className="flex shrink-0 gap-2">
         <button
