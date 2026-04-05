@@ -333,6 +333,7 @@ Use these proactively — don't wait to be asked.
 
 | Skill | When to use |
 |-------|-------------|
+| `check-logs` | Check production polling health, adapter errors, course failures |
 | `code-bug-hunter-multipass` | Systematic multi-pass bug analysis |
 | `code-bug-hunter-holistic` | Deep semantic analysis of focused codebase |
 | `code-bug-hunter-exploratory` | Depth-first exploration of high-risk code |
