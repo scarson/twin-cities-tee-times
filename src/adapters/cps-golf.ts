@@ -65,13 +65,15 @@ export class CpsGolfAdapter implements PlatformAdapter {
         throw new Error("Missing CPS_V4_API_KEY secret for v4 auth");
       }
       headers = this.buildV4Headers(config, apiKey, timezone);
-      const transactionId = await this.registerTransaction(
+      const transactionId = await this.tryRegisterTransaction(
         baseUrl,
         apiKey,
         headers,
         proxy
       );
-      params.set("transactionId", transactionId);
+      if (transactionId) {
+        params.set("transactionId", transactionId);
+      }
     } else {
       const token = await this.getToken(subdomain, proxy);
       headers = this.buildHeaders(config, token, timezone);
@@ -147,6 +149,40 @@ export class CpsGolfAdapter implements PlatformAdapter {
       },
       body: JSON.stringify({ transactionId }),
     }, proxy);
+
+    if (!response.ok) {
+      throw new Error("CPS Golf transaction registration failed");
+    }
+
+    const result: boolean = await response.json();
+    if (!result) {
+      throw new Error("CPS Golf transaction registration failed");
+    }
+
+    return transactionId;
+  }
+
+  private async tryRegisterTransaction(
+    baseUrl: string,
+    token: string,
+    headers: Record<string, string>,
+    proxy: ProxyConfig | null
+  ): Promise<string | null> {
+    const transactionId = crypto.randomUUID();
+
+    const response = await this.doFetch(`${baseUrl}/RegisterTransactionId`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+        "x-requestid": crypto.randomUUID(),
+      },
+      body: JSON.stringify({ transactionId }),
+    }, proxy);
+
+    if (response.status === 404) {
+      return null;
+    }
 
     if (!response.ok) {
       throw new Error("CPS Golf transaction registration failed");

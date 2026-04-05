@@ -366,6 +366,25 @@ describe("CpsGolfAdapter", () => {
       expect(results).toHaveLength(3);
     });
 
+    it("skips transactionId when RegisterTransactionId returns 404", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response("Not Found", { status: 404 })) // register → 404
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(fixture), { status: 200 })
+        );
+
+      const results = await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4Env);
+
+      // 2 fetch calls (register attempt + TeeTimes), no token
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+      // Call 2: TeeTimes WITHOUT transactionId in URL
+      const [ttUrl] = fetchSpy.mock.calls[1];
+      expect(ttUrl).toContain("/TeeTimes?");
+      expect(ttUrl).not.toContain("transactionId=");
+      expect(results).toHaveLength(3);
+    });
+
     it("routes v4 request through proxy when proxy config is set", async () => {
       const v4ProxyEnv = {
         ...v4Env,
@@ -401,6 +420,38 @@ describe("CpsGolfAdapter", () => {
       expect(ttCall.url).toContain("transactionId=");
       expect(ttCall.headers).toHaveProperty("x-apikey", "test-v4-api-key");
       expect(ttCall.headers).toHaveProperty("client-id", "js1");
+      expect(results).toHaveLength(3);
+    });
+
+    it("skips transactionId via proxy when RegisterTransactionId returns 404", async () => {
+      const v4ProxyEnv = {
+        ...v4Env,
+        FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+        AWS_ACCESS_KEY_ID: "AKID",
+        AWS_SECRET_ACCESS_KEY: "SECRET",
+      } satisfies CloudflareEnv;
+
+      vi.spyOn(globalThis, "fetch");
+      vi.mocked(proxyFetch)
+        .mockResolvedValueOnce({
+          status: 404,
+          headers: {},
+          body: "Not Found",
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify(fixture),
+        });
+
+      const results = await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4ProxyEnv);
+
+      expect(proxyFetch).toHaveBeenCalledTimes(2);
+      expect(fetch).not.toHaveBeenCalled();
+
+      const ttCall = vi.mocked(proxyFetch).mock.calls[1][0];
+      expect(ttCall.url).toContain("/TeeTimes?");
+      expect(ttCall.url).not.toContain("transactionId=");
       expect(results).toHaveLength(3);
     });
 
