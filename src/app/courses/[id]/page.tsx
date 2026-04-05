@@ -21,6 +21,7 @@ export default function CoursePage() {
     booking_url: string;
     last_polled: string | null;
     display_notes: string | null;
+    disabled: number;
   } | null>(null);
   const [teeTimes, setTeeTimes] = useState<
     { course_id: string; date: string; time: string; price: number | null; holes: number; open_slots: number; course_name: string; course_city: string; booking_url: string; fetched_at: string }[]
