@@ -1,6 +1,12 @@
 // ABOUTME: Tests for the TeeWire adapter.
 // ABOUTME: Covers API URL construction, response parsing, walking rate selection, and errors.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { proxyFetch } from "@/lib/proxy-fetch";
+
+vi.mock("@/lib/proxy-fetch", () => ({
+  proxyFetch: vi.fn(),
+}));
+
 import { TeeWireAdapter } from "./teewire";
 import type { CourseConfig } from "@/types";
 import fixture from "@/test/fixtures/teewire-tee-times.json";
@@ -21,6 +27,7 @@ describe("TeeWireAdapter", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(proxyFetch).mockReset();
   });
 
   it("has the correct platformId", () => {
@@ -243,5 +250,49 @@ describe("TeeWireAdapter", () => {
 
     const fetchOptions = fetchSpy.mock.calls[0][1] as RequestInit;
     expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  describe("proxy mode", () => {
+    const proxyEnv = {
+      DB: {} as any,
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      JWT_SECRET: "",
+      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      AWS_ACCESS_KEY_ID: "AKID",
+      AWS_SECRET_ACCESS_KEY: "SECRET",
+    } satisfies CloudflareEnv;
+
+    it("routes requests through proxyFetch when proxy env is set", async () => {
+      vi.spyOn(globalThis, "fetch");
+      vi.mocked(proxyFetch).mockResolvedValueOnce({
+        status: 200,
+        headers: {},
+        body: JSON.stringify(fixture),
+      });
+
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15", proxyEnv);
+
+      expect(proxyFetch).toHaveBeenCalledTimes(1);
+      expect(fetch).not.toHaveBeenCalled();
+
+      const call = vi.mocked(proxyFetch).mock.calls[0][0];
+      expect(call.url).toContain("teewire.app/inverwood");
+      expect(call.url).toContain("calendar_id=3");
+      expect(call.headers).toHaveProperty("User-Agent", "TwinCitiesTeeTimes/1.0");
+      expect(results).toHaveLength(3);
+    });
+
+    it("falls back to direct fetch without proxy env", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(JSON.stringify(fixture), { status: 200 })
+      );
+
+      const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+      expect(proxyFetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(results).toHaveLength(3);
+    });
   });
 });

@@ -1,6 +1,7 @@
 // ABOUTME: TeeWire platform adapter for fetching tee times.
 // ABOUTME: Handles API requests, walking rate selection, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 
 interface TeeWireRate {
   rate_id: number;
@@ -35,7 +36,7 @@ export class TeeWireAdapter implements PlatformAdapter {
   async fetchTeeTimes(
     config: CourseConfig,
     date: string,
-    _env?: CloudflareEnv
+    env?: CloudflareEnv
   ): Promise<TeeTime[]> {
     const { tenant, calendarId } = config.platformConfig;
 
@@ -54,16 +55,17 @@ export class TeeWireAdapter implements PlatformAdapter {
 
     const url = `https://teewire.app/${tenant}/online/application/web/api/golf-api.php?${params}`;
 
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
+    const proxy = this.getProxyConfig(env);
+    const response = await this.doFetch(url, {
+      method: "GET",
       headers: { "User-Agent": "TwinCitiesTeeTimes/1.0" },
-    });
+    }, proxy);
 
     if (!response.ok) {
       throw new Error(`TeeWire API returned HTTP ${response.status}`);
     }
 
-    const body: TeeWireResponse = await response.json();
+    const body = (await response.json()) as TeeWireResponse;
 
     if (!body.success) {
       throw new Error("TeeWire API returned success: false");
@@ -93,5 +95,40 @@ export class TeeWireAdapter implements PlatformAdapter {
           bookingUrl: config.bookingUrl,
         } satisfies TeeTime;
       });
+  }
+
+  private getProxyConfig(env?: CloudflareEnv): ProxyConfig | null {
+    if (env?.FETCH_PROXY_URL && env?.AWS_ACCESS_KEY_ID && env?.AWS_SECRET_ACCESS_KEY) {
+      return {
+        proxyUrl: env.FETCH_PROXY_URL,
+        accessKeyId: env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+    return null;
+  }
+
+  private async doFetch(
+    url: string,
+    init: { method: string; headers: Record<string, string> },
+    proxy: ProxyConfig | null
+  ): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
+    if (proxy) {
+      const result = await proxyFetch(
+        { url, method: init.method, headers: init.headers },
+        proxy
+      );
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        json: () => Promise.resolve(JSON.parse(result.body)),
+      };
+    }
+    const response = await fetch(url, {
+      method: init.method,
+      headers: init.headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    return { ok: response.ok, status: response.status, json: () => response.json() };
   }
 }

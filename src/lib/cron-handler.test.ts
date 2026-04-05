@@ -1,7 +1,7 @@
 // ABOUTME: Tests for the cron handler's batched polling, budget tracking, and cleanup.
 // ABOUTME: Covers batch filtering, date-outer loop, budget exhaustion, and housekeeping gating.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { shouldRunThisCycle, runCronPoll, SUBREQUEST_BUDGET, runHorizonProbe } from "./cron-handler";
+import { shouldRunThisCycle, runCronPoll, SUBREQUEST_BUDGET, runHorizonProbe, checkV4Upgrades } from "./cron-handler";
 import { pollCourse, shouldPollDate, getPollingDates } from "@/lib/poller";
 import * as dbModule from "@/lib/db";
 import { assignBatches, BATCH_COUNT } from "@/lib/batch";
@@ -29,6 +29,7 @@ function makeCourseRow(
     last_horizon_probe: string | null;
     name: string;
     city: string;
+    platform_config: string;
   }> = {}
 ) {
   return {
@@ -37,7 +38,7 @@ function makeCourseRow(
     city: overrides.city ?? "Test",
     state: "MN",
     platform,
-    platform_config: "{}",
+    platform_config: overrides.platform_config ?? "{}",
     booking_url: "https://example.com",
     is_active: overrides.is_active ?? 1,
     disabled: 0,
@@ -1044,5 +1045,139 @@ describe("runHorizonProbe", () => {
 
     // No dates to check: horizon (14) >= MAX_HORIZON (14), loop body never executes
     expect(mockedPollCourse).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkV4Upgrades", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("attempts v5 token endpoint for v4 courses", async () => {
+    const course = makeCourseRow("v4-course", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "test", authType: "v4", websiteId: "abc", courseIds: "1" }),
+    });
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Not Found", { status: 404 })
+    );
+
+    const db = { prepare: vi.fn().mockReturnValue({ bind: vi.fn().mockReturnValue({ run: vi.fn() }) }) };
+    await checkV4Upgrades(db as any, [course]);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://test.cps.golf/identityapi/myconnect/token/short");
+    expect((init as RequestInit).method).toBe("POST");
+  });
+
+  it("updates platform_config when v5 token endpoint returns 200", async () => {
+    const platformConfig = { subdomain: "test", authType: "v4", websiteId: "abc", courseIds: "1" };
+    const course = makeCourseRow("v4-course", "cps_golf", {
+      platform_config: JSON.stringify(platformConfig),
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: "tok", expires_in: 600 }), { status: 200 })
+    );
+
+    const runMock = vi.fn().mockResolvedValue({ success: true });
+    const bindMock = vi.fn().mockReturnValue({ run: runMock });
+    const db = { prepare: vi.fn().mockReturnValue({ bind: bindMock }) };
+
+    const result = await checkV4Upgrades(db as any, [course]);
+
+    expect(result).toContain("v4-course");
+    expect(db.prepare).toHaveBeenCalledWith("UPDATE courses SET platform_config = ? WHERE id = ?");
+    const newConfig = JSON.parse(bindMock.mock.calls[0][0]);
+    expect(newConfig.authType).toBeUndefined();
+    expect(newConfig.subdomain).toBe("test");
+    expect(newConfig.websiteId).toBe("abc");
+    expect(newConfig.courseIds).toBe("1");
+  });
+
+  it("does not update when v5 token endpoint returns 404", async () => {
+    const course = makeCourseRow("still-v4", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "test", authType: "v4", websiteId: "abc", courseIds: "1" }),
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Not Found", { status: 404 })
+    );
+
+    const db = { prepare: vi.fn().mockReturnValue({ bind: vi.fn().mockReturnValue({ run: vi.fn() }) }) };
+    const result = await checkV4Upgrades(db as any, [course]);
+
+    expect(result).toHaveLength(0);
+    const updateCalls = (db.prepare.mock.calls as string[][]).filter(
+      (args) => args[0].includes("UPDATE")
+    );
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  it("skips non-CPS and non-v4 courses", async () => {
+    const foreupCourse = makeCourseRow("foreup-course", "foreup", {
+      platform_config: JSON.stringify({ scheduleId: "123" }),
+    });
+    const v5Course = makeCourseRow("v5-course", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "test", websiteId: "abc" }),
+    });
+
+    vi.spyOn(globalThis, "fetch");
+
+    const db = { prepare: vi.fn().mockReturnValue({ bind: vi.fn().mockReturnValue({ run: vi.fn() }) }) };
+    const result = await checkV4Upgrades(db as any, [foreupCourse, v5Course]);
+
+    expect(result).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("checks each subdomain only once and updates all courses on it", async () => {
+    const course1 = makeCourseRow("oak-glen-championship", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "oakglen", authType: "v4", websiteId: "a", courseIds: "6" }),
+    });
+    const course2 = makeCourseRow("oak-glen-executive", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "oakglen", authType: "v4", websiteId: "a", courseIds: "7" }),
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ access_token: "tok", expires_in: 600 }), { status: 200 })
+    );
+
+    const runMock = vi.fn().mockResolvedValue({ success: true });
+    const db = { prepare: vi.fn().mockReturnValue({ bind: vi.fn().mockReturnValue({ run: runMock }) }) };
+    const result = await checkV4Upgrades(db as any, [course1, course2]);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result).toContain("oak-glen-championship");
+    expect(result).toContain("oak-glen-executive");
+  });
+
+  it("continues checking other subdomains after one errors", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const course1 = makeCourseRow("fail-check", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "fail", authType: "v4", websiteId: "a", courseIds: "1" }),
+    });
+    const course2 = makeCourseRow("ok-check", "cps_golf", {
+      platform_config: JSON.stringify({ subdomain: "ok", authType: "v4", websiteId: "b", courseIds: "2" }),
+    });
+
+    vi.spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("network fail"))
+      .mockResolvedValueOnce(new Response("Not Found", { status: 404 }));
+
+    const db = { prepare: vi.fn().mockReturnValue({ bind: vi.fn().mockReturnValue({ run: vi.fn() }) }) };
+    await checkV4Upgrades(db as any, [course1, course2]);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    consoleSpy.mockRestore();
+  });
+
+  it("returns empty array when no v4 courses exist", async () => {
+    vi.spyOn(globalThis, "fetch");
+    const db = { prepare: vi.fn() };
+    const result = await checkV4Upgrades(db as any, []);
+    expect(result).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
