@@ -83,18 +83,24 @@ export default function CoursePage() {
         />
       )}
 
-      {course?.display_notes && (
+      {(course?.disabled || course?.display_notes) && (
         <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-          {course.display_notes}
+          {course.display_notes ?? "Tee times for this course aren\u2019t available here. Select \u2018Book online\u2019 to view and book them directly."}
         </div>
       )}
 
       <div className="mt-4">
-        <DatePicker selected={dates} onChange={setDates} />
+        <DatePicker selected={dates} onChange={setDates} disabled={!!course?.disabled} />
       </div>
 
       <div className="mt-6">
-        <TeeTimeList teeTimes={teeTimes} loading={loading} selectedDateCount={dates.length} />
+        {course?.disabled ? (
+          <div className="py-8 text-center text-gray-400">
+            <p className="text-lg font-medium lg:text-xl">Tee times cannot be retrieved for this course.</p>
+          </div>
+        ) : (
+          <TeeTimeList teeTimes={teeTimes} loading={loading} selectedDateCount={dates.length} />
+        )}
       </div>
     </main>
   );

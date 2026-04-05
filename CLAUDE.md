@@ -231,7 +231,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 ## Architecture (Key Points)
 
 **Data model** — 6 tables in D1 (see `migrations/0001_initial_schema.sql`, `migrations/0002_auth_schema.sql`):
-- `courses` — static catalog with `platform_config` JSON and `is_active` flag
+- `courses` — static catalog with `platform_config` JSON, `disabled` flag (manual), and `is_active` flag (auto-managed by cron)
 - `tee_times` — cached availability, delete+insert per course+date
 - `poll_log` — per-course-per-date polling history (freshness + debugging)
 - `users` — Google OAuth accounts
@@ -256,8 +256,11 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 
 - **Central Time everywhere**: All date logic uses `America/Chicago` timezone. Use `todayCT()` from `src/lib/format.ts` instead of `new Date()` for date strings.
 - **No `process.env`**: Cloudflare Workers don't support `process.env`. Use `const { env } = await getCloudflareContext()` from `@opennextjs/cloudflare` for all bindings (D1, secrets, etc.). The cron handler receives `env` directly from Worker `scheduled()`.
-- **Course `is_active`**: In `courses.json`, `"is_active": 0` skips polling. Omitting the field defaults to active (`seed.ts`: `is_active ?? 1`).
-- **Never hard-delete courses**: CASCADE on `user_favorites` and `booking_clicks` would destroy user data. Use `is_active = 0` instead.
+- **Course lifecycle — `disabled` vs `is_active`**: Two independent flags control course polling:
+  - `disabled` (manual, permanent): Set in `courses.json`. Means "adapter can't work for this course" (e.g., bot protection, no API). Cron skips disabled courses entirely (`WHERE disabled = 0`). The UI shows a default amber message, greyed-out date buttons, and no tee time list. A custom `display_notes` overrides the default message.
+  - `is_active` (automatic, seasonal): Managed entirely by cron, never by humans. Auto-deactivates after 30 days with no tee times (winter). Auto-reactivates when hourly probe of today+tomorrow finds tee times (spring). Seed script does NOT touch `is_active` for existing courses.
+- **Never hard-delete courses**: CASCADE on `user_favorites` and `booking_clicks` would destroy user data. Use `disabled = 1` or let `is_active` handle it automatically.
+- **Seed script overwrites D1 on every deploy**: `scripts/seed.ts` runs `INSERT ... ON CONFLICT DO UPDATE` for every course in `courses.json`. Any column in the UPDATE SET clause gets reset to the `courses.json` value. Manual D1 changes to seeded columns (like `disabled`, `display_notes`, `platform_config`) will be overwritten on the next deploy. Always make these changes in `courses.json`, not just D1.
 - **Auth uses `authenticateRequest()` utility, not Next.js middleware**: Middleware can't reliably access D1 on OpenNext/CF Workers.
 - **`.dev.vars` for local secrets**: Store `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` here for local dev. Already gitignored.
 - **Cookie prefix `tct-`**: All app cookies use this prefix (`tct-session`, `tct-refresh`, `tct-oauth-state`, `tct-oauth-verifier`).
