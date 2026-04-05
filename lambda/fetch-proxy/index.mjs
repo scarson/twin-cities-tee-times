@@ -1,6 +1,6 @@
 // ABOUTME: Generic HTTPS forward proxy for AWS Lambda.
 // ABOUTME: Validates domain allowlist, forwards requests, returns structured responses.
-const ALLOWED_HOSTS = [".cps.golf", ".teesnap.net"];
+const ALLOWED_HOSTS = [".cps.golf", ".teesnap.net", "teewire.app"];
 
 export const handler = async (event) => {
   try {
