@@ -54,9 +54,10 @@ export function formatShortDate(dateStr: string): string {
 interface DatePickerProps {
   selected: string[];
   onChange: (dates: string[]) => void;
+  disabled?: boolean;
 }
 
-export function DatePicker({ selected, onChange }: DatePickerProps) {
+export function DatePicker({ selected, onChange, disabled }: DatePickerProps) {
   const quickDays = buildQuickDays();
   const quickDateSet = new Set(quickDays.map((d) => d.value));
   const today = new Date();
@@ -146,10 +147,13 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
+            disabled={disabled}
             className={`flex flex-col items-center rounded py-1.5 text-xs transition-colors lg:py-2 lg:text-sm ${
-              !inCalendarMode && selected.includes(day.value)
-                ? "bg-green-600 text-white"
-                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
+              disabled
+                ? "bg-stone-100 text-gray-300 cursor-not-allowed"
+                : !inCalendarMode && selected.includes(day.value)
+                  ? "bg-green-600 text-white"
+                  : "bg-stone-100 text-gray-700 hover:bg-stone-200"
             }`}
           >
             <span className="font-medium">{day.dayName}</span>
@@ -160,10 +164,13 @@ export function DatePicker({ selected, onChange }: DatePickerProps) {
           <button
             key={day.value}
             onClick={() => handleQuickToggle(day.value)}
+            disabled={disabled}
             className={`flex flex-col items-center rounded py-1.5 text-xs transition-colors lg:py-2 lg:text-sm ${
-              !inCalendarMode && selected.includes(day.value)
-                ? "bg-green-600 text-white"
-                : "bg-stone-100 text-gray-700 hover:bg-stone-200"
+              disabled
+                ? "bg-stone-100 text-gray-300 cursor-not-allowed"
+                : !inCalendarMode && selected.includes(day.value)
+                  ? "bg-green-600 text-white"
+                  : "bg-stone-100 text-gray-700 hover:bg-stone-200"
             }`}
           >
             <span className="font-medium">{day.dayName}</span>
