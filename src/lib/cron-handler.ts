@@ -105,6 +105,64 @@ export async function runHorizonProbe(
 }
 
 /**
+ * Check whether v4 CPS Golf courses have upgraded to v5.
+ * Tries the v5 token endpoint for each unique subdomain.
+ * If it returns 200, removes authType from platform_config.
+ */
+export async function checkV4Upgrades(
+  db: D1Database,
+  courses: CourseRow[]
+): Promise<string[]> {
+  const v4Courses = courses.filter((c) => {
+    if (c.platform !== "cps_golf") return false;
+    const config = JSON.parse(c.platform_config);
+    return config.authType === "v4";
+  });
+
+  if (v4Courses.length === 0) return [];
+
+  const bySubdomain = new Map<string, CourseRow[]>();
+  for (const course of v4Courses) {
+    const config = JSON.parse(course.platform_config);
+    const existing = bySubdomain.get(config.subdomain) ?? [];
+    existing.push(course);
+    bySubdomain.set(config.subdomain, existing);
+  }
+
+  const upgraded: string[] = [];
+
+  for (const [subdomain, subdomainCourses] of bySubdomain) {
+    try {
+      const url = `https://${subdomain}.cps.golf/identityapi/myconnect/token/short`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "client_id=onlinereswebshortlived",
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) continue;
+
+      for (const course of subdomainCourses) {
+        const config = JSON.parse(course.platform_config);
+        delete config.authType;
+        await db
+          .prepare("UPDATE courses SET platform_config = ? WHERE id = ?")
+          .bind(JSON.stringify(config), course.id)
+          .run();
+        upgraded.push(course.id);
+      }
+
+      console.log(`CPS v4→v5 upgrade detected: ${subdomain} (${subdomainCourses.map((c) => c.id).join(", ")})`);
+    } catch (err) {
+      console.error(`v4→v5 check failed for ${subdomain}:`, err);
+    }
+  }
+
+  return upgraded;
+}
+
+/**
  * Main cron polling logic. Called by the Worker's scheduled() handler.
  *
  * Each invocation processes one batch of courses (determined by cronExpression).
@@ -327,6 +385,16 @@ export async function runCronPoll(
         }
       } catch (err) {
         console.error("Horizon probe error:", err);
+      }
+
+      // --- v4→v5 auto-detection: check if v4 CPS courses have upgraded ---
+      try {
+        const upgradedCourses = await checkV4Upgrades(db, allCourses);
+        if (upgradedCourses.length > 0) {
+          console.log(`Auto-upgraded ${upgradedCourses.length} course(s) from CPS v4 to v5`);
+        }
+      } catch (err) {
+        console.error("v4→v5 upgrade check error:", err);
       }
     }
 
