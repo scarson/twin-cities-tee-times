@@ -4,6 +4,7 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import { axe } from "vitest-axe";
 import { ShareDialog } from "./share-dialog";
 
 describe("ShareDialog", () => {
@@ -46,5 +47,15 @@ describe("ShareDialog", () => {
       />
     );
     expect(screen.getByText(/Add 1 course/)).toBeDefined();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(
+      <ShareDialog courses={courses} onAccept={() => {}} onCancel={() => {}} />
+    );
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

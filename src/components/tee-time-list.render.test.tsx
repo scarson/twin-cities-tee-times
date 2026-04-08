@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import React from "react";
 
 vi.mock("@/components/auth-provider", () => ({
@@ -199,5 +200,17 @@ describe("TeeTimeList rendering", () => {
     ];
     render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
     expect(screen.queryByText("Monday, April 6")).toBeNull();
+  });
+
+  it("has no accessibility violations", async () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "course-a", time: "08:00" }),
+      makeTeeTimeItem({ course_id: "course-b", time: "09:00" }),
+    ];
+    const { container } = render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

@@ -3,6 +3,7 @@
 // ABOUTME: Verifies rendering, auto-dismiss timing, and hidden state.
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { axe } from "vitest-axe";
 import { act } from "react";
 import { Toast } from "./toast";
 
@@ -35,5 +36,13 @@ describe("Toast", () => {
       <Toast message={null} onDismiss={() => {}} />
     );
     expect(container.innerHTML).toBe("");
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(<Toast message="Test notification" onDismiss={() => {}} />);
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

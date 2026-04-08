@@ -3,6 +3,7 @@
 // ABOUTME: Verifies key FAQ content sections are rendered.
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import AboutPage from "./page";
 
 describe("About page", () => {
@@ -95,5 +96,13 @@ describe("About page", () => {
     delete process.env.NEXT_PUBLIC_BUILD_TIME;
     render(<AboutPage />);
     expect(screen.queryByText(/Build:/)).toBeNull();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(<AboutPage />);
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });
