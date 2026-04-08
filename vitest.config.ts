@@ -8,6 +8,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     exclude: ["src/**/*.smoke.test.{ts,tsx}"],
     pool: "forks",
+    setupFiles: ["./vitest-setup.ts"],
   },
   resolve: {
     alias: {
