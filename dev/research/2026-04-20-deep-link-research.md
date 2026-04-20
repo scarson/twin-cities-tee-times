@@ -47,9 +47,21 @@ Three consecutive platform verifications (ForeUp, CPS Golf, Chronogolf) all conf
 
 **Why this is fundamental, not a quirk:** SPA booking widgets need live data keyed by date, which requires an authenticated API call. The URL as a state source would bypass authentication/validation. Even platforms that serialize date to URL for sharing typically also run a full auth+data-fetch cycle on load that overwrites any URL-provided state.
 
+## Alternative implementations tested
+
+### POST form submission (tested 2026-04-20, does NOT work for ForeUp)
+
+Sam's idea: instead of a GET link, use an HTML `<form method="POST" target="_self">` with hidden inputs for date/time/holes. Browser form submissions are treated as top-level navigations (no CORS gating) and a PHP backend COULD theoretically read `$_POST['date']` and bake it into the inline `DEFAULT_FILTER` JS object.
+
+**Test via Playwright:** Created a form with action=`https://foreupsoftware.com/index.php/booking/19348/1470`, submitted with `date: "04-25-2026"` + `holes: "18"` + `time: "all"` + `schedule_id` + `course_id`. Server returned a normal-looking booking page, but `DEFAULT_FILTER` still echoed `date: "04-20-2026"` (today). **ForeUp's server-side code ignores POST body for date seeding.**
+
+**Also tested:** `https://foreupsoftware.com/index.php/booking/19348/1470/04-25-2026` path-segment variant → 404. ForeUp's URL structure is strict `/booking/{club}/{schedule}`, no date segment accepted.
+
+**Verdict on POST approach:** Doesn't help unless a specific platform demonstrates POST-based prefill. None tested so far. The only remaining POST-based hope would be an officially-documented booking partner API endpoint — which none of these platforms expose publicly.
+
 ## Alternative implementations that WOULD work (for future exploration)
 
-- **Pre-filled session handoff via POST:** Some platforms accept a `session_handoff` or cookie-based prefill if we POST to a known endpoint. Requires per-platform reverse engineering and likely triggers bot detection.
+- **Platform-partner API (hypothetical):** requires a business relationship with each booking platform.
 - **Chrome extension / browser helper:** Out of scope.
 - **In-app booking flow:** We'd need contract agreements with each platform. Massively out of scope.
 - **Add informational note on our app:** "Click Book → on the booking site, manually select `Apr 25, 8:00 AM, 18 holes`." Helps the user not forget what they clicked, but doesn't actually deep-link. LOW-EFFORT IMPROVEMENT; consider for a future PR.
