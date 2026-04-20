@@ -1,15 +1,22 @@
 # Overnight session handoff
 
-**Session window:** 2026-04-19 ~22:00 CT → 2026-04-20 ~00:30 CT.
-**Written at handoff time:** 2026-04-20 ~00:30 CT (context approaching compaction).
+**Session window:** 2026-04-19 ~22:00 CT → 2026-04-20 ~01:35 CT (extended after /compact — Sam asked for resumed autonomous work).
+**Last updated:** 2026-04-20 ~01:35 CT.
 **Author:** Claude Opus 4.7 (1M) in autonomous mode with Sam's pre-authorization.
 
-## Headline state
+## Headline state (post-compaction continuation)
 
-- **Branch:** `dev` ≡ `origin/main` ≡ commit `33fca23` (post PR #98 merge).
-- **Clean working tree** — no uncommitted changes.
-- **PR #98 (MERGED)** — bundled multi-hole tee time display + 9/18 hole filter (2 test-user feedback items).
-- **Test count:** 628 → 669 (+41 across 9 suites). All CI jobs green on the last push.
+- **Branch:** `dev` at commit `79c3a12` (catalog expansion commit).
+- **PR #98 (MERGED earlier in session):** multi-hole tee time display + 9/18 hole filter.
+- **PR #99 (OPEN):** catalog expansion 49 → 92 courses + deep-link research findings. CI status at handoff time: pending.
+- **Test count:** 669 passing (no regressions).
+
+## Post-compaction session — what happened
+
+- Live-tested deep-link Book buttons via Playwright MCP on ForeUp, CPS Golf, Chronogolf. All three ignore URL date params. D-10 removed deep-link from scope. Research persisted for future revisit.
+- Tested POST form navigation workaround (Sam's idea) — ForeUp's PHP backend also ignores POST body. Documented.
+- Sam un-deferred catalog expansion mid-session ("shouldn't wait on me"). Delivered 43 new courses after empirical API verification per course. Details in D-11.
+- Cross-checked original research doc against Chronogolf's listing pages (Minneapolis/St. Paul/Bloomington) + a Google Places 8-center sweep across the metro — surfaced Hidden Haven (CPS) as a gap, added it.
 
 ## What shipped this session
 
