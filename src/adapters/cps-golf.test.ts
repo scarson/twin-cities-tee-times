@@ -96,14 +96,50 @@ describe("CpsGolfAdapter", () => {
     expect(results[2].openSlots).toBe(4); // maxPlayer: 4
   });
 
-  it("maps 9-hole tee times correctly", async () => {
+  it("maps holes from shItemCode (GreenFee9 → holes=9)", async () => {
     mockCpsFlow({
       ...fixture,
-      content: [{ ...fixture.content[0], holes: 9 }],
+      content: [
+        {
+          ...fixture.content[0],
+          shItemPrices: [
+            { shItemCode: "GreenFee9", price: 30.0, itemDesc: "9 Hole Greens Fee" },
+          ],
+        },
+      ],
     });
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+    expect(results).toHaveLength(1);
     expect(results[0].holes).toBe(9);
+    expect(results[0].price).toBe(30);
+  });
+
+  it("expands multi-hole slot with both GreenFee9 and GreenFee18 into two records", async () => {
+    // Matches Francis A. Gross real-world shape: one record with both hole prices.
+    mockCpsFlow({
+      ...fixture,
+      content: [
+        {
+          ...fixture.content[0],
+          holes: 9, // CPS sets record-level holes to the minimum bookable for multi-hole
+          shItemPrices: [
+            { shItemCode: "GreenFee18", price: 43.71, itemDesc: "18 Hole Greens Fee" },
+            { shItemCode: "GreenFee9", price: 25.0, itemDesc: "9 Hole Greens Fee" },
+          ],
+        },
+      ],
+    });
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    const v9 = results.find((r) => r.holes === 9)!;
+    const v18 = results.find((r) => r.holes === 18)!;
+    expect(v9.price).toBe(25);
+    expect(v18.price).toBe(43.71);
+    expect(v9.time).toBe(v18.time);
+    expect(v9.openSlots).toBe(v18.openSlots);
   });
 
   it("gets bearer token then registers transaction before querying", async () => {
@@ -204,7 +240,10 @@ describe("CpsGolfAdapter", () => {
     expect(results).toHaveLength(1);
   });
 
-  it("returns null price when shItemPrices has no green fee", async () => {
+  it("skips records with no GreenFee SKU (cart-only prices)", async () => {
+    // Per D-3: records without GreenFee9 or GreenFee18 are skipped — we can't
+    // assign a meaningful hole count to price=null data, so the slot doesn't
+    // surface. Current behavior (pre-fix) emitted a record with price=null.
     const noGreenFee = {
       ...fixture,
       content: [
@@ -219,10 +258,10 @@ describe("CpsGolfAdapter", () => {
     mockCpsFlow(noGreenFee);
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
-    expect(results[0].price).toBeNull();
+    expect(results).toHaveLength(0);
   });
 
-  it("returns null price when shItemPrices is absent", async () => {
+  it("skips records with absent shItemPrices (per D-3)", async () => {
     const missingPrices = {
       ...fixture,
       content: [{ ...fixture.content[0], shItemPrices: undefined }],
@@ -230,10 +269,10 @@ describe("CpsGolfAdapter", () => {
     mockCpsFlow(missingPrices);
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
-    expect(results[0].price).toBeNull();
+    expect(results).toHaveLength(0);
   });
 
-  it("returns null price when shItemPrices is empty", async () => {
+  it("skips records with empty shItemPrices (per D-3)", async () => {
     const emptyPrices = {
       ...fixture,
       content: [{ ...fixture.content[0], shItemPrices: [] }],
@@ -241,7 +280,7 @@ describe("CpsGolfAdapter", () => {
     mockCpsFlow(emptyPrices);
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
-    expect(results[0].price).toBeNull();
+    expect(results).toHaveLength(0);
   });
 
   it("throws on token fetch failure", async () => {
