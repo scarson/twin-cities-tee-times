@@ -1316,10 +1316,21 @@ Before opening PR, run 5 rounds of adversarial review on the complete diff using
 
 ---
 
-## Task 6 findings
+## Execution status (recorded 2026-04-20)
 
-_(To be filled in during Task 6 live investigation.)_
+**All tasks complete. PR #98 merged.** Full findings + decisions recorded in [`2026-04-20-overnight-decisions.md`](./2026-04-20-overnight-decisions.md) as entries D-1 through D-8.
 
-## Task 7 findings
+Per-task summary:
+- Task 2 (ForeUp): shipped, compound-string expansion.
+- Task 3 (Chronogolf): shipped, course.bookable_holes array signal + Option A partial-price.
+- Task 4 (Teesnap): shipped, prices-per-roundType iteration. D-1 for empty-prices behavior.
+- Task 5 (Teewire): shipped, rates grouped by holes with Walking preference per group.
+- Task 6 (TeeItUp): shipped, rates grouped by holes with non-trade preference. Defensive per D-2 (no live multi-hole evidence in fixture; pattern was identical to Teewire).
+- Task 7 (CPS Golf): shipped, shItemPrices GreenFee{N} SKU inspection per D-3. Live-verified against Francis A Gross (53 multi-hole slots, $26.04 / $43.71).
+- End-of-adapter review gate: 3 rounds, one Round-1 finding about MemberSports withdrawn after deeper analysis (see D-4).
+- Task 8 (merge helper): shipped, 13 unit tests.
+- Task 9 (UI integration): shipped, 4 render tests including Chronogolf partial-price case.
+- End-of-feature review gate: 5 rounds, one Round-4 finding addressed (D-5: large-batch regression test).
+- Task 10 (push + PR): PR #98 opened, CI green, merged.
 
-_(To be filled in during Task 7 live investigation.)_
+**Test count:** 628 → 669 (+41 tests). All CI jobs green.

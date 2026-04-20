@@ -158,3 +158,39 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 3. **Could mobile UI break with 8 buttons?** `flex-wrap` on the parent div handles overflow. Tested during nav responsive work — mobile layouts accommodate 2-3 rows fine.
 
 **Alternatives considered:** (a) dropdown select for holes — rejected, button group matches the time filter's visual pattern; (b) keep "Any" as implicit default with only "9" / "18" buttons — rejected, explicit "Any" button improves discoverability.
+
+---
+
+### D-7 — Catalog expansion (#4) deferred for morning review
+
+**Decision:** Skip the "add rest of TC courses (~50 more)" feedback item overnight. Move it to Sam's morning queue.
+
+**Rationale:** Adding ~50 courses to `src/config/courses.json` requires per-course:
+- Platform-specific config (subdomain/courseId/scheduleId/tenant/etc.)
+- Address + latitude/longitude (geocoding via Google Maps API)
+- Google Place ID (via `scripts/lookup-place-ids.ts`)
+- Booking URL verification
+
+Each of these is a research step that requires visiting the course's actual booking page. Automating overnight would either (a) require the Google Maps API key that's in `.dev.vars` (not tested autonomously), or (b) risk introducing wrong IDs that silently break polling on the affected course. Silent-fail bugs from bad IDs are hard to detect until real users notice missing tee times.
+
+**3x adversarial review:**
+1. **Could I add a small, high-confidence subset autonomously?** Possibly 2-3 courses where the config follows a known pattern (e.g., Chronogolf courses sharing a club UUID). But even that requires visiting the marketplace to confirm UUIDs. Net: low speed, high review-dependency.
+2. **Could I generate the list but NOT commit it?** Yes — could produce a `dev/research/catalog-expansion-candidates.md` document for morning review. Deferring to that as a possible follow-up if I run out of other work overnight.
+3. **Does deferring this block anything?** No. The existing 49 courses serve users today. Catalog expansion is additive.
+
+**Action:** Skip for now. Priority for morning: Sam decides whether to tackle this personally (highest data quality) or delegate with specific constraints.
+
+---
+
+### D-8 — 9/18 filter commit rides along in PR #98
+
+**Decision:** Pushed the 9/18 filter commit (245a584) to the `dev` branch, which is the source branch for PR #98 (multi-hole). PR #98 now includes both features.
+
+**Rationale:** PR #97 set a precedent of bundling multiple feedback items per PR. Splitting into a separate PR would require branch management that risks leaving work unpushed and unverified by CI. The two features are thematically related ("multi-hole display improvements") and share UI surface (the search page filter bar).
+
+**3x adversarial review:**
+1. **Does bundling obscure review?** Diff is larger but each commit is scoped. Sam can review commit-by-commit.
+2. **CI still validates each push?** Yes — every push to dev triggers the CI jobs.
+3. **Are the two features genuinely independent in risk?** Yes — the 9/18 filter doesn't touch adapters, and multi-hole doesn't touch filter state. They can be reverted independently if needed.
+
+**Action:** Update PR #98 body at end of overnight session to reflect the expanded scope.
