@@ -3,7 +3,7 @@
 // ABOUTME: Verifies loading/empty states, price/slot formatting, links, and booking buttons.
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import React from "react";
 
@@ -200,6 +200,37 @@ describe("TeeTimeList rendering", () => {
     ];
     render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
     expect(screen.queryByText("Monday, April 6")).toBeNull();
+  });
+
+  it("re-shows tee times when user collapses then deselects down to a single date", () => {
+    const twoDates = [
+      makeTeeTimeItem({ date: "2026-04-06", time: "08:00", course_id: "a" }),
+      makeTeeTimeItem({ date: "2026-04-07", time: "09:00", course_id: "b" }),
+    ];
+    const { rerender } = render(
+      <TeeTimeList teeTimes={twoDates} loading={false} selectedDateCount={2} />
+    );
+
+    // Both date headers visible, both times visible
+    expect(screen.getByText("Monday, April 6")).toBeDefined();
+    expect(screen.getByText("Tuesday, April 7")).toBeDefined();
+    expect(screen.getByText("08:00")).toBeDefined();
+    expect(screen.getByText("09:00")).toBeDefined();
+
+    // User collapses both dates
+    fireEvent.click(screen.getByText("Monday, April 6"));
+    fireEvent.click(screen.getByText("Tuesday, April 7"));
+    expect(screen.queryByText("08:00")).toBeNull();
+    expect(screen.queryByText("09:00")).toBeNull();
+
+    // User deselects down to one date
+    const oneDate = [
+      makeTeeTimeItem({ date: "2026-04-06", time: "08:00", course_id: "a" }),
+    ];
+    rerender(<TeeTimeList teeTimes={oneDate} loading={false} selectedDateCount={1} />);
+
+    // The remaining date's tee time should be visible again
+    expect(screen.getByText("08:00")).toBeDefined();
   });
 
   it("has no accessibility violations", async () => {

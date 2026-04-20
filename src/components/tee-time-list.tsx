@@ -114,7 +114,7 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
                 </span>
               </button>
             )}
-            {!isCollapsed && (
+            {(!hasMultipleDates || !isCollapsed) && (
               <div className="divide-y divide-gray-100">
                 {items.map((tt, i) => (
                   <div
