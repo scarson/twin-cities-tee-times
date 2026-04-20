@@ -34,15 +34,22 @@ describe("TeeWireAdapter", () => {
     expect(adapter.platformId).toBe("teewire");
   });
 
-  it("parses tee times from API response", async () => {
+  it("parses tee times with multi-hole rate expansion", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    expect(results).toHaveLength(3);
-    expect(results[0]).toEqual({
+    // Fixture: slot 1 (09:00) has both 9-hole and 18-hole Walking+Riding rates,
+    // slot 2 (09:10) has only 18-hole rates, slot 3 (14:30) has only 9-hole.
+    // Expected: slot 1 expands to 2 records, slots 2 and 3 emit 1 each. Total = 4.
+    expect(results).toHaveLength(4);
+
+    const slot1_18 = results.find(
+      (r) => r.time === "2026-04-15T09:00:00" && r.holes === 18
+    )!;
+    expect(slot1_18).toEqual({
       courseId: "inver-wood-18",
       time: "2026-04-15T09:00:00",
       price: 51,
@@ -52,28 +59,49 @@ describe("TeeWireAdapter", () => {
     });
   });
 
-  it("selects walking rate price", async () => {
+  it("prefers Walking rate within each hole-count group", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // Walking rate is $51, not the riding rate $77
-    expect(results[0].price).toBe(51);
+    // Slot 1 has both Walking and Riding per hole count. We should get Walking prices only.
+    const slot1_18 = results.find(
+      (r) => r.time === "2026-04-15T09:00:00" && r.holes === 18
+    )!;
+    const slot1_9 = results.find(
+      (r) => r.time === "2026-04-15T09:00:00" && r.holes === 9
+    )!;
+    expect(slot1_18.price).toBe(51); // 18 Walking ($51), not 18 Riding ($77)
+    expect(slot1_9.price).toBe(28); // 9 Walking ($28), not 9 Riding ($44)
   });
 
-  it("determines holes from walking rate", async () => {
+  it("expands slot with rates for both 9 and 18 holes into two records", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // Slot 1: 18 Holes Walking → 18
-    expect(results[0].holes).toBe(18);
-    // Slot 3: 9 Holes Walking → 9
-    expect(results[2].holes).toBe(9);
+    const slot1 = results.filter((r) => r.time === "2026-04-15T09:00:00");
+    expect(slot1).toHaveLength(2);
+    expect(slot1.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+  });
+
+  it("emits a single record when a slot has rates for only one hole count", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(fixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+
+    const slot2 = results.filter((r) => r.time === "2026-04-15T09:10:00");
+    const slot3 = results.filter((r) => r.time === "2026-04-15T14:30:00");
+    expect(slot2).toHaveLength(1);
+    expect(slot2[0].holes).toBe(18);
+    expect(slot3).toHaveLength(1);
+    expect(slot3[0].holes).toBe(9);
   });
 
   it("builds the correct API URL", async () => {
@@ -151,10 +179,14 @@ describe("TeeWireAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    // "$51.00" → 51
-    expect(results[0].price).toBe(51);
-    // "$28.00" → 28
-    expect(results[2].price).toBe(28);
+    const slot1_18 = results.find(
+      (r) => r.time === "2026-04-15T09:00:00" && r.holes === 18
+    )!;
+    const slot1_9 = results.find(
+      (r) => r.time === "2026-04-15T09:00:00" && r.holes === 9
+    )!;
+    expect(slot1_18.price).toBe(51); // "$51.00" → 51
+    expect(slot1_9.price).toBe(28); // "$28.00" → 28
   });
 
   it("throws on success: false response", async () => {
@@ -200,10 +232,10 @@ describe("TeeWireAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results).toHaveLength(3); // 4 slots but one has 0 spots
+    expect(results).toHaveLength(4); // slot 1 expands to 2, slots 2 & 3 emit 1 each; added 4th slot filtered
   });
 
-  it("uses null price and first rate holes when no walking rate found", async () => {
+  it("uses null price for each variant when no walking rate exists (Riding-only)", async () => {
     const noWalkingFixture = {
       success: true,
       data: {
@@ -237,8 +269,11 @@ describe("TeeWireAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results[0].price).toBeNull();
-    expect(results[0].holes).toBe(18); // first rate's holes
+    // With no Walking rate in either hole group, each variant has price=null.
+    // Groups are still emitted so users can still see the slot exists.
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    expect(results.every((r) => r.price === null)).toBe(true);
   });
 
   it("passes AbortSignal.timeout to fetch", async () => {
@@ -280,7 +315,7 @@ describe("TeeWireAdapter", () => {
       expect(call.url).toContain("teewire.app/inverwood");
       expect(call.url).toContain("calendar_id=3");
       expect(call.headers).toHaveProperty("User-Agent", "TwinCitiesTeeTimes/1.0");
-      expect(results).toHaveLength(3);
+      expect(results).toHaveLength(4);
     });
 
     it("falls back to direct fetch without proxy env", async () => {
@@ -292,7 +327,7 @@ describe("TeeWireAdapter", () => {
 
       expect(proxyFetch).not.toHaveBeenCalled();
       expect(fetch).toHaveBeenCalledTimes(1);
-      expect(results).toHaveLength(3);
+      expect(results).toHaveLength(4);
     });
   });
 });
