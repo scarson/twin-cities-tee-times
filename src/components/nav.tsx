@@ -4,6 +4,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { NavAuthArea } from "./nav-auth-area";
 
+const NAV_LINK_CLASS =
+  "text-sm font-medium text-gray-300 hover:text-white lg:text-base";
+
+function NavLinks({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      <Link href="/courses" className={NAV_LINK_CLASS}>
+        Courses
+      </Link>
+      <Link href="/about" className={NAV_LINK_CLASS}>
+        About
+      </Link>
+    </div>
+  );
+}
+
 export function Nav() {
   return (
     <nav className="border-b border-gray-200 bg-[#1a2425]">
@@ -29,36 +45,10 @@ export function Nav() {
               priority
             />
           </Link>
-          <div className="hidden items-center gap-4 sm:flex">
-            <Link
-              href="/courses"
-              className="text-sm font-medium text-gray-300 hover:text-white lg:text-base"
-            >
-              Courses
-            </Link>
-            <Link
-              href="/about"
-              className="text-sm font-medium text-gray-300 hover:text-white lg:text-base"
-            >
-              About
-            </Link>
-          </div>
+          <NavLinks className="hidden items-center gap-4 sm:flex" />
           <NavAuthArea />
         </div>
-        <div className="mt-3 flex items-center gap-6 sm:hidden">
-          <Link
-            href="/courses"
-            className="text-sm font-medium text-gray-300 hover:text-white"
-          >
-            Courses
-          </Link>
-          <Link
-            href="/about"
-            className="text-sm font-medium text-gray-300 hover:text-white"
-          >
-            About
-          </Link>
-        </div>
+        <NavLinks className="mt-3 flex items-center gap-6 sm:hidden" />
       </div>
     </nav>
   );
