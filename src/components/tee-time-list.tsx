@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
 import { formatTime, staleAge } from "@/lib/format";
 
-interface TeeTimeItem {
+export interface TeeTimeItem {
   course_id: string;
   course_name: string;
   course_city: string;
