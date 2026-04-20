@@ -71,6 +71,20 @@ describe("About page", () => {
     expect(screen.getByText(/local favorites are not affected/)).toBeDefined();
   });
 
+  it("defines the time-of-day filter buckets", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/time filters mean/i)).toBeDefined();
+    // Label + hours for every preset
+    expect(screen.getByText("Early")).toBeDefined();
+    expect(screen.getByText("5:00 AM – 8:00 AM")).toBeDefined();
+    expect(screen.getByText("Morning")).toBeDefined();
+    expect(screen.getByText("8:00 AM – 11:00 AM")).toBeDefined();
+    expect(screen.getByText("Afternoon")).toBeDefined();
+    expect(screen.getByText("11:00 AM – 3:00 PM")).toBeDefined();
+    expect(screen.getByText("Late")).toBeDefined();
+    expect(screen.getByText(/After 3:00 PM/)).toBeDefined();
+  });
+
   it("explains location filtering privacy", () => {
     render(<AboutPage />);
     expect(

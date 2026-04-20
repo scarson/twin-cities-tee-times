@@ -69,6 +69,45 @@ export default function AboutPage() {
 
         <section>
           <h2 className="text-lg font-semibold lg:text-xl">
+            What do the time filters mean?
+          </h2>
+          <p className="mt-2 text-gray-700">
+            The time-of-day buttons above the tee time list narrow results to
+            when you want to play:
+          </p>
+          <table className="mt-3 w-full text-sm lg:text-base">
+            <thead>
+              <tr className="border-b border-gray-300 text-left">
+                <th className="py-2 pr-4 font-medium">Filter</th>
+                <th className="py-2 font-medium">Hours</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700">
+              <tr className="border-b border-gray-200">
+                <td className="py-2 pr-4">Early</td>
+                <td className="py-2">5:00 AM – 8:00 AM</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-2 pr-4">Morning</td>
+                <td className="py-2">8:00 AM – 11:00 AM</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-2 pr-4">Afternoon</td>
+                <td className="py-2">11:00 AM – 3:00 PM</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4">Late</td>
+                <td className="py-2">After 3:00 PM</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-3 text-gray-700">
+            Pick <strong>Any</strong> to show all times.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold lg:text-xl">
             What does &ldquo;stale&rdquo; mean?
           </h2>
           <p className="mt-2 text-gray-700">
