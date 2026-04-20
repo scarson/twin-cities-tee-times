@@ -197,7 +197,7 @@ describe("ForeUpAdapter", () => {
     expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("parses string holes value '9/18' as 18", async () => {
+  it("expands string holes value '9/18' into two records", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify([{
         time: "2026-04-15 08:00",
@@ -209,6 +209,72 @@ describe("ForeUpAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    expect(results[0].time).toBe(results[1].time);
+    expect(results[0].openSlots).toBe(results[1].openSlots);
+    expect(results[0].price).toBe(results[1].price);
+  });
+
+  it("leaves a numeric holes value as a single record", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "45.00",
+        holes: 18,
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("handles a whitespace-only holes string without expanding", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "45.00",
+        holes: "   ",
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("handles a null holes field defensively", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "45.00",
+        holes: null,
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("does NOT match a 9 digit inside a larger number like '19'", async () => {
+    // Regression guard against any future refactor to \b9\b regex. The digit
+    // 9 inside the string "19" must not be interpreted as a 9-hole variant.
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-04-15 08:00",
+        green_fee: "45.00",
+        holes: "18/19",
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
     expect(results[0].holes).toBe(18);
   });
 
