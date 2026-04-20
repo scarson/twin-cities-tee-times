@@ -8,7 +8,8 @@
 
 - **Branch:** `dev` at commit `79c3a12` (catalog expansion commit).
 - **PR #98 (MERGED earlier in session):** multi-hole tee time display + 9/18 hole filter.
-- **PR #99 (OPEN):** catalog expansion 49 → 92 courses + deep-link research findings. CI status at handoff time: pending.
+- **PR #99 (MERGED ~01:35 CT):** catalog expansion 49 → 92 courses + deep-link research findings. Squash-merged to `main` at `a37b405`. All 13 CI checks green (one CodeQL fix mid-cycle for URL host-check sanitization in scripts/discover-*.mjs — commit 46d5fe1).
+- **Post-merge gstack-learn run logged 9 project learnings** (`~/.gstack/projects/scarson-twin-cities-tee-times/learnings.jsonl`): booking-SPA URL-date infeasibility, Chronogolf undici TLS 403, __NEXT_DATA__ discovery shape, TeeItUp facilityId discovery, CPS config discovery, Google Places referrer restriction, TC metro 50mi rule, areas.test.ts gate, CPS shItemPrices multi-hole signal.
 - **Test count:** 669 passing (no regressions).
 
 ## Post-compaction session — what happened
@@ -63,17 +64,25 @@ The only viable next step is an informational UI note ("after clicking Book, sel
 
 ## Priority queue for next session
 
-1. **Deep-link Book buttons (feedback #1).** Continue research. Start with ForeUp (re-verify date param works), then Chronogolf, then the harder SPA-based platforms. Consider shipping per-platform incrementally rather than one big PR. Requires: sign-off on architectural choice (adapter method vs adapter-writes-bookingUrl).
-2. **Catalog expansion (feedback #4).** Sam's call on scope.
-3. **Polish/debt items surfaced during this session:**
-   - Consider a `coverageWithHoles` type alias if `buildBookingUrl` takes a TeeTime with an explicit hole count chosen from a merged row.
-   - Optional follow-up: Playwright spec for the multi-hole merge rendering specifically (requires seeding local D1 with fixture data).
+1. **Post-deploy catalog smoke-check.** After the next deploy, confirm 43 new courses polled successfully. Open dashboard + `/check-logs` to scan `poll_log` for first-cycle errors. Expect ~20 of 25 non-multi-hole Chronogolf to show `no_data` (off-season); that's the auto-deactivation path working correctly, not a bug. The 10 courses that were `status=open` during verification should produce tee times immediately.
+2. **Courses flagged for follow-up verification (morning):**
+   - **Albion Ridges** has 3 variants (Boulder/Granite, Rock/Boulder, Granite/Rock). These may be a rotating-27-hole arrangement — the adapter may need nuance if only 2 of 3 are bookable on any given day. Monitor poll results.
+   - **Le Sueur Country Club** reported `bookable_holes: [9, 16, 18]` — the 16 is a data anomaly. Our adapter filters to 9/18 only; verify display is correct.
+   - **Wayzata vs Orono**: the course `orono-public-golf-course` has city=Wayzata per Chronogolf's address (265 Orono Orchard Rd S, Wayzata), but is named "Orono Public Golf Course." Google's name for this Place ID is "Orono Orchards Golf Course." Kept Chronogolf's name; Sam should verify this is the correct course.
+3. **Deep-link Book buttons (feedback #1) — REMOVED FROM SCOPE (D-10).** URL deep-linking is architecturally infeasible for tested SPAs. If/when revisited, start from [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md). Alternative: an informational UI note next to the Book button ("after clicking, select your date + time on the booking site") — low-effort, documented in D-10 alternatives.
+4. **Gaps remaining after tonight's expansion:**
+   - GolfNow primary-booked (6 courses): requires adapter implementation.
+   - City/Custom booking (Birnamwood, Mendota Heights Par 3, Island Lake): would each need a custom adapter.
+   - EZLinks (Heritage Links, 1 course): no adapter.
+   - Pheasant Acres (ForeUp, unknown facility ID): research required.
+   - Brightwood Hills (TeeItUp, status uncertain): verify open before adding.
+5. **Dependabot PRs #91-96:** 6 open dep-bumps awaiting review (eslint, jsdom, wrangler, postcss, vitest, vite). Not opened tonight — Sam's call per-PR.
 
 ## Continuation prompt (paste-ready)
 
-> Resume the twin-cities-tee-times overnight work. Branch is `dev` at parity with `origin/main`. PR #98 (multi-hole + 9/18 filter) is merged. Next item in Sam's feedback queue is **deep-link Book buttons (feedback #1)** — research started for ForeUp but not yet implemented.
+> Resume twin-cities-tee-times. Branch is `dev` at parity with `origin/main` at `a37b405`. PR #99 (catalog expansion 49 → 92 + deep-link research) is merged. Deploy workflow will re-seed D1 with 43 new courses. First next-session action: run `/check-logs` to confirm first-cycle polling succeeded for the new courses; expect ~20 off-season `no_data` entries (auto-deactivation kicks in after 30 days — that's the intended path).
 >
-> Start by reading [docs/plans/2026-04-20-overnight-handoff.md](docs/plans/2026-04-20-overnight-handoff.md), then [docs/plans/2026-04-20-overnight-decisions.md](docs/plans/2026-04-20-overnight-decisions.md) for full session context.
+> Start by reading [docs/plans/2026-04-20-overnight-handoff.md](docs/plans/2026-04-20-overnight-handoff.md), [docs/plans/2026-04-20-overnight-decisions.md](docs/plans/2026-04-20-overnight-decisions.md), and the 9 entries in `~/.gstack/projects/scarson-twin-cities-tee-times/learnings.jsonl`.
 >
 > Authorization context: Sam asleep through this session with pre-auth for autonomous work, non-destructive git actions, merging passing-CI PRs, and a requirement for 3x adversarial review + persistent markdown documentation on any significant decision.
 
