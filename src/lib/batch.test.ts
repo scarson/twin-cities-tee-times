@@ -1,7 +1,7 @@
 // ABOUTME: Tests for cron batch assignment via weighted bin-packing.
 // ABOUTME: Covers even distribution, CPS weighting, determinism, and edge cases.
 import { describe, it, expect } from "vitest";
-import { assignBatches, BATCH_COUNT, platformWeight, cronToBatchIndex } from "./batch";
+import { assignBatches, BATCH_COUNT, platformWeight, cronToBatchIndex, sleepAfterPoll } from "./batch";
 import type { CourseRow } from "@/types";
 
 function makeCourse(id: string, platform: string): CourseRow {
@@ -31,6 +31,27 @@ describe("platformWeight", () => {
     expect(platformWeight("foreup")).toBe(1);
     expect(platformWeight("teeitup")).toBe(1);
     expect(platformWeight("chronogolf")).toBe(1);
+  });
+});
+
+describe("sleepAfterPoll", () => {
+  it("returns 1500ms for chronogolf to avoid Chronogolf API rate limits (429s)", () => {
+    expect(sleepAfterPoll("chronogolf")).toBe(1500);
+  });
+
+  it("returns the default 250ms for platforms with healthy rate-limit headroom", () => {
+    expect(sleepAfterPoll("cps_golf")).toBe(250);
+    expect(sleepAfterPoll("foreup")).toBe(250);
+    expect(sleepAfterPoll("teeitup")).toBe(250);
+    expect(sleepAfterPoll("teesnap")).toBe(250);
+    expect(sleepAfterPoll("eagle_club")).toBe(250);
+    expect(sleepAfterPoll("membersports")).toBe(250);
+    expect(sleepAfterPoll("teewire")).toBe(250);
+    expect(sleepAfterPoll("golfnow")).toBe(250);
+  });
+
+  it("returns the default for unknown platforms rather than throwing", () => {
+    expect(sleepAfterPoll("unknown_platform")).toBe(250);
   });
 });
 

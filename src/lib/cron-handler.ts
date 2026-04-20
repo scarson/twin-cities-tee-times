@@ -2,7 +2,7 @@
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
 import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON, PROBE_INTERVAL_DAYS } from "@/lib/poller";
 import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
-import { assignBatches, cronToBatchIndex, platformWeight } from "@/lib/batch";
+import { assignBatches, cronToBatchIndex, platformWeight, sleepAfterPoll } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
 export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~80 courses
@@ -80,7 +80,7 @@ export async function runHorizonProbe(
           budget.remaining -= weight;
         }
 
-        await sleep(250);
+        await sleep(sleepAfterPoll(course.platform));
       }
 
       if (maxFound > course.booking_horizon_days) {
@@ -272,7 +272,7 @@ export async function runCronPoll(
           budget -= weight;
         }
 
-        await sleep(250);
+        await sleep(sleepAfterPoll(course.platform));
       }
     }
 
@@ -316,7 +316,7 @@ export async function runCronPoll(
             budget -= weight;
           }
 
-          await sleep(250);
+          await sleep(sleepAfterPoll(course.platform));
         }
 
         if (foundTeeTimes) {

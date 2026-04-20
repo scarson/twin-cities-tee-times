@@ -13,6 +13,23 @@ export function platformWeight(platform: string): number {
 }
 
 /**
+ * Per-platform recovery sleep after a cron pollCourse call. Chronogolf
+ * rate-limits more aggressively than other providers (observed ~1 req/sec
+ * ceiling per IP; the 2026-04-20 catalog expansion surfaced this as a 59%
+ * 429 rate on the chronogolf platform). 1500ms post-Chronogolf keeps us
+ * under that ceiling. Other platforms retain the 250ms default we've used
+ * since launch; none of them have produced 429s in production.
+ */
+const SLEEP_AFTER_POLL_MS: Record<string, number> = {
+  chronogolf: 1500,
+};
+const DEFAULT_SLEEP_AFTER_POLL_MS = 250;
+
+export function sleepAfterPoll(platform: string): number {
+  return SLEEP_AFTER_POLL_MS[platform] ?? DEFAULT_SLEEP_AFTER_POLL_MS;
+}
+
+/**
  * Distribute courses across BATCH_COUNT batches using greedy bin-packing
  * by platform weight. Courses are sorted by ID for determinism, then each
  * is assigned to the batch with the lowest total weight (ties broken by
