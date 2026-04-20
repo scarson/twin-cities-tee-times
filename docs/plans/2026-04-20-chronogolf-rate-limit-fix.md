@@ -1,7 +1,25 @@
 # Chronogolf rate-limit fix (post-PR-#99 regression)
 
 **Date:** 2026-04-20 ~02:15 CT
+**Status:** ✅ **RESOLVED.** Option A shipped via [PR #100](https://github.com/scarson/twin-cities-tee-times/pull/100) and merged 2026-04-20 ~02:40 CT. Post-deploy verification at ~03:00 CT confirmed the fix: Chronogolf error rate dropped from 59% to **0%** within the first two cron cycles running the new code.
+
 **Trigger:** PR #99 catalog expansion grew Chronogolf course count 8 → 38 (4.75×). First post-deploy cron cycles produced 365 Chronogolf 429 errors vs 154 successes (~59% error rate). Other platforms (CPS, ForeUp, TeeItUp, Teesnap, Eagle Club, MemberSports) had 0 errors and are unaffected.
+
+## Outcome (added 2026-04-20 ~03:02 CT)
+
+| Window | Chronogolf: success / error / no_data | Chronogolf error rate |
+|---|---|---|
+| Pre-fix (2026-04-20 00:30-02:30 CT, 2 hr) | 154 / 365 / 99 | **59%** |
+| Post-fix (2026-04-20 02:44-02:59 CT, 15 min) | 13 / 0 / 7 | **0%** |
+
+Other platforms remained at 0% error rate both before and after (not regressed by the platform-aware sleep change). Verification performed by a Monitor-backed D1 query 20 minutes after PR #100 merged, so the fix had time to deploy AND at least 2 full cron cycles to execute with the new code.
+
+Fix was **Option A** (per-platform post-poll sleep: 1500 ms for Chronogolf, 250 ms default for everything else). No tuning required — the single iteration at 1500 ms was sufficient. Options B/C/D below were not needed, preserved as reference for future regressions.
+
+Revisit this doc if:
+- Chronogolf's per-IP ceiling tightens further (tune Option A first: 2500 ms → 4000 ms).
+- Chronogolf adds per-API-key limits (Option C staggering applies).
+- Adding many more Chronogolf courses causes the 1500 ms window to no longer fit inside the 5-minute batch cycle (re-check the math in §Root cause; then Option D if needed).
 
 ## Symptom evidence
 
@@ -26,9 +44,9 @@ All errors are `Chronogolf API returned HTTP 429`. Pre-existing context: baker-n
 - The current `await sleep(250)` global post-poll delay is platform-agnostic. Between two back-to-back Chronogolf calls, we sleep 250ms plus the preceding API round-trip (~300-500ms). Effective call cadence is ~500-750ms per Chronogolf call — faster than Chronogolf's bucket refill rate.
 - Other platforms aren't affected because their per-batch share is smaller and/or their rate limits are more generous.
 
-## Option space (all three documented; A shipped)
+## Option space (four documented; A shipped and verified)
 
-### Option A — Per-platform post-poll sleep (SHIPPING)
+### Option A — Per-platform post-poll sleep (SHIPPED & VERIFIED 2026-04-20)
 
 Change the global `sleep(250)` inside the cron handler to a platform-aware duration. Chronogolf polls get a longer recovery window (~1500 ms); other platforms keep the 250 ms cadence they have today.
 
@@ -146,14 +164,31 @@ Only poll a fraction of Chronogolf courses per batch. E.g., each 5-min cycle pol
 
 Option B (proxy-only, no split) is effectively a subset of Option D with a 0/100 split and no direct egress; if we need the proxy at all, we likely want the hybrid. Kept in the doc for completeness but unlikely to be the chosen shape.
 
-## Post-ship verification
+## Post-ship verification (completed 2026-04-20 ~03:02 CT)
 
-After Option A deploys:
+**Executed plan:**
 
-1. Wait ~20 minutes for the first batch cycle to complete with the new sleep.
-2. Query the same `SELECT platform, status, COUNT(*)` aggregate for the 30-minute window after deploy.
-3. Target: Chronogolf error rate drops below 10%. If still >25%, iterate on the sleep value (try 2500, then 4000).
-4. If still >25% after 4000 ms: escalate to Option B.
+1. ✅ Waited ~20 minutes for the first batch cycles to complete with the new sleep. Monitor tool used to drive the sleep + automated query at end.
+2. ✅ Ran the same `SELECT platform, status, COUNT(*)` aggregate for the 15-minute post-deploy window.
+3. ✅ Target met: Chronogolf error rate dropped from **59% → 0%** on the first iteration. No tuning needed.
+
+**Verification query used:**
+
+```sql
+SELECT c.platform, p.status, COUNT(*)
+FROM poll_log p JOIN courses c ON p.course_id = c.id
+WHERE p.polled_at >= datetime('now', '-15 minutes')
+GROUP BY c.platform, p.status;
+```
+
+Result (15 minutes post-deploy, 2026-04-20 02:44-02:59 CT):
+
+| Platform | Success | Error | no_data | Error rate |
+|---|---|---|---|---|
+| chronogolf | 13 | 0 | 7 | 0% |
+| cps_golf | 5 | 0 | 3 | 0% |
+
+Other platforms didn't happen to have polls land in the 15-minute window, which is fine — they were never the problem. Pre-fix baseline had all platforms represented because the 2-hour window spanned multiple full rotations.
 
 ## Files affected (Option A)
 
