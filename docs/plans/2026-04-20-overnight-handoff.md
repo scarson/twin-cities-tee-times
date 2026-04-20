@@ -47,7 +47,7 @@ Concrete findings to build on:
 
 ## Deferred items
 
-- **Catalog expansion (feedback #4).** Per D-7: requires per-course verification that's hard to do autonomously overnight. Each added course needs platform-specific IDs, address/geocode, and Google Place ID — all with real-world correctness requirements. Unblock condition: Sam reviews the existing catalog (49 courses), decides expansion scope, and either (a) delegates with specific constraints or (b) tackles himself with periodic Claude assist.
+- ~~**Catalog expansion (feedback #4).**~~ Sam reversed this deferral at ~00:40 CT — back on the overnight queue as LAST priority. See D-7 update + D-9 (when written).
 - **Chronogolf Option B** (two API calls per multi-hole course for complete per-variant pricing). Unblock condition: user feedback shows the null-price second variant causes real confusion. Until then, Option A ships.
 - **MemberSports `items[0]` course-filtering bug.** Documented in D-4. Unblock condition: observation that our polled course at a multi-course facility returns wrong tee times. Until observed, out-of-scope.
 - **27/36-hole course support.** No such courses known to exist in the Twin Cities catalog. Unblock condition: a course is added that needs this.

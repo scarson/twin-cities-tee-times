@@ -161,9 +161,11 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 
 ---
 
-### D-7 — Catalog expansion (#4) deferred for morning review
+### D-7 — Catalog expansion (#4) deferred for morning review (REVERSED by Sam 2026-04-20 ~00:40 CT)
 
-**Decision:** Skip the "add rest of TC courses (~50 more)" feedback item overnight. Move it to Sam's morning queue.
+**Update:** Sam reviewed this decision and overrode it. Catalog expansion is back on the overnight queue as the LAST priority item (after deep-link Book buttons). Rationale for override: "it shouldn't wait on me." Claude proceeds autonomously using `dev/research/tc-courses-platforms.md` for the course list, the Google Maps API key in `.dev.vars` for geocoding + Place ID lookup, and `scripts/lookup-place-ids.ts` for Place IDs. See D-9 for the actual expansion decision.
+
+**Original decision (preserved for context):** Skip the "add rest of TC courses (~50 more)" feedback item overnight. Move it to Sam's morning queue.
 
 **Rationale:** Adding ~50 courses to `src/config/courses.json` requires per-course:
 - Platform-specific config (subdomain/courseId/scheduleId/tenant/etc.)
