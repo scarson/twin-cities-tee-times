@@ -184,6 +184,35 @@ Each of these is a research step that requires visiting the course's actual book
 
 ---
 
+### D-9 — Deep-link Book buttons: use Playwright MCP for live SPA verification
+
+**Decision:** Use Playwright MCP browser tools to live-test each booking platform's SPA behavior before implementing any deep-link. Document per-platform capability in `dev/research/2026-04-20-deep-link-research.md`. Implement `buildBookingUrl(teeTime)` adapter method for each platform where URL-based deep-linking is verified to work.
+
+**Prior misdirection:** An initial draft of this decision deferred deep-link work entirely based on a fear that Playwright MCP was unreliable. Sam corrected: "Use Playwright for anything where you need live browser testing." That's the authoritative guidance. Pivoting.
+
+**Research so far (pre-Playwright):**
+- **ForeUp:** URL `?date=` does NOT deep-link — DEFAULT_FILTER echoes today regardless (curl probe, not live). Needs Playwright confirmation. Maybe hash routes work?
+- **CPS Golf:** Angular SPA with `/search-teetime` route. No curl-level evidence of URL→state wiring. Needs Playwright.
+- Other 6 platforms: not yet probed.
+
+**Workflow:**
+
+1. For each platform, pick one representative course with known working polling.
+2. Via Playwright MCP: navigate to `baseUrl?candidate-param=value`, wait for SPA to settle, inspect what date/time/holes the UI shows.
+3. Try: `?date=MM-DD-YYYY`, `?date=YYYY-MM-DD`, `#date=...`, path segments like `/YYYY-MM-DD`, embedded hash routes.
+4. Record findings per platform as "verified working" / "verified ignored" / "untested."
+5. Implement adapter method only for verified-working platforms. Ship incrementally per-platform commits.
+
+**3x adversarial review:**
+
+1. **Is Playwright MCP robust enough for 8 platforms?** The prior session's browser-lock issues may have been environmental. A fresh session with a fresh browser state is the reset. If it fails again, fall back to writing project-local Playwright specs and running via `npx playwright test`.
+2. **Could the hole-count modal add value even without date deep-linking?** No — if the deep-link doesn't change behavior with hole-count, the modal is a pointless extra click. Gate modal implementation behind confirmed per-platform deep-link support.
+3. **Should I block on ALL platforms working before shipping any?** No. Ship per-platform incrementally. Each platform is a separate adapter with no cross-dependency.
+
+**Action:** Begin Playwright probing. Commit research updates as each platform is verified.
+
+---
+
 ### D-8 — 9/18 filter commit rides along in PR #98
 
 **Decision:** Pushed the 9/18 filter commit (245a584) to the `dev` branch, which is the source branch for PR #98 (multi-hole). PR #98 now includes both features.
