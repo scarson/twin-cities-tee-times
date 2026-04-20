@@ -3,6 +3,7 @@
 // ABOUTME: Verifies key FAQ content sections are rendered.
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import AboutPage from "./page";
 
 describe("About page", () => {
@@ -70,6 +71,20 @@ describe("About page", () => {
     expect(screen.getByText(/local favorites are not affected/)).toBeDefined();
   });
 
+  it("defines the time-of-day filter buckets", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/time filters mean/i)).toBeDefined();
+    // Label + hours for every preset
+    expect(screen.getByText("Early")).toBeDefined();
+    expect(screen.getByText("5:00 AM – 8:00 AM")).toBeDefined();
+    expect(screen.getByText("Morning")).toBeDefined();
+    expect(screen.getByText("8:00 AM – 11:00 AM")).toBeDefined();
+    expect(screen.getByText("Afternoon")).toBeDefined();
+    expect(screen.getByText("11:00 AM – 3:00 PM")).toBeDefined();
+    expect(screen.getByText("Late")).toBeDefined();
+    expect(screen.getByText(/After 3:00 PM/)).toBeDefined();
+  });
+
   it("explains location filtering privacy", () => {
     render(<AboutPage />);
     expect(
@@ -95,5 +110,13 @@ describe("About page", () => {
     delete process.env.NEXT_PUBLIC_BUILD_TIME;
     render(<AboutPage />);
     expect(screen.queryByText(/Build:/)).toBeNull();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(<AboutPage />);
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

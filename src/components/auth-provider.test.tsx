@@ -3,6 +3,7 @@
 // ABOUTME: Covers login detection, post-login merge, sign-out, and account deletion.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import { AuthProvider, useAuth } from "./auth-provider";
 
 vi.mock("@/lib/favorites", () => ({
@@ -380,5 +381,18 @@ describe("AuthProvider", () => {
     expect(replacedUrl).toContain("other=keep");
 
     replaceStateSpy.mockRestore();
+  });
+
+  it("has no accessibility violations", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) });
+    const { container } = render(
+      <AuthProvider>
+        <div>child</div>
+      </AuthProvider>
+    );
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

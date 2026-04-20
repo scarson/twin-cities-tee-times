@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { axe } from "vitest-axe";
 import React from "react";
 
 vi.mock("@/config/courses.json", () => ({
@@ -108,5 +109,13 @@ describe("CoursesPage", () => {
     // Bravo is in St. Paul, so Minneapolis group should be hidden
     expect(screen.getByText("St. Paul")).toBeDefined();
     expect(screen.queryByText("Minneapolis")).toBeNull();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = render(<CoursesPage />);
+    const results = await axe(container, {
+      rules: { region: { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });
