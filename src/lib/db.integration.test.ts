@@ -69,6 +69,28 @@ describe("upsertTeeTimes", () => {
     expect(rows.results).toHaveLength(0);
   });
 
+  it("handles large batches (200 records) for multi-hole multi-variant scenarios", async () => {
+    // Regression guard for multi-hole courses like Francis A Gross where a
+    // single day's poll can produce ~130 records (63 slots × 2 hole variants).
+    // Adds 40% headroom to 200 records. Watch for D1 batch count/param limits.
+    const teeTimes = Array.from({ length: 200 }, (_, i) =>
+      makeTeeTime({
+        time: `2026-04-21T${String(6 + Math.floor(i / 8)).padStart(2, "0")}:${String((i % 8) * 7).padStart(2, "0")}:00`,
+        price: i % 2 === 0 ? 43 : 26,
+        holes: i % 2 === 0 ? 18 : 9,
+      })
+    );
+
+    await upsertTeeTimes(db, "test-course", "2026-04-21", teeTimes, new Date().toISOString());
+
+    const rows = await db
+      .prepare("SELECT COUNT(*) as n FROM tee_times WHERE course_id = ? AND date = ?")
+      .bind("test-course", "2026-04-21")
+      .first<{ n: number }>();
+
+    expect(rows!.n).toBe(200);
+  });
+
   it("extracts HH:MM from ISO time (T separator)", async () => {
     await upsertTeeTimes(
       db, "test-course", "2026-03-16",
