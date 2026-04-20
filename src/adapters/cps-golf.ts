@@ -103,14 +103,30 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     return data.content
       .filter((tt) => tt.maxPlayer > 0)
-      .map((tt) => ({
-        courseId: config.id,
-        time: tt.startTime, // already ISO 8601 from CPS API
-        price: this.extractGreenFee(tt.shItemPrices),
-        holes: tt.holes === 9 ? 9 : 18,
-        openSlots: tt.maxPlayer,
-        bookingUrl: config.bookingUrl,
-      }));
+      .flatMap((tt) => {
+        // CPS multi-hole courses encode variants in shItemPrices as
+        // `GreenFee9` and `GreenFee18` SKUs. A record with both SKUs is a
+        // multi-hole slot; a record with only one is a single-hole slot.
+        // The record-level `tt.holes` is unreliable on multi-hole courses
+        // (Francis A Gross: always 9 even when 18 is bookable). See D-3.
+        const variants: { holes: 9 | 18; price: number }[] = [];
+        for (const item of tt.shItemPrices ?? []) {
+          if (item.shItemCode === "GreenFee9") {
+            variants.push({ holes: 9, price: item.price });
+          } else if (item.shItemCode === "GreenFee18") {
+            variants.push({ holes: 18, price: item.price });
+          }
+        }
+
+        return variants.map((v) => ({
+          courseId: config.id,
+          time: tt.startTime,
+          price: v.price,
+          holes: v.holes,
+          openSlots: tt.maxPlayer,
+          bookingUrl: config.bookingUrl,
+        }));
+      });
   }
 
   private async getToken(subdomain: string, proxy: ProxyConfig | null): Promise<string> {

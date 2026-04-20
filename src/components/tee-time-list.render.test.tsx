@@ -233,6 +233,49 @@ describe("TeeTimeList rendering", () => {
     expect(screen.getByText("08:00")).toBeDefined();
   });
 
+  it("merges two rows with same (course, date, time) into a single card with combined labels", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "baker", date: "2026-04-15", time: "08:00", holes: 9, price: 30, nines: null }),
+      makeTeeTimeItem({ course_id: "baker", date: "2026-04-15", time: "08:00", holes: 18, price: 55, nines: null }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.getByText("9 / 18 holes")).toBeDefined();
+    expect(screen.getByText("$30.00 / $55.00")).toBeDefined();
+    expect(screen.queryByText("9 holes")).toBeNull();
+    expect(screen.queryByText("18 holes")).toBeNull();
+  });
+
+  it("renders solo holes without merge formatting for single-variant slots", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "solo", time: "09:00", holes: 18, price: 40 }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.getByText("18 holes")).toBeDefined();
+    expect(screen.getByText("$40.00")).toBeDefined();
+    expect(screen.queryByText(/\d+\s\/\s\d+ holes/)).toBeNull();
+  });
+
+  it("counts raw rows (not merged cards) in the results header", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "baker", time: "08:00", holes: 9, price: 30 }),
+      makeTeeTimeItem({ course_id: "baker", time: "08:00", holes: 18, price: 55 }),
+      makeTeeTimeItem({ course_id: "other", time: "09:00", holes: 18, price: 40 }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.getByText("3 tee times at 2 courses")).toBeDefined();
+  });
+
+  it("gracefully merges when one variant has null price (Chronogolf Option A case)", () => {
+    const teeTimes = [
+      makeTeeTimeItem({ course_id: "baker", time: "08:00", holes: 9, price: null }),
+      makeTeeTimeItem({ course_id: "baker", time: "08:00", holes: 18, price: 55 }),
+    ];
+    render(<TeeTimeList teeTimes={teeTimes} loading={false} />);
+    expect(screen.getByText("9 / 18 holes")).toBeDefined();
+    expect(screen.getByText("$55.00")).toBeDefined();
+    expect(screen.queryByText("$55.00 / $55.00")).toBeNull();
+  });
+
   it("has no accessibility violations", async () => {
     const teeTimes = [
       makeTeeTimeItem({ course_id: "course-a", time: "08:00" }),

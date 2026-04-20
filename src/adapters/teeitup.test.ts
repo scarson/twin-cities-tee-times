@@ -257,4 +257,72 @@ describe("TeeItUpAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
     expect(results[0].price).toBe(35);
   });
+
+  it("emits one record per hole variant when rates array has multiple hole counts", async () => {
+    // Multi-hole slot: one rate for 18 holes, one rate for 9 holes. Both
+    // non-trade so the non-trade preference doesn't interfere.
+    const multiHole = [
+      {
+        teetimes: [
+          {
+            ...fixture[0].teetimes[0],
+            rates: [
+              { ...fixture[0].teetimes[0].rates[0], holes: 18, trade: false, greenFeeWalking: 5500 },
+              { ...fixture[0].teetimes[0].rates[0], holes: 9, trade: false, greenFeeWalking: 3000 },
+            ],
+          },
+        ],
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(multiHole), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    const v18 = results.find((r) => r.holes === 18)!;
+    const v9 = results.find((r) => r.holes === 9)!;
+    expect(v18.price).toBe(55);
+    expect(v9.price).toBe(30);
+  });
+
+  it("preserves non-trade preference within each hole group", async () => {
+    // Two 18-hole rates (one trade, one not) and one 9-hole rate. The 18-hole
+    // group should select the non-trade rate.
+    const multiHoleWithTrade = [
+      {
+        teetimes: [
+          {
+            ...fixture[0].teetimes[0],
+            rates: [
+              { ...fixture[0].teetimes[0].rates[0], holes: 18, trade: true, greenFeeWalking: 9999 },
+              { ...fixture[0].teetimes[0].rates[0], holes: 18, trade: false, greenFeeWalking: 5500 },
+              { ...fixture[0].teetimes[0].rates[0], holes: 9, trade: false, greenFeeWalking: 3000 },
+            ],
+          },
+        ],
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(multiHoleWithTrade), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
+    expect(results).toHaveLength(2);
+    const v18 = results.find((r) => r.holes === 18)!;
+    expect(v18.price).toBe(55); // non-trade 5500 cents, not trade 9999
+  });
+
+  it("emits a single record when all rates share the same holes value (regression)", async () => {
+    // Existing behavior: fixture has single-hole-count rates arrays; after fix,
+    // each slot still emits exactly one record when all rates are same-holes.
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(fixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-11");
+    expect(results).toHaveLength(3);
+    expect(results.every((r) => r.holes === 18)).toBe(true);
+  });
 });

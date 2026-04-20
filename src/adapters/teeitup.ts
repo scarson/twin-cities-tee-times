@@ -53,23 +53,39 @@ export class TeeItUpAdapter implements PlatformAdapter {
     return data.flatMap((entry) =>
       (entry.teetimes ?? [])
         .filter((tt) => tt.maxPlayers > 0 && tt.rates.length > 0)
-        .map((tt) => {
-          const rate = tt.rates.find((r) => !r.trade) ?? tt.rates[0];
-          const priceInCents =
-            rate.promotion?.greenFeeWalking ??
-            rate.promotion?.greenFeeCart ??
-            rate.greenFeeWalking ??
-            rate.greenFeeCart ??
-            null;
+        .flatMap((tt) => {
+          // Group rates by hole count; within each group, prefer non-trade
+          // rate. Emit one TeeTime per group so multi-hole slots surface
+          // both variants (same pattern as Teewire).
+          const ratesByHoles = new Map<9 | 18, TeeItUpRate[]>();
+          for (const rate of tt.rates) {
+            const holes: 9 | 18 = rate.holes === 9 ? 9 : 18;
+            if (!ratesByHoles.has(holes)) {
+              ratesByHoles.set(holes, []);
+            }
+            ratesByHoles.get(holes)!.push(rate);
+          }
 
-          return {
-            courseId: config.id,
-            time: this.toLocalIso(tt.teetime, timezone ?? "America/Chicago"),
-            price: priceInCents !== null ? priceInCents / 100 : null,
-            holes: rate.holes === 9 ? 9 : 18,
-            openSlots: tt.maxPlayers,
-            bookingUrl: config.bookingUrl,
-          };
+          const records: TeeTime[] = [];
+          for (const [holes, rates] of ratesByHoles) {
+            const rate = rates.find((r) => !r.trade) ?? rates[0];
+            const priceInCents =
+              rate.promotion?.greenFeeWalking ??
+              rate.promotion?.greenFeeCart ??
+              rate.greenFeeWalking ??
+              rate.greenFeeCart ??
+              null;
+
+            records.push({
+              courseId: config.id,
+              time: this.toLocalIso(tt.teetime, timezone ?? "America/Chicago"),
+              price: priceInCents !== null ? priceInCents / 100 : null,
+              holes,
+              openSlots: tt.maxPlayers,
+              bookingUrl: config.bookingUrl,
+            });
+          }
+          return records;
         })
     );
   }

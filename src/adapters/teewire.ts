@@ -73,27 +73,36 @@ export class TeeWireAdapter implements PlatformAdapter {
 
     return body.data.tee_times
       .filter((slot) => slot.availability.available_spots > 0)
-      .map((slot) => {
-        const walkingRate = slot.pricing.rates.find((r) =>
-          r.rate_title.includes("Walking")
-        );
+      .flatMap((slot) => {
+        // Group rates by hole count; within each group, prefer Walking rate.
+        // If no Walking rate in a group, emit the group with price=null
+        // (Riding rates include cart costs — not comparable to green fees).
+        const ratesByHoles = new Map<9 | 18, TeeWireRate[]>();
+        for (const rate of slot.pricing.rates) {
+          const holes: 9 | 18 = rate.holes === 9 ? 9 : 18;
+          if (!ratesByHoles.has(holes)) {
+            ratesByHoles.set(holes, []);
+          }
+          ratesByHoles.get(holes)!.push(rate);
+        }
 
-        const price = walkingRate
-          ? parseFloat(walkingRate.price.replace(/[^0-9.]/g, ""))
-          : null;
+        const records: TeeTime[] = [];
+        for (const [holes, rates] of ratesByHoles) {
+          const walkingRate = rates.find((r) => r.rate_title.includes("Walking"));
+          const price = walkingRate
+            ? parseFloat(walkingRate.price.replace(/[^0-9.]/g, ""))
+            : null;
 
-        const holes = walkingRate
-          ? walkingRate.holes
-          : slot.pricing.rates[0]?.holes ?? 18;
-
-        return {
-          courseId: config.id,
-          time: `${date}T${slot.time}`,
-          price,
-          holes: holes === 9 ? 9 : 18,
-          openSlots: slot.availability.available_spots,
-          bookingUrl: config.bookingUrl,
-        } satisfies TeeTime;
+          records.push({
+            courseId: config.id,
+            time: `${date}T${slot.time}`,
+            price,
+            holes,
+            openSlots: slot.availability.available_spots,
+            bookingUrl: config.bookingUrl,
+          } satisfies TeeTime);
+        }
+        return records;
       });
   }
 

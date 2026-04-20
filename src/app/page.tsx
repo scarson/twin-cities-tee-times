@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { DatePicker } from "@/components/date-picker";
 import { TimeFilter } from "@/components/time-filter";
+import { HolesFilter } from "@/components/holes-filter";
 import { TeeTimeList } from "@/components/tee-time-list";
 import { ShareDialog } from "@/components/share-dialog";
 import { LocationFilter } from "@/components/location-filter";
@@ -25,6 +26,7 @@ export default function Home() {
   const [dates, setDates] = useState<string[]>(() => [todayCT()]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [holesFilter, setHolesFilter] = useState<"" | "9" | "18">("");
   const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -99,6 +101,7 @@ export default function Home() {
           }
           if (startTime) params.set("startTime", startTime);
           if (endTime) params.set("endTime", endTime);
+          if (holesFilter) params.set("holes", holesFilter);
           return fetch(`/api/tee-times?${params}`).then((r) => r.json()) as Promise<{ teeTimes?: never[] }>;
         });
 
@@ -116,7 +119,7 @@ export default function Home() {
     };
 
     fetchTeeTimes();
-  }, [dates, startTime, endTime, favoritesOnly, favorites]);
+  }, [dates, startTime, endTime, holesFilter, favoritesOnly, favorites]);
 
   const displayTeeTimes = useMemo(() => {
     if (!location) return teeTimes;
@@ -203,6 +206,7 @@ export default function Home() {
             setEndTime(e);
           }}
         />
+        <HolesFilter value={holesFilter} onChange={setHolesFilter} />
       </div>
 
       <LocationFilter />

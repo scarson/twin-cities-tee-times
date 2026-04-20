@@ -6,6 +6,9 @@ interface ChronogolfTeeTime {
   start_time: string; // local time e.g. "9:15"
   date: string; // "YYYY-MM-DD"
   max_player_size: number;
+  course?: {
+    bookable_holes?: number | number[] | null;
+  };
   default_price: {
     green_fee: number;
     bookable_holes: number;
@@ -59,14 +62,26 @@ export class ChronogolfAdapter implements PlatformAdapter {
       const data: ChronogolfResponse = await response.json();
 
       for (const tt of data.teetimes) {
-        allTeeTimes.push({
-          courseId: config.id,
-          time: this.toIso(tt.date, tt.start_time),
-          price: tt.default_price.green_fee,
-          holes: tt.default_price.bookable_holes === 9 ? 9 : 18,
-          openSlots: tt.max_player_size,
-          bookingUrl: config.bookingUrl,
-        });
+        const defaultHoles: 9 | 18 = tt.default_price.bookable_holes === 9 ? 9 : 18;
+        const courseHoles = tt.course?.bookable_holes;
+        const candidateVariants: (9 | 18)[] = Array.isArray(courseHoles)
+          ? courseHoles.filter((h): h is 9 | 18 => h === 9 || h === 18)
+          : [defaultHoles];
+
+        // If the course array yielded nothing (empty or all unknown values),
+        // fall back to the default variant alone — honest one-record output.
+        const variants = candidateVariants.length > 0 ? candidateVariants : [defaultHoles];
+
+        for (const h of variants) {
+          allTeeTimes.push({
+            courseId: config.id,
+            time: this.toIso(tt.date, tt.start_time),
+            price: h === defaultHoles ? tt.default_price.green_fee : null,
+            holes: h,
+            openSlots: tt.max_player_size,
+            bookingUrl: config.bookingUrl,
+          });
+        }
       }
 
       if (data.teetimes.length < ChronogolfAdapter.PAGE_SIZE) break;
