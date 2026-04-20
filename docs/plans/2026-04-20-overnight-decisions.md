@@ -184,7 +184,73 @@ Each of these is a research step that requires visiting the course's actual book
 
 ---
 
-### D-10 — Deep-link Book buttons: infeasible for overnight implementation; removed from scope
+### D-11 — Catalog expansion: 43 courses added autonomously
+
+**Decision:** Expand the course catalog from 49 to 92 courses (+43). Includes 38 Chronogolf + 4 TeeItUp + 1 CPS Golf (Hidden Haven) additions. All empirically verified via live API calls before commit.
+
+**Scope rule:** 50-mile radius from downtown Minneapolis (44.9778, -93.265) per Sam's rule-of-thumb (matches the app's geo distance filter option). Wisconsin-side courses that cross the St. Croix within the radius are included (Hudson, Somerset).
+
+**Approach:**
+1. Platform-wide sweep: Chronogolf listing pages (Minneapolis/St. Paul/Bloomington) + Google Places nearby search across 8 metro-spanning centers. This surfaced gaps beyond the research doc.
+2. ID/UUID discovery via:
+   - Chronogolf `__NEXT_DATA__` blob (scripts/discover-chronogolf.mjs)
+   - TeeItUp Playwright API interception (scripts/discover-teeitup.mjs)
+   - CPS Golf Playwright response interception (scripts/get-cps-websiteid.mjs)
+3. Live API verification per course (scripts/verify-chronogolf.sh, scripts/verify-teeitup.sh).
+4. Google Places enrichment for address + lat/lon + placeId (scripts/enrich-courses.mjs).
+
+**Courses added (by batch):**
+
+Batch 1 — Chronogolf core metro (25): Crystal Lake, Dahlgreen, Eagle Valley, Elk River, Fox Hollow, Hastings Golf Club, Legends Club, Links at Northfork, Oak Marsh, Oneka Ridge, Prestwick at Wedgewood, The Refuge, Riverwood National, Royal Golf Club, Rum River Hills, Stonebrooke, The Meadows at Mystic Lake, The Wilds, Arbor Pointe, Cleary Lake, Eagle Lake Youth Golf Center, Glen Lake, Halla Greens, Hyland Greens, Orono Public Golf Course.
+
+Batch 2 — TeeItUp (4): Goodrich, Manitou Ridge, Logger's Trail, Deer Run.
+
+Batch 3 — Chronogolf 50mi expansion (13): Albion Ridges (×3 variants: Boulder/Granite, Rock/Boulder, Granite/Rock), Troy Burne (WI), St. Croix National (WI), Boulder Pointe, Chisago Lakes, ShadowBrooke, Gopher Hills, Mount Frontenac, New Prague, Le Sueur Country Club, Glencoe Country Club.
+
+Batch 4 — CPS Golf (1): Hidden Haven (newly discovered via Google Places sweep; not in original research doc).
+
+**Scope rationale (Sam un-deferred D-7 at ~00:40 CT, "shouldn't wait on me"):**
+- Chronogolf has the largest gap (8 in catalog vs. 35+ in research). Highest per-course user value.
+- TeeItUp has 3-4 missing courses (Goodrich, Manitou Ridge, Deer Run, Logger's Trail) — all in Ramsey/Washington county area.
+- Skipped: ForeUp (Pheasant Acres — unknown facility ID, research incomplete), GolfNow (6 courses but no working primary adapter), EZLinks (1 course, no adapter), city/custom (3 courses, no standard API).
+- Also skipped: Teesnap (all 2 already in catalog), MemberSports (1 in catalog), Eagle Club (1 in catalog).
+
+**Workflow developed this session:**
+1. `scripts/discover-chronogolf.mjs` — parses `__NEXT_DATA__` blob on each Chronogolf club page. Extracts club UUID, per-course UUIDs, bookable holes, address, lat/lon. Script kept in repo for future use.
+2. `scripts/verify-chronogolf.sh` — curl-based Chronogolf marketplace API probe (Node's undici TLS fingerprint is blocked; curl isn't). Confirms each course UUID accepts the live `/marketplace/v2/teetimes` query.
+3. `scripts/discover-teeitup.mjs` — Playwright-based TeeItUp facility ID discovery by intercepting API calls from the booking page.
+4. `scripts/verify-teeitup.sh` — curl probe of `/v2/tee-times?facilityIds=N`.
+5. `scripts/enrich-courses.mjs` — Google Places API lookup for placeId + address + lat/lon. Uses `Referer: https://teetimes.scarson.io/` (the Google API key is restricted to that domain).
+6. `scripts/.merge-new-courses.mjs` — reads enriched drafts, merges into `courses.json` with sequential indexes, preferring Google coords over Chronogolf's (two courses had 4-13mi drift).
+
+**3x adversarial review:**
+
+1. **Empirical verification quality.** Each Chronogolf courseId got a live `/marketplace/v2/teetimes?course_ids=UUID&start_date=2026-04-25` call. Of 27 verified, 10 are `status=open` (live bookings), 17 are `status=closed` (seasonal off-season, expected). Two slugs 404'd and were excluded (Fountain Valley, Viking Meadows — may have changed slugs). Each TeeItUp facility returned `OK array len=1` from the Kenna API. No guessed IDs.
+2. **Cross-referenced the research doc against Chronogolf's live clubs listing** (Minneapolis/Saint Paul/Bloomington area pages via Playwright). Confirmed the research catalog matches; 4 additional clubs surfaced were all well outside TC metro (Annandale, Glencoe, Cannon Falls, New Prague, Le Sueur, etc.) and excluded by geographic scope.
+3. **areas.ts unit test caught a gap.** Test `covers every city in courses.json` failed because my new cities (Lakeville, Woodbury, Elk River, etc.) weren't mapped to areas. Added 18 new city→area mappings. This was a test doing its job — catching drift at data-addition time. Good signal that the test was pulling its weight.
+
+**Decision quality — why multi-hole data preserved:**
+- Several new chronogolf courses report `bookableHoles: [9, 18]` (Dahlgreen, Oneka Ridge, Prestwick, Royal, Arbor Pointe, Orono). Post-PR#98 merge, our adapter emits both variants and UI shows `"9 / 18 holes"` cards. Users will see the right shape.
+
+**Known tradeoffs accepted:**
+- 19 of 25 Chronogolf courses return `status=closed` (off-season). Our `is_active` auto-management handles this: they auto-reactivate in spring when tee times surface. Until then they'll be polled but produce no data. Acceptable.
+- Name mismatches between Chronogolf and Google: e.g., "Orono Public Golf Course" on Chronogolf, but Google's primary name is "Orono Orchards Golf Course" at the same address. Kept Chronogolf's name; address/placeId are correct.
+- `halla-greens` is a par-29 executive course. Still legitimate 9-hole golf. Included.
+
+**Not included:**
+- Pheasant Acres (ForeUp) — research has no facility ID, Pheasant Acres website has expired SSL cert, no way to probe autonomously.
+- Brightwood Hills (TeeItUp) — research flagged as "may be closed — verify status." Didn't verify live.
+- GolfNow primary-booked courses (New Hope Village, Shamrock, Southern Hills, Chomonix, Brookland, Centerbrook) — no working adapter for primary-booked GolfNow; implementing would require writing a new adapter.
+- City/Custom booking systems (Birnamwood WebTrac, Mendota Heights Par 3 city site, Island Lake TeeMaster) — no standard API per-platform, each requires custom adapter.
+- EZLinks (Heritage Links) — no adapter.
+- The Ponds (St Francis) — uses `golfbook.in`, no adapter.
+- Timber Creek (Watertown) — booking via static page, no supported platform.
+- Applewood Hills, Bent Creek, Olympic Hills — booking platform not detected from public site.
+- Markdale (Ontario, Canada) — out of TC metro, excluded.
+
+**Gaps documented for future**: research doc (`dev/research/tc-courses-platforms.md`) has 8 GolfNow primary + 3 city/custom courses plus EZLinks/Pheasant/Brightwood that remain un-catalogued. Each requires either new adapter implementation or per-course custom handling. Not blocking.
+
+**Result:** Catalog grew 49 → 92 courses (+43, +88%). All 669 tests pass, type-check clean, lint clean (only pre-existing warnings).
 
 **Decision:** Remove deep-link Book button feature (Sam's feedback #1) from the overnight scope. Document the research findings permanently so a future session or Sam can revisit without re-doing the discovery work. Spend remaining overnight time on catalog expansion.
 

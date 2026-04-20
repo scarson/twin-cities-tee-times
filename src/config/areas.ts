@@ -14,6 +14,14 @@ const CITY_TO_AREA: Record<string, string> = {
   "Ham Lake": "North Metro",
   Anoka: "North Metro",
   Dayton: "North Metro",
+  "Elk River": "North Metro",
+  Ramsey: "North Metro",
+  "Oak Grove": "North Metro",
+  Otsego: "North Metro",
+  "St. Michael": "North Metro",
+  Annandale: "North Metro",
+  Lindstrom: "North Metro",
+  Cedar: "North Metro",
 
   // East Metro
   "White Bear Lake": "East Metro",
@@ -21,6 +29,11 @@ const CITY_TO_AREA: Record<string, string> = {
   Maplewood: "East Metro",
   "Inver Grove Heights": "East Metro",
   "Cottage Grove": "East Metro",
+  Oakdale: "East Metro",
+  "Lake Elmo": "East Metro",
+  Woodbury: "East Metro",
+  Hudson: "East Metro",
+  Somerset: "East Metro",
 
   // South Metro
   Edina: "South Metro",
@@ -33,6 +46,21 @@ const CITY_TO_AREA: Record<string, string> = {
   "Maple Plain": "South Metro",
   "Maple Grove": "South Metro",
   Hastings: "South Metro",
+  Lakeville: "South Metro",
+  "Prior Lake": "South Metro",
+  Shakopee: "South Metro",
+  Chanhassen: "South Metro",
+  Victoria: "South Metro",
+  Minnetonka: "South Metro",
+  Wayzata: "South Metro",
+  Plymouth: "South Metro",
+  Elko: "South Metro",
+  "Lester Prairie": "South Metro",
+  "Cannon Falls": "South Metro",
+  Frontenac: "South Metro",
+  "New Prague": "South Metro",
+  "Le Sueur": "South Metro",
+  Glencoe: "South Metro",
 
   // San Diego (test courses)
   "San Diego": "San Diego",
