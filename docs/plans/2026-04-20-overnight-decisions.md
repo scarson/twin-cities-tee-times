@@ -184,7 +184,27 @@ Each of these is a research step that requires visiting the course's actual book
 
 ---
 
-### D-9 — Deep-link Book buttons: use Playwright MCP for live SPA verification
+### D-10 — Deep-link Book buttons: infeasible for overnight implementation; removed from scope
+
+**Decision:** Remove deep-link Book button feature (Sam's feedback #1) from the overnight scope. Document the research findings permanently so a future session or Sam can revisit without re-doing the discovery work. Spend remaining overnight time on catalog expansion.
+
+**Full findings:** See [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md).
+
+**Why it's infeasible (not just deferred):** Three consecutive platforms (ForeUp, CPS Golf, Chronogolf) were verified live via Playwright MCP. All three ignore URL-based date deep-link parameters. The pattern is architectural: booking SPAs seed date state from today (or an authenticated API call) at load and do not read date from the URL. This is consistent across the industry — authenticated API handshakes override any URL-provided state by design.
+
+**Shipping the feature anyway would be net-negative:** A "deep-link" that encodes `?date=04-25-2026` in the URL but lands the user on today's date is worse UX than the current base URL, because the user believes the link selected a specific date.
+
+**3x adversarial review:**
+
+1. **Did I test enough platforms?** Three out of eight, but the findings were mechanically consistent: SPA seeds state from today, ignores URL params. The marginal cost of testing 5 more platforms is ~30 min; the probability any will break the pattern is very low given the architectural reason. If a future session finds a platform where URL date works, a targeted per-adapter implementation can ship for that one. No reason to block on exhaustive testing now.
+2. **Is there a non-URL-based alternative?** See the research doc: POST-based handoff, browser extension, in-app booking, informational note. The informational-note option is low-effort and possibly worth a future PR (shows the user "click Book, then manually select Fri Apr 25 at 8am"). Not pursuing tonight — low priority vs catalog expansion.
+3. **Does dropping this waste prior research?** No — prior session's partial ForeUp probe got re-verified and strengthened. All the research is captured in the research doc, ready to be picked up later.
+
+**Action:** Remove deep-link from overnight queue. Shift focus to catalog expansion, which is tractable and high-value.
+
+---
+
+### D-9 — Deep-link Book buttons: use Playwright MCP for live SPA verification (SUPERSEDED by D-10)
 
 **Decision:** Use Playwright MCP browser tools to live-test each booking platform's SPA behavior before implementing any deep-link. Document per-platform capability in `dev/research/2026-04-20-deep-link-research.md`. Implement `buildBookingUrl(teeTime)` adapter method for each platform where URL-based deep-linking is verified to work.
 

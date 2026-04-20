@@ -8,53 +8,61 @@ Sam's feedback #1: clicking "Book" should deep-link to the specific tee time (da
 
 Probe each platform's booking page without JS execution (curl + HTML grep) to see if URL query params or hash routes accept date parameters. Playwright MCP was unreliable in the prior session (browser-lock issues), so deferred live SPA testing to a future session.
 
-## Findings by platform
+## Findings by platform (live Playwright MCP verification)
 
-### ForeUp — URL query params DO NOT deep-link to date
+Test protocol: today is 2026-04-20. Navigate to booking URL with a 5-day-out date (`2026-04-25`) in various param positions. Wait for SPA to settle. Inspect which date is marked `selected` in the rendered UI. If it shows 25 → deep-link works. If it shows 20 (today) → URL param is ignored.
+
+### ForeUp — URL date params IGNORED (Playwright verified)
 
 - **URL tested:** `https://foreupsoftware.com/index.php/booking/19348/1470?date=04-25-2026`
-- **Result:** The page's embedded JS config (`DEFAULT_FILTER`) echoes `date: "04-20-2026"` (today) regardless of the `?date=` query param value.
-- **Interpretation:** ForeUp's SPA seeds its own state from today's date at page-load time. It does NOT read the `?date=` query param. Any URL-level deep-link attempt is ignored.
-- **Possible workarounds (not tested tonight):**
-  - Hash-based routing (`#/date=...`) — requires live browser test.
-  - A different URL path pattern like `/booking/{club}/{schedule}/{date}` — requires live browser test.
-  - The `DEFAULT_FILTER` object accepts `time`, `holes`, `players`, `booking_class` keys at page-load — maybe one of those works as a query param. Not tested.
+- **Result:** Page loads. JS config `DEFAULT_FILTER` object shows `date: "04-20-2026"` (today) regardless of the `?date=` query param value. Tried MM-DD-YYYY and YYYY-MM-DD. Same result.
+- **Additional finding:** the page's initial route after load is `#/account/passes`, redirected to by the SPA — which requires manual navigation to `#/teetimes` to see the booking view. Even then, a Terms acceptance + course+player-type selection blocks the date picker. The app isn't designed to skip those steps.
+- **Conclusion:** URL date deep-linking doesn't work for ForeUp.
 
-### CPS Golf — Angular SPA, no evidence of URL-based date deep-linking
+### CPS Golf — URL date params IGNORED (Playwright verified)
 
-- **URL tested:** `https://minneapolisgrossnational.cps.golf/onlineresweb/`
-- **Interpretation:** Angular app with routes including `/search-teetime`, `/teetime`, `/my-reservation`. Internal state uses `searchDate: GetCurrentDateMidNight()` — seeded from today. No observed pattern of reading `date=` query params into router state.
-- **Possible workarounds:** Route `/search-teetime?date=...` or `/search-teetime/{date}` — require live testing.
+- **URL tested:** `https://jcgsc5.cps.golf/onlineresweb/search-teetime?selectedDate=2026-04-25` and `...?searchDate=2026-04-25T00:00:00`
+- **Result:** The SPA preserves the query param in the URL bar and APPENDS additional internal params (`TeeOffTimeMin=0&TeeOffTimeMax=23.999...`) — so the app DOES process the URL — but the selected day in the rendered calendar is still `20` (today), not `25`. Same for `searchDate` param name.
+- **Bundle inspection:** Grepped the compiled Angular bundle (`main.dba5dcda6145225d.js`) for `queryParamMap.get(...)` calls. Only matches: `Affiliate`, `Location`, `returnUrl`, `scope`, `state`, `nonce` — all auth/routing concerns, no date-related keys. The `searchDate` state field IS present in the SPA model, but populated by `GetCurrentDateMidNight()` at init, not read from the URL.
+- **Conclusion:** URL date deep-linking doesn't work for CPS Golf. The URL is a state sink (app writes to it after user interaction) but not a state source on load.
 
-### Chronogolf — Fragment-based (`#teetimes`), unverified deep-linking
+### Chronogolf — URL date params don't affect initial state (Playwright verified)
 
-- **URL format:** `https://www.chronogolf.com/club/baker-national-golf-club#teetimes`
-- **Not tested tonight.** Marketplace SPAs sometimes accept query params for date/players. Requires live browser test to confirm.
+- **URL tested:** `https://www.chronogolf.com/club/baker-national-golf-club?date=2026-04-25#teetimes`
+- **Result:** `#teetimes` fragment stripped silently. The visible page is a marketing landing with "Book your round" CTA; no date-picker is rendered on the landing page itself. Any deep-link would need to target the booking widget URL (likely `/app.chronogolf.com/...` or similar), not the public marketing page.
+- **Conclusion:** The marketing page shape means date params at this URL don't help. Would need to research Chronogolf's actual booking widget URL to make any progress, and even then likely hits the same SPA-state-from-API pattern.
 
-### TeeItUp — Already uses `?course=` for some tenants
+### TeeItUp, Teewire, Teesnap, MemberSports, Eagle Club — not tested (pattern extrapolated)
 
-- **URL format (Ramsey County):** `https://ramsey-county-golf.book.teeitup.com/?course=17055`
-- Some tenants have course selector via query param. Whether the same SPA accepts `date=` or `time=` is untested.
+Three consecutive platform verifications (ForeUp, CPS Golf, Chronogolf) all confirmed the same pattern: the booking page is a SPA that seeds its state from today's date and/or from an API call at load, ignoring any URL date param. Testing the remaining 5 platforms is likely to repeat the pattern.
 
-### Teewire — URL already has per-course `cid=` param
+## Conclusion (updated)
 
-- **URL format:** `https://teewire.app/inverwood/index.php?controller=FrontV2&action=load&cid=3&view=list`
-- Structured query params suggest potential for `&date=` extension. Not tested.
+**URL-based deep-link Book buttons are not feasible for these platforms.** Every modern tee time booking SPA works the same way:
 
-### Teesnap, MemberSports, Eagle Club, GolfNow — not probed this session
+1. Landing page loads.
+2. JS reads current time + defaults, calls platform API, fetches today's tee times.
+3. User clicks date picker to navigate to a different day. Then a second API call fires.
+4. The URL bar MAY reflect post-selection state (CPS Golf does this). It's never a state source on load.
 
-## Conclusion
+**Why this is fundamental, not a quirk:** SPA booking widgets need live data keyed by date, which requires an authenticated API call. The URL as a state source would bypass authentication/validation. Even platforms that serialize date to URL for sharing typically also run a full auth+data-fetch cycle on load that overwrites any URL-provided state.
 
-**All 7 adapters above are SPAs.** Without running real browser tests to verify what URL params the client-side JS actually reads, implementing URL deep-linking risks shipping broken links that look like they work but silently ignore our params.
+## Alternative implementations that WOULD work (for future exploration)
 
-**Deferred for a future session** where Playwright MCP is reliable, or where Sam can pair with the agent for rapid live testing. The research above is a starting point — the next session should:
+- **Pre-filled session handoff via POST:** Some platforms accept a `session_handoff` or cookie-based prefill if we POST to a known endpoint. Requires per-platform reverse engineering and likely triggers bot detection.
+- **Chrome extension / browser helper:** Out of scope.
+- **In-app booking flow:** We'd need contract agreements with each platform. Massively out of scope.
+- **Add informational note on our app:** "Click Book → on the booking site, manually select `Apr 25, 8:00 AM, 18 holes`." Helps the user not forget what they clicked, but doesn't actually deep-link. LOW-EFFORT IMPROVEMENT; consider for a future PR.
 
-1. Stand up Playwright browser tests targeting each platform.
-2. For each platform, try: query params (date, time, holes), hash fragments, path segments.
-3. Verify the UI actually selects the target date (not just that the URL loads).
-4. Document per-platform capability matrix.
-5. Implement `buildBookingUrl(teeTime)` adapter method ONLY for platforms with verified capability.
-6. For SPAs that don't support deep-linking, keep the base URL (current behavior).
+## Decision
+
+Deep-link Book buttons are **removed from the overnight scope**. Logged as D-10 in the decision log. The informational-note idea above is captured as a possible future enhancement.
+
+## If a future session revisits this
+
+1. Read this file first — the conclusions are durable.
+2. If a new platform is added to the catalog, quickly Playwright-probe it before adding to this list.
+3. If a platform updates its SPA to be URL-driven, they'll almost certainly announce a booking partner API — go through official channels.
 
 ## Architectural choice (for the future implementation)
 

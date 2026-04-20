@@ -33,17 +33,11 @@ PR #98 contents, grouped by feature:
 - [Overnight decision log](./2026-04-20-overnight-decisions.md) — D-1..D-8, each with 3x adversarial review notes and alternatives considered. **This is the primary artifact for future-me or any reviewer trying to understand "why X?"**
 - [dev/testing-pitfalls.md](../../dev/testing-pitfalls.md) §9.5 — new adapter-specific shape gotchas added this session.
 
-## In-flight work (NOT shipped)
+## Deep-link Book buttons (feedback #1) — REMOVED FROM SCOPE, see D-10
 
-**Deep-link Book buttons (feedback #1):** research started, implementation not begun.
+Live Playwright MCP verification on 2026-04-20 confirmed URL-based date deep-linking is **architecturally infeasible** for ForeUp, CPS Golf, and Chronogolf. Findings are captured in [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md) and [D-10](./2026-04-20-overnight-decisions.md#d-10). The research is durable — a future session revisiting this can start from those findings.
 
-Concrete findings to build on:
-- ForeUp URL pattern `https://foreupsoftware.com/index.php/booking/{clubId}/{scheduleId}?date=MM-DD-YYYY` — probed via `curl` and inspected the response HTML. The page's JavaScript sets a `DEFAULT_FILTER` object containing date/time/holes/players fields. My test request sent `date=04-22-2026` but the HTML's DEFAULT_FILTER showed `date=04-20-2026` — either the probe was against a cached version, the page silently clamps to today, or my query format is wrong. **Needs re-verification with fresh request.**
-- The DEFAULT_FILTER object also exposes `time`, `holes`, `players`, `booking_class` — worth testing whether the URL accepts any of those as query params too.
-- Other platforms not yet researched (Chronogolf, TeeItUp, Teesnap, Teewire, CPS Golf, MemberSports, Eagle Club). Sam's feedback explicitly noted "There may be user auth gates. Figure out for each adapter" — this is best-effort per-platform.
-- Design already captured in the original PR #97/98 discussion: Sam proposed a click-time modal popup when the user hits Book on a multi-hole merged row, letting them pick 9 or 18 before the deep-link fires. Implementation deferred.
-
-**Suggested next architectural move:** add an optional `buildBookingUrl(teeTime): string` method to the `PlatformAdapter` interface. Default returns the config's base `bookingUrl`; per-adapter overrides append date/time/holes query params where supported. Alternatively, compute the deep-linked URL in the adapter at emit-time and write it into each `TeeTime.bookingUrl` field — simpler integration, but the tradeoff is losing the "base booking page" option if a user ever wants it.
+The only viable next step is an informational UI note ("after clicking Book, select Apr 25 at 8:00 AM") — captured as possible future enhancement, not implemented tonight.
 
 ## Deferred items
 
