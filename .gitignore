@@ -46,3 +46,9 @@ dev/cloudflare-limits.md
 # Playwright
 test-results/
 playwright-report/
+
+# Overnight catalog expansion working artifacts (2026-04-20)
+scripts/.*.json
+scripts/.*.log
+scripts/.*.html
+scripts/.*.mjs

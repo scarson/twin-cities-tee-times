@@ -886,5 +886,741 @@
     },
     "bookingUrl": "https://foreupsoftware.com/index.php/booking/21694/8609",
     "googlePlaceId": "ChIJ8VyHnfc-s1IRXVgLTnh52P4"
+  },
+  {
+    "index": 49,
+    "id": "crystal-lake",
+    "name": "Crystal Lake",
+    "city": "Lakeville",
+    "state": "MN",
+    "address": "16725 Innsbrook Dr, Lakeville, MN 55044",
+    "latitude": 44.7048,
+    "longitude": -93.2529,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "crystal-lake-golf-club-minnesota",
+      "courseId": "351035bc-0c73-40bd-b966-b2b97286971e"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/crystal-lake-golf-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJH4ce_mM39ocRXWzs16eL9Ks"
+  },
+  {
+    "index": 50,
+    "id": "dahlgreen",
+    "name": "Dahlgreen",
+    "city": "Chaska",
+    "state": "MN",
+    "address": "6940 Dahlgren Rd, Chaska, MN 55318",
+    "latitude": 44.7697,
+    "longitude": -93.6994,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "dahlgreen-golf-club",
+      "courseId": "3225873d-d504-49ee-b2b1-e89a3ef3fdbf"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/dahlgreen-golf-club#teetimes",
+    "googlePlaceId": "ChIJJzF_SvMI9ocREsb32WkVd4w"
+  },
+  {
+    "index": 51,
+    "id": "eagle-valley",
+    "name": "Eagle Valley",
+    "city": "Woodbury",
+    "state": "MN",
+    "address": "2600 Double Eagle Ln, Woodbury, MN 55129",
+    "latitude": 44.9113,
+    "longitude": -92.8986,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "eagle-valley-golf-course-minnesota",
+      "courseId": "bd6ac210-5314-42ec-b259-c6f374d01c0c"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/eagle-valley-golf-course-minnesota#teetimes",
+    "googlePlaceId": "ChIJYylRIqfZ94cRmGDSxfBvsTc"
+  },
+  {
+    "index": 52,
+    "id": "elk-river",
+    "name": "Elk River",
+    "city": "Elk River",
+    "state": "MN",
+    "address": "20015 Elk Lake Rd NW, Elk River, MN 55330",
+    "latitude": 45.3343,
+    "longitude": -93.6018,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "elk-river-country-club",
+      "courseId": "50a3cbff-8b13-476d-bf39-d7e982ea6ed3"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/elk-river-country-club#teetimes",
+    "googlePlaceId": "ChIJcfoTnyRvs1IRHcp5K6TICvY"
+  },
+  {
+    "index": 53,
+    "id": "fox-hollow",
+    "name": "Fox Hollow",
+    "city": "St. Michael",
+    "state": "MN",
+    "address": "4780 Palmgren Ln NE, St Michael, MN 55376",
+    "latitude": 45.2218,
+    "longitude": -93.578,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "fox-hollow-golf-club-minnesota",
+      "courseId": "8804eb6e-a21d-44f5-ad6d-8af63bce47cc"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/fox-hollow-golf-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJl37qgPVCs1IR0rRfaKeOmso"
+  },
+  {
+    "index": 54,
+    "id": "hastings-golf-club",
+    "name": "Hastings Golf Club",
+    "city": "Hastings",
+    "state": "MN",
+    "address": "2015 Westview Dr, Hastings, MN 55033",
+    "latitude": 44.726,
+    "longitude": -92.8753,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "hastings-country-club-minnesota",
+      "courseId": "f65ea518-c8d2-4987-b1e3-7fd724dade61"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/hastings-country-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJ8Trq0r3G94cRuPWxDiwVWWM"
+  },
+  {
+    "index": 55,
+    "id": "legends-club",
+    "name": "Legends Club",
+    "city": "Prior Lake",
+    "state": "MN",
+    "address": "8670 Credit River Blvd, Prior Lake, MN 55372",
+    "latitude": 44.67,
+    "longitude": -93.344,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "legends-golf-club",
+      "courseId": "bcc1d8e7-28fe-49d9-8ee3-88a90eb95748"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/legends-golf-club#teetimes",
+    "googlePlaceId": "ChIJE-MPnDc_9ocRBPhuynvDdVY"
+  },
+  {
+    "index": 56,
+    "id": "links-at-northfork",
+    "name": "Links at Northfork",
+    "city": "Ramsey",
+    "state": "MN",
+    "address": "9333 Alpine Dr, Ramsey, MN 55303",
+    "latitude": 45.2528,
+    "longitude": -93.5042,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "the-links-at-northfork",
+      "courseId": "d2babb81-733c-4b7b-84a1-e944880a15ba"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/the-links-at-northfork#teetimes",
+    "googlePlaceId": "ChIJLWq52mVqs1IR5C-kJEHHwBA"
+  },
+  {
+    "index": 57,
+    "id": "oak-marsh",
+    "name": "Oak Marsh",
+    "city": "Oakdale",
+    "state": "MN",
+    "address": "526 Inwood Ave N, Oakdale, MN 55128",
+    "latitude": 44.9553,
+    "longitude": -92.9371,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "oak-marsh-golf-course",
+      "courseId": "a7e0c4ab-a96d-4880-8016-33d5de49edb1"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/oak-marsh-golf-course#teetimes",
+    "googlePlaceId": "ChIJtzqC7_vX94cR-OBMf8gKoS8"
+  },
+  {
+    "index": 58,
+    "id": "oneka-ridge",
+    "name": "Oneka Ridge",
+    "city": "White Bear Lake",
+    "state": "MN",
+    "address": "5610 120th St N, White Bear Township, MN 55110",
+    "latitude": 45.1279,
+    "longitude": -92.9912,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "oneka-ridge-golf-course",
+      "courseId": "d4e57624-bfe6-4339-aae5-0d85464e636a"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/oneka-ridge-golf-course#teetimes",
+    "googlePlaceId": "ChIJzYuFj4zaslIR8oWYBPzrp00"
+  },
+  {
+    "index": 59,
+    "id": "prestwick-at-wedgewood",
+    "name": "Prestwick at Wedgewood",
+    "city": "Woodbury",
+    "state": "MN",
+    "address": "9555 Wedgewood Dr, Woodbury, MN 55125",
+    "latitude": 44.8976,
+    "longitude": -92.9126,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "prestwick-golf-club-at-wedgewood",
+      "courseId": "ccbe1b62-2056-4b49-ae2c-0b186b64592f"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/prestwick-golf-club-at-wedgewood#teetimes",
+    "googlePlaceId": "ChIJ_1ECAI7Z94cR_32B9nxGMWA"
+  },
+  {
+    "index": 60,
+    "id": "the-refuge",
+    "name": "The Refuge",
+    "city": "Oak Grove",
+    "state": "MN",
+    "address": "21250 Yellow Pine St NW, Oak Grove, MN 55011",
+    "latitude": 45.3549,
+    "longitude": -93.2991,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "the-refuge-golf-club-minnesota",
+      "courseId": "cc7814f0-d317-4e6c-b64b-c57d0a521781"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/the-refuge-golf-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJAaPgq3Aas1IRxN4ljTMtgaw"
+  },
+  {
+    "index": 61,
+    "id": "riverwood-national",
+    "name": "Riverwood National",
+    "city": "Otsego",
+    "state": "MN",
+    "address": "10247 95th St NE, Otsego, MN 55362",
+    "latitude": 45.2894,
+    "longitude": -93.6796,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "riverwood-national-golf-club",
+      "courseId": "805c45c8-db6f-44c2-9a2c-c953646a54c6"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/riverwood-national-golf-club#teetimes",
+    "googlePlaceId": "ChIJX2zhHO9ms1IRCuXW29chlHo"
+  },
+  {
+    "index": 62,
+    "id": "royal-golf-club",
+    "name": "Royal Golf Club",
+    "city": "Lake Elmo",
+    "state": "MN",
+    "address": "11455 20th St N, Lake Elmo, MN 55042",
+    "latitude": 44.9749,
+    "longitude": -92.8692,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "the-royal-club-minnesota",
+      "courseId": "292c9895-fe27-4ddb-8fe5-8fa3285a6d64"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/the-royal-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJPySIV7vMslIRk5GFrSQ7HDw"
+  },
+  {
+    "index": 63,
+    "id": "rum-river-hills",
+    "name": "Rum River Hills",
+    "city": "Ramsey",
+    "state": "MN",
+    "address": "16659 St Francis Blvd NW, Ramsey, MN 55303",
+    "latitude": 45.2733,
+    "longitude": -93.4147,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "rum-river-hills-golf-club",
+      "courseId": "60f06328-2ba0-4870-a5b3-fc50c3d8ca5e"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/rum-river-hills-golf-club#teetimes",
+    "googlePlaceId": "ChIJY0jIF6cVs1IRfe60sbzmaFo"
+  },
+  {
+    "index": 64,
+    "id": "stonebrooke",
+    "name": "Stonebrooke",
+    "city": "Shakopee",
+    "state": "MN",
+    "address": "2693 Townline Ave, Co Rd 79, Shakopee, MN 55379",
+    "latitude": 44.7506,
+    "longitude": -93.5198,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "stonebrooke-golf-club",
+      "courseId": "68d4d6d6-3ccd-4ca5-90d7-ccaefa15c72e"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/stonebrooke-golf-club#teetimes",
+    "googlePlaceId": "ChIJxc7FgS8R9ocRzef61U6bDOA"
+  },
+  {
+    "index": 65,
+    "id": "the-meadows-at-mystic-lake",
+    "name": "The Meadows at Mystic Lake",
+    "city": "Prior Lake",
+    "state": "MN",
+    "address": "2400 Mystic Lk Blvd, Prior Lake, MN 55372",
+    "latitude": 44.7292,
+    "longitude": -93.4805,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "the-meadows-at-mystic-lake",
+      "courseId": "7676fb71-7e2d-4e99-922d-02425379fe88"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/the-meadows-at-mystic-lake#teetimes",
+    "googlePlaceId": "ChIJJcGqDKIW9ocR9T0UUisuGX8"
+  },
+  {
+    "index": 66,
+    "id": "the-wilds",
+    "name": "The Wilds",
+    "city": "Prior Lake",
+    "state": "MN",
+    "address": "3151 Wilds Ridge Ct, Prior Lake, MN 55372",
+    "latitude": 44.737,
+    "longitude": -93.4578,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "the-wilds-golf-club",
+      "courseId": "4bef65fa-7edd-457e-84bc-4935d1ad8204"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/the-wilds-golf-club#teetimes",
+    "googlePlaceId": "ChIJ_7mmaWIW9ocR8Z76QavLCZA"
+  },
+  {
+    "index": 67,
+    "id": "arbor-pointe",
+    "name": "Arbor Pointe",
+    "city": "Inver Grove Heights",
+    "state": "MN",
+    "address": "8919 Cahill Ave, Inver Grove Heights, MN 55076",
+    "latitude": 44.82,
+    "longitude": -93.0411,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "arbor-pointe-golf-club",
+      "courseId": "8d8cc216-8b60-4e77-aeda-3754b887bac1"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/arbor-pointe-golf-club#teetimes",
+    "googlePlaceId": "ChIJvwRLIW_S94cR2jfH0s97dKw"
+  },
+  {
+    "index": 68,
+    "id": "cleary-lake",
+    "name": "Cleary Lake",
+    "city": "Prior Lake",
+    "state": "MN",
+    "address": "18106 Texas Ave, Prior Lake, MN 55372",
+    "latitude": 44.6884,
+    "longitude": -93.387,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "cleary-lake-golf-course",
+      "courseId": "3d8eab20-c966-4f6d-85d2-aae907bbb3d9"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/cleary-lake-golf-course#teetimes",
+    "googlePlaceId": "ChIJkfBsYVM-9ocR8PKpkE7F3B4"
+  },
+  {
+    "index": 69,
+    "id": "eagle-lake-youth-golf-center",
+    "name": "Eagle Lake Youth Golf Center",
+    "city": "Plymouth",
+    "state": "MN",
+    "address": "11000 Bass Lake Rd, Plymouth, MN 55442",
+    "latitude": 45.0604,
+    "longitude": -93.4179,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "eagle-lake-youth-golf-center",
+      "courseId": "689e1d84-b81c-494a-905e-23a22ffb3060"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/eagle-lake-youth-golf-center#teetimes",
+    "googlePlaceId": "ChIJ1ctIqDM2s1IRgVLJYdzBTo0"
+  },
+  {
+    "index": 70,
+    "id": "glen-lake",
+    "name": "Glen Lake",
+    "city": "Minnetonka",
+    "state": "MN",
+    "address": "14350 County Rd 62, Minnetonka, MN 55345",
+    "latitude": 44.8924,
+    "longitude": -93.464,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "glen-lake-golf-course",
+      "courseId": "0ce2620e-c0f4-4503-96a2-ec268c45601e"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/glen-lake-golf-course#teetimes",
+    "googlePlaceId": "ChIJtcTmBOAe9ocRxOrrKWABH18"
+  },
+  {
+    "index": 71,
+    "id": "halla-greens",
+    "name": "Halla Greens",
+    "city": "Chanhassen",
+    "state": "MN",
+    "address": "495 Pioneer Trail, Chanhassen, MN 55317",
+    "latitude": 44.8256,
+    "longitude": -93.5341,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "halla-greens-executive",
+      "courseId": "0f54e87d-f340-4df1-831c-a4ad164da6c0"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/halla-greens-executive#teetimes",
+    "googlePlaceId": "ChIJY_0N11Aa9ocRZ_GESj3pCxw"
+  },
+  {
+    "index": 72,
+    "id": "hyland-greens",
+    "name": "Hyland Greens",
+    "city": "Bloomington",
+    "state": "MN",
+    "address": "10100 Normandale Blvd, Bloomington, MN 55437",
+    "latitude": 44.8207,
+    "longitude": -93.3544,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "hyland-greens-golf-learning-center",
+      "courseId": "01b856a6-44df-4796-9a33-2c59e97b2c04"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/hyland-greens-golf-learning-center#teetimes",
+    "googlePlaceId": "ChIJWyHKG2oj9ocRkfzNq80nIjc"
+  },
+  {
+    "index": 73,
+    "id": "orono-public-golf-course",
+    "name": "Orono Public Golf Course",
+    "city": "Wayzata",
+    "state": "MN",
+    "address": "265 Orono Orchard Rd S, Wayzata, MN 55391",
+    "latitude": 44.9744,
+    "longitude": -93.5586,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "orono-public-golf-course",
+      "courseId": "7ed25b49-9592-4be9-a813-d56e64407d8c"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/orono-public-golf-course#teetimes",
+    "googlePlaceId": "ChIJVcuRMQxNs1IRfULbrGraM4U"
+  },
+  {
+    "index": 74,
+    "id": "goodrich",
+    "name": "Goodrich",
+    "city": "Maplewood",
+    "state": "MN",
+    "address": "1820 Van Dyke St, St Paul, MN 55109",
+    "latitude": 44.9962,
+    "longitude": -93.0217,
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "ramsey-county-golf",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "16959"
+    },
+    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=16959",
+    "googlePlaceId": "ChIJuWsCdIHTslIR1--tysCjsC0"
+  },
+  {
+    "index": 75,
+    "id": "manitou-ridge",
+    "name": "Manitou Ridge",
+    "city": "White Bear Lake",
+    "state": "MN",
+    "address": "3200 McKnight Rd N, White Bear Lake, MN 55110",
+    "latitude": 45.0387,
+    "longitude": -93.0016,
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "manitou-ridge-golf-course",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "17056"
+    },
+    "bookingUrl": "https://manitou-ridge-golf-course.book.teeitup.com",
+    "googlePlaceId": "ChIJhZ2972PRslIRrb6rmU8ubac"
+  },
+  {
+    "index": 76,
+    "id": "loggers-trail",
+    "name": "Logger's Trail",
+    "city": "Stillwater",
+    "state": "MN",
+    "address": "11950 80th St N, Stillwater, MN 55082",
+    "latitude": 45.0669,
+    "longitude": -92.8653,
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "loggers-trail-golf-club",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "9831"
+    },
+    "bookingUrl": "https://loggers-trail-golf-club.book.teeitup.golf",
+    "googlePlaceId": "ChIJH4D5FTLJslIRCdLmfoValJo"
+  },
+  {
+    "index": 77,
+    "id": "deer-run",
+    "name": "Deer Run",
+    "city": "Victoria",
+    "state": "MN",
+    "address": "8661 Deer Run Dr, Victoria, MN 55386",
+    "latitude": 44.8474,
+    "longitude": -93.6571,
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "deer-run-golf-course",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "3910"
+    },
+    "bookingUrl": "https://deer-run-golf-course.book.teeitup.com",
+    "googlePlaceId": "ChIJr_ENwJ8G9ocRCkFL4wTPo98"
+  },
+  {
+    "index": 78,
+    "id": "albion-ridges-boulder-granite",
+    "name": "Albion Ridges Boulder/Granite",
+    "city": "Annandale",
+    "state": "MN",
+    "address": "7771 20th St NW, Annandale, MN 55302",
+    "latitude": 45.1801,
+    "longitude": -94.0483,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "albion-ridges-golf-club",
+      "courseId": "9f39a66f-5c49-4d7b-81e9-d8753302f4fb"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/albion-ridges-golf-club#teetimes",
+    "googlePlaceId": "ChIJ690M5O2-tFIRtq34yyzM8TU"
+  },
+  {
+    "index": 79,
+    "id": "albion-ridges-rock-boulder",
+    "name": "Albion Ridges Rock/Boulder",
+    "city": "Annandale",
+    "state": "MN",
+    "address": "7771 20th St NW, Annandale, MN 55302",
+    "latitude": 45.1801,
+    "longitude": -94.0483,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "albion-ridges-golf-club",
+      "courseId": "2a92d900-771d-4adb-a504-a5d3fbc46902"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/albion-ridges-golf-club#teetimes",
+    "googlePlaceId": "ChIJ690M5O2-tFIRtq34yyzM8TU"
+  },
+  {
+    "index": 80,
+    "id": "albion-ridges-granite-rock",
+    "name": "Albion Ridges Granite/Rock",
+    "city": "Annandale",
+    "state": "MN",
+    "address": "7771 20th St NW, Annandale, MN 55302",
+    "latitude": 45.1801,
+    "longitude": -94.0483,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "albion-ridges-golf-club",
+      "courseId": "c759e8d0-1b40-453a-8a7a-0897a7696be9"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/albion-ridges-golf-club#teetimes",
+    "googlePlaceId": "ChIJ690M5O2-tFIRtq34yyzM8TU"
+  },
+  {
+    "index": 81,
+    "id": "troy-burne",
+    "name": "Troy Burne",
+    "city": "Hudson",
+    "state": "WI",
+    "address": "295 Lindsay Rd, Hudson, WI 54016",
+    "latitude": 44.8966,
+    "longitude": -92.7409,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "troy-burne-golf-club",
+      "courseId": "59817f33-a09f-4964-a706-e74d70d1286a"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/troy-burne-golf-club#teetimes",
+    "googlePlaceId": "ChIJ5fQv29Xg94cR2Vhtp8a37Zo"
+  },
+  {
+    "index": 82,
+    "id": "st-croix-national",
+    "name": "St. Croix National",
+    "city": "Somerset",
+    "state": "WI",
+    "address": "1978 Co Hwy C, Somerset, WI 54025",
+    "latitude": 45.1487,
+    "longitude": -92.6323,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "st-croix-national-golf-club",
+      "courseId": "7f6fce35-78df-4ead-a8fc-ccc4a5138e8f"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/st-croix-national-golf-club#teetimes",
+    "googlePlaceId": "ChIJmacyZtK6slIRxRTg1C61jdM"
+  },
+  {
+    "index": 83,
+    "id": "boulder-pointe",
+    "name": "Boulder Pointe",
+    "city": "Elko",
+    "state": "MN",
+    "address": "9575 Glenborough Dr, Elko, MN 55020",
+    "latitude": 44.5587,
+    "longitude": -93.3288,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "boulder-pointe-golf-club-minnesota",
+      "courseId": "80c216d4-97ea-4b38-9a44-9614982d0dc2"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/boulder-pointe-golf-club-minnesota#teetimes",
+    "googlePlaceId": "ChIJB2PAWA1E9ocRKfcj8daLHQg"
+  },
+  {
+    "index": 84,
+    "id": "chisago-lakes",
+    "name": "Chisago Lakes",
+    "city": "Lindstrom",
+    "state": "MN",
+    "address": "12975 292nd St, Lindstrom, MN 55045",
+    "latitude": 45.3695,
+    "longitude": -92.8495,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "chisago-lakes-golf-course",
+      "courseId": "7a607420-6243-4468-ae15-81ee9cce38a2"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/chisago-lakes-golf-course#teetimes",
+    "googlePlaceId": "ChIJr-rs7PrsslIRmJvspnf6lF8"
+  },
+  {
+    "index": 85,
+    "id": "shadowbrooke",
+    "name": "ShadowBrooke",
+    "city": "Lester Prairie",
+    "state": "MN",
+    "address": "3192 MN-7, Lester Prairie, MN 55354",
+    "latitude": 44.9069,
+    "longitude": -94.0568,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "shadow-brooke-golf-course",
+      "courseId": "2d7aa45f-bb36-46fe-879a-119cd5d9c067"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/shadow-brooke-golf-course#teetimes",
+    "googlePlaceId": "ChIJNfGnvDn19YcRDmkVy2_zqT8"
+  },
+  {
+    "index": 86,
+    "id": "gopher-hills",
+    "name": "Gopher Hills",
+    "city": "Cannon Falls",
+    "state": "MN",
+    "address": "26155 Nicolai Ave, Cannon Falls, MN 55009",
+    "latitude": 44.5712,
+    "longitude": -92.8106,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "gopher-hills-golf-club",
+      "courseId": "d5819d1f-e15c-43b5-b07b-d6b99a91739b"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/gopher-hills-golf-club#teetimes",
+    "googlePlaceId": "ChIJayd4HLS994cRt_EdWxC2ib4"
+  },
+  {
+    "index": 87,
+    "id": "mount-frontenac",
+    "name": "Mount Frontenac",
+    "city": "Frontenac",
+    "state": "MN",
+    "address": "32420 Ski Rd, Frontenac, MN 55026",
+    "latitude": 44.5103,
+    "longitude": -92.3969,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "mount-frontenac-golf-course",
+      "courseId": "e933c5db-4b8d-4aac-afeb-3a4793be353b"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/mount-frontenac-golf-course#teetimes",
+    "googlePlaceId": "ChIJXXF_3rko-IcRC6iCiGGOGrY"
+  },
+  {
+    "index": 88,
+    "id": "new-prague",
+    "name": "New Prague",
+    "city": "New Prague",
+    "state": "MN",
+    "address": "400 Lexington Ave S, New Prague, MN 56071",
+    "latitude": 44.5403,
+    "longitude": -93.568,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "new-prague-golf-club",
+      "courseId": "9d22b0fb-a13f-4e6c-966a-d750c3682a2e"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/new-prague-golf-club#teetimes",
+    "googlePlaceId": "ChIJVdRYKDJu9ocRxiVfD8SGe-8"
+  },
+  {
+    "index": 89,
+    "id": "le-sueur",
+    "name": "Le Sueur Country Club",
+    "city": "Le Sueur",
+    "state": "MN",
+    "address": "36195 311th Ave, Le Sueur, MN 56058",
+    "latitude": 44.4249,
+    "longitude": -93.889,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "le-sueur-country-club",
+      "courseId": "139c6707-5b62-479b-a34e-77aec223a319"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/le-sueur-country-club#teetimes",
+    "googlePlaceId": "ChIJG5mQ9ZTR9YcRyNcpblmHl5U"
+  },
+  {
+    "index": 90,
+    "id": "glencoe",
+    "name": "Glencoe Country Club",
+    "city": "Glencoe",
+    "state": "MN",
+    "address": "1325 1st St E, Glencoe, MN 55336",
+    "latitude": 44.761,
+    "longitude": -94.1443,
+    "platform": "chronogolf",
+    "platformConfig": {
+      "clubSlug": "glencoe-country-club",
+      "courseId": "c8468133-6138-49d6-811f-96173a4d64da"
+    },
+    "bookingUrl": "https://www.chronogolf.com/club/glencoe-country-club#teetimes",
+    "googlePlaceId": "ChIJNSf4hhCS9YcR8jexeBOSOrk"
+  },
+  {
+    "index": 91,
+    "id": "hidden-haven",
+    "name": "Hidden Haven",
+    "city": "Cedar",
+    "state": "MN",
+    "address": "20520 Polk St NE, Cedar, MN 55011",
+    "latitude": 45.3419,
+    "longitude": -93.2477,
+    "platform": "cps_golf",
+    "platformConfig": {
+      "subdomain": "hiddenhaven",
+      "websiteId": "6ea97d6f-a8c4-417e-1009-08d9c0c48e10",
+      "courseIds": "2"
+    },
+    "bookingUrl": "https://hiddenhaven.cps.golf/onlineresweb",
+    "googlePlaceId": "ChIJfboiicAbs1IRa2e_cS2u2Uo"
   }
 ]

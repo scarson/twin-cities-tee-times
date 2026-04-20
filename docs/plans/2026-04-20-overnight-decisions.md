@@ -158,3 +158,156 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 3. **Could mobile UI break with 8 buttons?** `flex-wrap` on the parent div handles overflow. Tested during nav responsive work — mobile layouts accommodate 2-3 rows fine.
 
 **Alternatives considered:** (a) dropdown select for holes — rejected, button group matches the time filter's visual pattern; (b) keep "Any" as implicit default with only "9" / "18" buttons — rejected, explicit "Any" button improves discoverability.
+
+---
+
+### D-7 — Catalog expansion (#4) deferred for morning review (REVERSED by Sam 2026-04-20 ~00:40 CT)
+
+**Update:** Sam reviewed this decision and overrode it. Catalog expansion is back on the overnight queue as the LAST priority item (after deep-link Book buttons). Rationale for override: "it shouldn't wait on me." Claude proceeds autonomously using `dev/research/tc-courses-platforms.md` for the course list, the Google Maps API key in `.dev.vars` for geocoding + Place ID lookup, and `scripts/lookup-place-ids.ts` for Place IDs. See D-9 for the actual expansion decision.
+
+**Original decision (preserved for context):** Skip the "add rest of TC courses (~50 more)" feedback item overnight. Move it to Sam's morning queue.
+
+**Rationale:** Adding ~50 courses to `src/config/courses.json` requires per-course:
+- Platform-specific config (subdomain/courseId/scheduleId/tenant/etc.)
+- Address + latitude/longitude (geocoding via Google Maps API)
+- Google Place ID (via `scripts/lookup-place-ids.ts`)
+- Booking URL verification
+
+Each of these is a research step that requires visiting the course's actual booking page. Automating overnight would either (a) require the Google Maps API key that's in `.dev.vars` (not tested autonomously), or (b) risk introducing wrong IDs that silently break polling on the affected course. Silent-fail bugs from bad IDs are hard to detect until real users notice missing tee times.
+
+**3x adversarial review:**
+1. **Could I add a small, high-confidence subset autonomously?** Possibly 2-3 courses where the config follows a known pattern (e.g., Chronogolf courses sharing a club UUID). But even that requires visiting the marketplace to confirm UUIDs. Net: low speed, high review-dependency.
+2. **Could I generate the list but NOT commit it?** Yes — could produce a `dev/research/catalog-expansion-candidates.md` document for morning review. Deferring to that as a possible follow-up if I run out of other work overnight.
+3. **Does deferring this block anything?** No. The existing 49 courses serve users today. Catalog expansion is additive.
+
+**Action:** Skip for now. Priority for morning: Sam decides whether to tackle this personally (highest data quality) or delegate with specific constraints.
+
+---
+
+### D-11 — Catalog expansion: 43 courses added autonomously
+
+**Decision:** Expand the course catalog from 49 to 92 courses (+43). Includes 38 Chronogolf + 4 TeeItUp + 1 CPS Golf (Hidden Haven) additions. All empirically verified via live API calls before commit.
+
+**Scope rule:** 50-mile radius from downtown Minneapolis (44.9778, -93.265) per Sam's rule-of-thumb (matches the app's geo distance filter option). Wisconsin-side courses that cross the St. Croix within the radius are included (Hudson, Somerset).
+
+**Approach:**
+1. Platform-wide sweep: Chronogolf listing pages (Minneapolis/St. Paul/Bloomington) + Google Places nearby search across 8 metro-spanning centers. This surfaced gaps beyond the research doc.
+2. ID/UUID discovery via:
+   - Chronogolf `__NEXT_DATA__` blob (scripts/discover-chronogolf.mjs)
+   - TeeItUp Playwright API interception (scripts/discover-teeitup.mjs)
+   - CPS Golf Playwright response interception (scripts/get-cps-websiteid.mjs)
+3. Live API verification per course (scripts/verify-chronogolf.sh, scripts/verify-teeitup.sh).
+4. Google Places enrichment for address + lat/lon + placeId (scripts/enrich-courses.mjs).
+
+**Courses added (by batch):**
+
+Batch 1 — Chronogolf core metro (25): Crystal Lake, Dahlgreen, Eagle Valley, Elk River, Fox Hollow, Hastings Golf Club, Legends Club, Links at Northfork, Oak Marsh, Oneka Ridge, Prestwick at Wedgewood, The Refuge, Riverwood National, Royal Golf Club, Rum River Hills, Stonebrooke, The Meadows at Mystic Lake, The Wilds, Arbor Pointe, Cleary Lake, Eagle Lake Youth Golf Center, Glen Lake, Halla Greens, Hyland Greens, Orono Public Golf Course.
+
+Batch 2 — TeeItUp (4): Goodrich, Manitou Ridge, Logger's Trail, Deer Run.
+
+Batch 3 — Chronogolf 50mi expansion (13): Albion Ridges (×3 variants: Boulder/Granite, Rock/Boulder, Granite/Rock), Troy Burne (WI), St. Croix National (WI), Boulder Pointe, Chisago Lakes, ShadowBrooke, Gopher Hills, Mount Frontenac, New Prague, Le Sueur Country Club, Glencoe Country Club.
+
+Batch 4 — CPS Golf (1): Hidden Haven (newly discovered via Google Places sweep; not in original research doc).
+
+**Scope rationale (Sam un-deferred D-7 at ~00:40 CT, "shouldn't wait on me"):**
+- Chronogolf has the largest gap (8 in catalog vs. 35+ in research). Highest per-course user value.
+- TeeItUp has 3-4 missing courses (Goodrich, Manitou Ridge, Deer Run, Logger's Trail) — all in Ramsey/Washington county area.
+- Skipped: ForeUp (Pheasant Acres — unknown facility ID, research incomplete), GolfNow (6 courses but no working primary adapter), EZLinks (1 course, no adapter), city/custom (3 courses, no standard API).
+- Also skipped: Teesnap (all 2 already in catalog), MemberSports (1 in catalog), Eagle Club (1 in catalog).
+
+**Workflow developed this session:**
+1. `scripts/discover-chronogolf.mjs` — parses `__NEXT_DATA__` blob on each Chronogolf club page. Extracts club UUID, per-course UUIDs, bookable holes, address, lat/lon. Script kept in repo for future use.
+2. `scripts/verify-chronogolf.sh` — curl-based Chronogolf marketplace API probe (Node's undici TLS fingerprint is blocked; curl isn't). Confirms each course UUID accepts the live `/marketplace/v2/teetimes` query.
+3. `scripts/discover-teeitup.mjs` — Playwright-based TeeItUp facility ID discovery by intercepting API calls from the booking page.
+4. `scripts/verify-teeitup.sh` — curl probe of `/v2/tee-times?facilityIds=N`.
+5. `scripts/enrich-courses.mjs` — Google Places API lookup for placeId + address + lat/lon. Uses `Referer: https://teetimes.scarson.io/` (the Google API key is restricted to that domain).
+6. `scripts/.merge-new-courses.mjs` — reads enriched drafts, merges into `courses.json` with sequential indexes, preferring Google coords over Chronogolf's (two courses had 4-13mi drift).
+
+**3x adversarial review:**
+
+1. **Empirical verification quality.** Each Chronogolf courseId got a live `/marketplace/v2/teetimes?course_ids=UUID&start_date=2026-04-25` call. Of 27 verified, 10 are `status=open` (live bookings), 17 are `status=closed` (seasonal off-season, expected). Two slugs 404'd and were excluded (Fountain Valley, Viking Meadows — may have changed slugs). Each TeeItUp facility returned `OK array len=1` from the Kenna API. No guessed IDs.
+2. **Cross-referenced the research doc against Chronogolf's live clubs listing** (Minneapolis/Saint Paul/Bloomington area pages via Playwright). Confirmed the research catalog matches; 4 additional clubs surfaced were all well outside TC metro (Annandale, Glencoe, Cannon Falls, New Prague, Le Sueur, etc.) and excluded by geographic scope.
+3. **areas.ts unit test caught a gap.** Test `covers every city in courses.json` failed because my new cities (Lakeville, Woodbury, Elk River, etc.) weren't mapped to areas. Added 18 new city→area mappings. This was a test doing its job — catching drift at data-addition time. Good signal that the test was pulling its weight.
+
+**Decision quality — why multi-hole data preserved:**
+- Several new chronogolf courses report `bookableHoles: [9, 18]` (Dahlgreen, Oneka Ridge, Prestwick, Royal, Arbor Pointe, Orono). Post-PR#98 merge, our adapter emits both variants and UI shows `"9 / 18 holes"` cards. Users will see the right shape.
+
+**Known tradeoffs accepted:**
+- 19 of 25 Chronogolf courses return `status=closed` (off-season). Our `is_active` auto-management handles this: they auto-reactivate in spring when tee times surface. Until then they'll be polled but produce no data. Acceptable.
+- Name mismatches between Chronogolf and Google: e.g., "Orono Public Golf Course" on Chronogolf, but Google's primary name is "Orono Orchards Golf Course" at the same address. Kept Chronogolf's name; address/placeId are correct.
+- `halla-greens` is a par-29 executive course. Still legitimate 9-hole golf. Included.
+
+**Not included:**
+- Pheasant Acres (ForeUp) — research has no facility ID, Pheasant Acres website has expired SSL cert, no way to probe autonomously.
+- Brightwood Hills (TeeItUp) — research flagged as "may be closed — verify status." Didn't verify live.
+- GolfNow primary-booked courses (New Hope Village, Shamrock, Southern Hills, Chomonix, Brookland, Centerbrook) — no working adapter for primary-booked GolfNow; implementing would require writing a new adapter.
+- City/Custom booking systems (Birnamwood WebTrac, Mendota Heights Par 3 city site, Island Lake TeeMaster) — no standard API per-platform, each requires custom adapter.
+- EZLinks (Heritage Links) — no adapter.
+- The Ponds (St Francis) — uses `golfbook.in`, no adapter.
+- Timber Creek (Watertown) — booking via static page, no supported platform.
+- Applewood Hills, Bent Creek, Olympic Hills — booking platform not detected from public site.
+- Markdale (Ontario, Canada) — out of TC metro, excluded.
+
+**Gaps documented for future**: research doc (`dev/research/tc-courses-platforms.md`) has 8 GolfNow primary + 3 city/custom courses plus EZLinks/Pheasant/Brightwood that remain un-catalogued. Each requires either new adapter implementation or per-course custom handling. Not blocking.
+
+**Result:** Catalog grew 49 → 92 courses (+43, +88%). All 669 tests pass, type-check clean, lint clean (only pre-existing warnings).
+
+**Decision:** Remove deep-link Book button feature (Sam's feedback #1) from the overnight scope. Document the research findings permanently so a future session or Sam can revisit without re-doing the discovery work. Spend remaining overnight time on catalog expansion.
+
+**Full findings:** See [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md).
+
+**Why it's infeasible (not just deferred):** Three consecutive platforms (ForeUp, CPS Golf, Chronogolf) were verified live via Playwright MCP. All three ignore URL-based date deep-link parameters. The pattern is architectural: booking SPAs seed date state from today (or an authenticated API call) at load and do not read date from the URL. This is consistent across the industry — authenticated API handshakes override any URL-provided state by design.
+
+**Shipping the feature anyway would be net-negative:** A "deep-link" that encodes `?date=04-25-2026` in the URL but lands the user on today's date is worse UX than the current base URL, because the user believes the link selected a specific date.
+
+**3x adversarial review:**
+
+1. **Did I test enough platforms?** Three out of eight, but the findings were mechanically consistent: SPA seeds state from today, ignores URL params. The marginal cost of testing 5 more platforms is ~30 min; the probability any will break the pattern is very low given the architectural reason. If a future session finds a platform where URL date works, a targeted per-adapter implementation can ship for that one. No reason to block on exhaustive testing now.
+2. **Is there a non-URL-based alternative?** See the research doc: POST-based handoff, browser extension, in-app booking, informational note. The informational-note option is low-effort and possibly worth a future PR (shows the user "click Book, then manually select Fri Apr 25 at 8am"). Not pursuing tonight — low priority vs catalog expansion.
+3. **Does dropping this waste prior research?** No — prior session's partial ForeUp probe got re-verified and strengthened. All the research is captured in the research doc, ready to be picked up later.
+
+**Action:** Remove deep-link from overnight queue. Shift focus to catalog expansion, which is tractable and high-value.
+
+---
+
+### D-9 — Deep-link Book buttons: use Playwright MCP for live SPA verification (SUPERSEDED by D-10)
+
+**Decision:** Use Playwright MCP browser tools to live-test each booking platform's SPA behavior before implementing any deep-link. Document per-platform capability in `dev/research/2026-04-20-deep-link-research.md`. Implement `buildBookingUrl(teeTime)` adapter method for each platform where URL-based deep-linking is verified to work.
+
+**Prior misdirection:** An initial draft of this decision deferred deep-link work entirely based on a fear that Playwright MCP was unreliable. Sam corrected: "Use Playwright for anything where you need live browser testing." That's the authoritative guidance. Pivoting.
+
+**Research so far (pre-Playwright):**
+- **ForeUp:** URL `?date=` does NOT deep-link — DEFAULT_FILTER echoes today regardless (curl probe, not live). Needs Playwright confirmation. Maybe hash routes work?
+- **CPS Golf:** Angular SPA with `/search-teetime` route. No curl-level evidence of URL→state wiring. Needs Playwright.
+- Other 6 platforms: not yet probed.
+
+**Workflow:**
+
+1. For each platform, pick one representative course with known working polling.
+2. Via Playwright MCP: navigate to `baseUrl?candidate-param=value`, wait for SPA to settle, inspect what date/time/holes the UI shows.
+3. Try: `?date=MM-DD-YYYY`, `?date=YYYY-MM-DD`, `#date=...`, path segments like `/YYYY-MM-DD`, embedded hash routes.
+4. Record findings per platform as "verified working" / "verified ignored" / "untested."
+5. Implement adapter method only for verified-working platforms. Ship incrementally per-platform commits.
+
+**3x adversarial review:**
+
+1. **Is Playwright MCP robust enough for 8 platforms?** The prior session's browser-lock issues may have been environmental. A fresh session with a fresh browser state is the reset. If it fails again, fall back to writing project-local Playwright specs and running via `npx playwright test`.
+2. **Could the hole-count modal add value even without date deep-linking?** No — if the deep-link doesn't change behavior with hole-count, the modal is a pointless extra click. Gate modal implementation behind confirmed per-platform deep-link support.
+3. **Should I block on ALL platforms working before shipping any?** No. Ship per-platform incrementally. Each platform is a separate adapter with no cross-dependency.
+
+**Action:** Begin Playwright probing. Commit research updates as each platform is verified.
+
+---
+
+### D-8 — 9/18 filter commit rides along in PR #98
+
+**Decision:** Pushed the 9/18 filter commit (245a584) to the `dev` branch, which is the source branch for PR #98 (multi-hole). PR #98 now includes both features.
+
+**Rationale:** PR #97 set a precedent of bundling multiple feedback items per PR. Splitting into a separate PR would require branch management that risks leaving work unpushed and unverified by CI. The two features are thematically related ("multi-hole display improvements") and share UI surface (the search page filter bar).
+
+**3x adversarial review:**
+1. **Does bundling obscure review?** Diff is larger but each commit is scoped. Sam can review commit-by-commit.
+2. **CI still validates each push?** Yes — every push to dev triggers the CI jobs.
+3. **Are the two features genuinely independent in risk?** Yes — the 9/18 filter doesn't touch adapters, and multi-hole doesn't touch filter state. They can be reverted independently if needed.
+
+**Action:** Update PR #98 body at end of overnight session to reflect the expanded scope.
