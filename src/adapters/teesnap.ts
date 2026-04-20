@@ -106,23 +106,33 @@ export class TeensnapAdapter implements PlatformAdapter {
       const openSlots = 4 - totalBooked;
       if (openSlots <= 0) continue;
 
-      // Prefer 18-hole price, fall back to 9-hole
-      const eighteenPrice = tt.prices.find(
-        (p) => p.roundType === "EIGHTEEN_HOLE"
-      );
-      const ninePrice = tt.prices.find((p) => p.roundType === "NINE_HOLE");
-      const selectedPrice = eighteenPrice ?? ninePrice;
+      // Emit one record per known roundType price variant. Iterates in the
+      // order the API returned. Unknown roundTypes are skipped (empty or
+      // all-unknown prices arrays produce zero records for this slot — see
+      // decision D-1 in docs/plans/2026-04-20-overnight-decisions.md).
+      for (const priceEntry of tt.prices) {
+        const holes: 9 | 18 | null =
+          priceEntry.roundType === "EIGHTEEN_HOLE"
+            ? 18
+            : priceEntry.roundType === "NINE_HOLE"
+              ? 9
+              : null;
+        if (holes === null) continue;
 
-      results.push({
-        courseId: config.id,
-        time: tt.teeTime,
-        price: selectedPrice && !Number.isNaN(parseFloat(selectedPrice.price))
-          ? parseFloat(selectedPrice.price)
-          : null,
-        holes: eighteenPrice ? 18 : 9,
-        openSlots,
-        bookingUrl: config.bookingUrl,
-      });
+        const priceNum =
+          priceEntry.price && !Number.isNaN(parseFloat(priceEntry.price))
+            ? parseFloat(priceEntry.price)
+            : null;
+
+        results.push({
+          courseId: config.id,
+          time: tt.teeTime,
+          price: priceNum,
+          holes,
+          openSlots,
+          bookingUrl: config.bookingUrl,
+        });
+      }
     }
 
     return results;
