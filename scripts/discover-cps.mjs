@@ -18,9 +18,15 @@ for (const sub of subdomains) {
   const page = await ctx.newPage();
   const captured = { apiCalls: [], headers: {} };
   page.on("request", (req) => {
-    const u = req.url();
-    if (u.includes(`${sub}.cps.golf/onlineres`)) {
-      captured.apiCalls.push({ method: req.method(), url: u });
+    let parsed;
+    try {
+      parsed = new URL(req.url());
+    } catch {
+      return;
+    }
+    // Strict host match on the expected subdomain, plus path prefix check.
+    if (parsed.hostname === `${sub}.cps.golf` && parsed.pathname.startsWith("/onlineres")) {
+      captured.apiCalls.push({ method: req.method(), url: req.url() });
       const h = req.headers();
       for (const key of ["x-siteid", "x-terminalid", "x-apikey", "authorization"]) {
         if (h[key] && !captured.headers[key]) captured.headers[key] = h[key];

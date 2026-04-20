@@ -19,9 +19,16 @@ for (const url of urls) {
   const apiCalls = [];
   const headers = {};
   page.on("request", (req) => {
-    const u = req.url();
-    if (u.includes("kenna.io") || u.includes("api-be")) {
-      apiCalls.push({ method: req.method(), url: u });
+    let host;
+    try {
+      host = new URL(req.url()).hostname;
+    } catch {
+      return;
+    }
+    // Strict host match: only exact kenna.io subdomains or api-be-*.kenna.io, not
+    // arbitrary strings in path/query that happen to contain "kenna.io".
+    if (host === "kenna.io" || host.endsWith(".kenna.io")) {
+      apiCalls.push({ method: req.method(), url: req.url() });
       const h = req.headers();
       if (h["x-be-alias"]) headers["x-be-alias"] = h["x-be-alias"];
     }
