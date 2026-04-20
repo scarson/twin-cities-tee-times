@@ -93,3 +93,48 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 **Adverse evidence considered:** The fixture shows single-item arrays exclusively. No live probe done (MemberSports MN courses are off-season, unlikely to return data; would be low-value at this point).
 
 ---
+
+### D-5 — Defensive integration test for large batches (end-of-feature review)
+
+**Decision:** Added a regression test to `src/lib/db.integration.test.ts` asserting `upsertTeeTimes` handles 200-record batches without error.
+
+**Context:** Multi-hole adapter fixes can double the row count per course-date upsert. Francis A Gross post-fix emits ~130 records for a single day (63 slots × 2 variants). Pre-fix Cloudflare D1 documentation suggested a possible 100-statement batch limit, which would have broken this feature in production.
+
+**Investigation (during Round 4 of end-of-feature review):**
+- Checked current CF D1 docs via MCP. No explicit statement-count limit in batch calls — only per-statement limits (100 bound parameters, 100 KB SQL length).
+- Each INSERT uses 9 bound parameters. Well under the per-statement limit.
+- Total batch duration limit: 30 seconds. 200 inserts well within.
+- Ran empirical verification with 200 records via a local integration test — succeeded.
+
+**Decision:** Since the empirical test passed AND the docs suggest no count limit, no architectural change needed. BUT the doubling risk is latent and a future refactor could reintroduce concerns. A regression test encoding "200-record batches must work" is cheap insurance.
+
+**3x adversarial review:**
+1. **Could the local SQLite test environment differ from production D1 behavior for batches?** Possible, but production D1 exposes the same `batch()` API with documented per-statement limits that match what local SQLite enforces. Batch count limit, if it existed, would be in the API wrapper layer — not reproducible locally, but also not in the docs.
+2. **Is 200 the right threshold to test?** 130 is the current realistic max; 200 provides 54% headroom. Higher would slow the test without meaningful added coverage. Lower would miss growth room.
+3. **Does this test add maintenance burden?** Minimal — 20 lines, single scenario, deterministic.
+
+---
+
+## End-of-feature summary
+
+**Commits landed on dev (2026-04-20 overnight session):**
+
+- Adapter layer (6 commits): foreup, chronogolf, teesnap, teewire, teeitup, cps-golf — all emit one TeeTime per hole variant instead of silently truncating.
+- UI layer (2 commits): `mergeHoleVariants` pure helper + integration into `tee-time-list.tsx` for `"9 / 18 holes"` and `"$30.00 / $55.00"` merged rendering.
+- Test coverage (1 commit): large-batch regression guard in db integration tests.
+- Docs (this file): decisions D-1..D-5 with 3x+ adversarial review each.
+
+**Test count:** 628 → 664 (+36 tests across 7 suites).
+
+**Live verification:** CPS Golf probe against Francis A Gross confirmed 116 records produced across 63 unique slots, with 53 slots correctly exposing both 9h ($26.04) and 18h ($43.71) variants.
+
+**Review rounds completed:**
+- Per-task: 1x TDD red/green cycle
+- End-of-adapter-batch: 3 rounds (1 finding surfaced then withdrawn after deeper analysis of MemberSports semantics)
+- End-of-feature: 5 rounds (1 finding addressed — large-batch regression test)
+
+**Known limitations / follow-ups:**
+- Chronogolf uses Option A (null second price). Accepts imperfect pricing to avoid doubling API load. Revisit as Option B if users notice missing prices.
+- MemberSports `items[0]` is a latent course-filtering bug (not multi-hole). Filed mentally; address if it surfaces.
+- TeeItUp fix is defensive (no live multi-hole evidence in fixture). Degenerates to current behavior for solo-rate slots; correct for multi-hole if it surfaces.
+- CPS Golf 4-decimal prices (e.g., $43.7107649384) stored as-is. Display via `.toFixed(2)` correctly shows `"$43.71"`.
