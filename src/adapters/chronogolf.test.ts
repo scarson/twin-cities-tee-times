@@ -27,15 +27,30 @@ describe("ChronogolfAdapter", () => {
     expect(adapter.platformId).toBe("chronogolf");
   });
 
-  it("parses tee times from API response", async () => {
+  it("parses tee times from API response with multi-hole expansion", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-28");
 
-    expect(results).toHaveLength(4);
-    expect(results[0]).toEqual({
+    // Fixture has 4 records, all with course.bookable_holes: [9, 18].
+    // Each expands to 2 variants (holes=9 and holes=18), so 8 total.
+    expect(results).toHaveLength(8);
+
+    // First record (Baker Championship, 9:15, default bookable_holes=18) expands
+    // to a holes=9 record (price=null) and a holes=18 record (price=51).
+    const first9 = results.find((r) => r.time === "2026-03-28T09:15:00" && r.holes === 9)!;
+    const first18 = results.find((r) => r.time === "2026-03-28T09:15:00" && r.holes === 18)!;
+    expect(first9).toEqual({
+      courseId: "baker-national-championship",
+      time: "2026-03-28T09:15:00",
+      price: null,
+      holes: 9,
+      openSlots: 4,
+      bookingUrl: "https://www.chronogolf.com/club/baker-national-golf-club#teetimes",
+    });
+    expect(first18).toEqual({
       courseId: "baker-national-championship",
       time: "2026-03-28T09:15:00",
       price: 51,
@@ -45,16 +60,20 @@ describe("ChronogolfAdapter", () => {
     });
   });
 
-  it("uses bookable_holes from default_price for holes", async () => {
+  it("uses default_price.bookable_holes to determine which variant gets the known price", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-28");
 
-    // Third entry is Evergreen 9-hole
-    expect(results[2].holes).toBe(9);
-    expect(results[2].price).toBe(21);
+    // Evergreen record (start_time 9:10) has default_price.bookable_holes: 9.
+    // The 9-hole variant should carry the known price ($21); the 18-hole variant
+    // is expanded with price=null.
+    const evergreen9 = results.find((r) => r.time === "2026-03-28T09:10:00" && r.holes === 9)!;
+    const evergreen18 = results.find((r) => r.time === "2026-03-28T09:10:00" && r.holes === 18)!;
+    expect(evergreen9.price).toBe(21);
+    expect(evergreen18.price).toBeNull();
   });
 
   it("builds the correct API URL", async () => {
@@ -111,12 +130,13 @@ describe("ChronogolfAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-28");
 
-    // "9:15" -> "2026-03-28T09:15:00"
-    expect(results[0].time).toBe("2026-03-28T09:15:00");
-    // "10:05" -> "2026-03-28T10:05:00"
-    expect(results[1].time).toBe("2026-03-28T10:05:00");
-    // "11:03" -> "2026-03-28T11:03:00"
-    expect(results[3].time).toBe("2026-03-28T11:03:00");
+    // With multi-hole expansion, each original record produces 2 results.
+    // Verify each expected start_time is present somewhere in the results.
+    const times = new Set(results.map((r) => r.time));
+    expect(times.has("2026-03-28T09:15:00")).toBe(true);
+    expect(times.has("2026-03-28T10:05:00")).toBe(true);
+    expect(times.has("2026-03-28T09:10:00")).toBe(true);
+    expect(times.has("2026-03-28T11:03:00")).toBe(true);
   });
 
   it("fetches all pages when results span multiple pages", async () => {
@@ -189,8 +209,139 @@ describe("ChronogolfAdapter", () => {
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-28");
 
-    expect(results[0].openSlots).toBe(4); // max_player_size: 4
-    expect(results[1].openSlots).toBe(2); // max_player_size: 2
-    expect(results[3].openSlots).toBe(1); // max_player_size: 1
+    // After expansion, both variants from a given record carry the same openSlots.
+    const at915 = results.find((r) => r.time === "2026-03-28T09:15:00")!;
+    const at1005 = results.find((r) => r.time === "2026-03-28T10:05:00")!;
+    const at1103 = results.find((r) => r.time === "2026-03-28T11:03:00")!;
+    expect(at915.openSlots).toBe(4);
+    expect(at1005.openSlots).toBe(2);
+    expect(at1103.openSlots).toBe(1);
+  });
+
+  it("expands multi-hole courses (course.bookable_holes array) into two records", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: { bookable_holes: [9, 18] },
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    const v18 = results.find((r) => r.holes === 18)!;
+    const v9 = results.find((r) => r.holes === 9)!;
+    expect(v18.price).toBe(55);
+    expect(v9.price).toBeNull();
+    expect(v9.time).toBe(v18.time);
+    expect(v9.openSlots).toBe(v18.openSlots);
+  });
+
+  it("emits a single record when course.bookable_holes is a single number", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: { bookable_holes: 18 },
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+    expect(results[0].price).toBe(55);
+  });
+
+  it("emits a single record when course.bookable_holes is [18] (array with one value)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: { bookable_holes: [18] },
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("defaults to a single 18-hole record when course.bookable_holes is missing", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: {},
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("defaults to a single record when course.bookable_holes is null", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: { bookable_holes: null },
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+  });
+
+  it("falls back to the default variant when course.bookable_holes contains only unrecognized values", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "success",
+        teetimes: [
+          {
+            start_time: "8:00",
+            date: "2026-04-15",
+            max_player_size: 4,
+            course: { bookable_holes: [27] },
+            default_price: { green_fee: 55, bookable_holes: 18 },
+          },
+        ],
+      }), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
   });
 });
