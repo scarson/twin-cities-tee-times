@@ -138,3 +138,23 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 - MemberSports `items[0]` is a latent course-filtering bug (not multi-hole). Filed mentally; address if it surfaces.
 - TeeItUp fix is defensive (no live multi-hole evidence in fixture). Degenerates to current behavior for solo-rate slots; correct for multi-hole if it surfaces.
 - CPS Golf 4-decimal prices (e.g., $43.7107649384) stored as-is. Display via `.toFixed(2)` correctly shows `"$43.71"`.
+
+---
+
+### D-6 — 9/18 hole filter design (Task 2 from feedback list)
+
+**Decision:** Add a `HolesFilter` component in the same filter row as `TimeFilter`, with three buttons: Any / 9 holes / 18 holes. State stored in `useState<"" | "9" | "18">`. Query param passed to existing API `holes=` handling. No schema/API changes needed.
+
+**Placement rationale:** Same row as TimeFilter. On mobile (<640px), `flex-wrap` naturally flows overflow buttons to a second line. On desktop, all 8 buttons (5 time + 3 holes) fit on one line.
+
+**Interaction with multi-hole merge:** Verified during multi-hole feature design:
+- User selects "9 holes" → `WHERE holes = 9` returns only the 9-hole row of a multi-hole pair → `mergeHoleVariants` sees a solo row → renders `"9 holes · $30"` card. Correct.
+- User selects "18 holes" → mirror of above.
+- User selects "Any" → both rows returned → helper merges → `"9 / 18 holes · $30 / $55"` card.
+
+**3x adversarial review:**
+1. **Could the `holes` URL param collide with anything?** No existing param named `holes`. API route `src/app/api/tee-times/route.ts:25` already reads it. Clean integration.
+2. **Could the TypeScript type `"" | "9" | "18"` need to be broader?** API validates param as "9" or "18" exactly. String literal union is correct.
+3. **Could mobile UI break with 8 buttons?** `flex-wrap` on the parent div handles overflow. Tested during nav responsive work — mobile layouts accommodate 2-3 rows fine.
+
+**Alternatives considered:** (a) dropdown select for holes — rejected, button group matches the time filter's visual pattern; (b) keep "Any" as implicit default with only "9" / "18" buttons — rejected, explicit "Any" button improves discoverability.
