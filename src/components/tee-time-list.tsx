@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
 import { formatTime, staleAge } from "@/lib/format";
+import { mergeHoleVariants } from "./merge-hole-variants";
 
 export interface TeeTimeItem {
   course_id: string;
@@ -91,6 +92,7 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
       </p>
       {dateGroups.map(({ date, items }) => {
         const isCollapsed = collapsed.includes(date);
+        const displayItems = mergeHoleVariants(items);
 
         return (
           <div key={date}>
@@ -116,7 +118,7 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
             )}
             {(!hasMultipleDates || !isCollapsed) && (
               <div className="divide-y divide-gray-100">
-                {items.map((tt, i) => (
+                {displayItems.map((tt, i) => (
                   <div
                     key={`${tt.course_id}-${tt.date}-${tt.time}-${i}`}
                     className="flex items-center rounded-lg py-3 -mx-3 px-3 transition-colors hover:bg-stone-50 lg:py-4"
@@ -140,11 +142,11 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
                         )}
                       </div>
                       <div className="mt-0.5 flex gap-3 text-xs text-gray-500 lg:text-sm lg:gap-4">
-                        <span>{tt.holes} holes{tt.nines ? ` (${tt.nines})` : ""}</span>
+                        <span>{tt.holesLabel}{tt.nines ? ` (${tt.nines})` : ""}</span>
                         <span>
                           {tt.open_slots} {tt.open_slots === 1 ? "spot" : "spots"}
                         </span>
-                        {tt.price !== null && <span>${tt.price.toFixed(2)}</span>}
+                        {tt.priceLabel !== null && <span>{tt.priceLabel}</span>}
                         {isStale(tt.fetched_at) && (
                           <span className="text-amber-600/70">* stale ({staleAge(tt.fetched_at)})</span>
                         )}
