@@ -2,6 +2,7 @@
 // ABOUTME: Supports v5 (bearer token + transaction) and v4 (apiKey header) auth flows.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
+import { classifyHoles } from "@/lib/parse-holes";
 
 interface CpsV5TeeTime {
   startTime: string;
@@ -105,17 +106,18 @@ export class CpsGolfAdapter implements PlatformAdapter {
       .filter((tt) => tt.maxPlayer > 0)
       .flatMap((tt) => {
         // CPS multi-hole courses encode variants in shItemPrices as
-        // `GreenFee9` and `GreenFee18` SKUs. A record with both SKUs is a
+        // `GreenFee9*` and `GreenFee18*` SKUs. A record with both is a
         // multi-hole slot; a record with only one is a single-hole slot.
         // The record-level `tt.holes` is unreliable on multi-hole courses
         // (Francis A Gross: always 9 even when 18 is bookable). See D-3.
+        // Some facilities append a rate qualifier (e.g. Phalen/Como use
+        // `GreenFee18Online`), so we rely on `classifyHoles` to extract
+        // the hole count from the SKU rather than matching exact strings.
         const variants: { holes: 9 | 18; price: number }[] = [];
         for (const item of tt.shItemPrices ?? []) {
-          if (item.shItemCode === "GreenFee9") {
-            variants.push({ holes: 9, price: item.price });
-          } else if (item.shItemCode === "GreenFee18") {
-            variants.push({ holes: 18, price: item.price });
-          }
+          if (!item.shItemCode.startsWith("GreenFee")) continue;
+          const holes = classifyHoles(item.shItemCode);
+          if (holes !== null) variants.push({ holes, price: item.price });
         }
 
         return variants.map((v) => ({
