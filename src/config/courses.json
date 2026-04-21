@@ -1341,11 +1341,11 @@
     "longitude": -93.0016,
     "platform": "teeitup",
     "platformConfig": {
-      "alias": "manitou-ridge-golf-course",
+      "alias": "ramsey-county-golf",
       "apiBase": "https://phx-api-be-east-1b.kenna.io",
       "facilityId": "17056"
     },
-    "bookingUrl": "https://manitou-ridge-golf-course.book.teeitup.com",
+    "bookingUrl": "https://ramsey-county-golf.book.teeitup.com/?course=17056",
     "googlePlaceId": "ChIJhZ2972PRslIRrb6rmU8ubac"
   },
   {
@@ -1622,5 +1622,23 @@
     },
     "bookingUrl": "https://hiddenhaven.cps.golf/onlineresweb",
     "googlePlaceId": "ChIJfboiicAbs1IRa2e_cS2u2Uo"
+  },
+  {
+    "index": 92,
+    "id": "island-lake",
+    "name": "Island Lake",
+    "city": "Shoreview",
+    "state": "MN",
+    "address": "1000 Red Fox Rd, Shoreview, MN 55126",
+    "latitude": 45.0574,
+    "longitude": -93.1432,
+    "platform": "teeitup",
+    "platformConfig": {
+      "alias": "island-lake-golf-and-training-center",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "10547"
+    },
+    "bookingUrl": "https://island-lake-golf-and-training-center.book.teeitup.com/?course=10547",
+    "googlePlaceId": "ChIJTwIMlKQps1IRZKpMDN3anrU"
   }
 ]

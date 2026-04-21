@@ -11,6 +11,7 @@ const CITY_TO_AREA: Record<string, string> = {
   "Coon Rapids": "North Metro",
   Blaine: "North Metro",
   Roseville: "North Metro",
+  Shoreview: "North Metro",
   "Ham Lake": "North Metro",
   Anoka: "North Metro",
   Dayton: "North Metro",
