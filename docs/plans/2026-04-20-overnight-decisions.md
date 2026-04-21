@@ -184,6 +184,49 @@ Each of these is a research step that requires visiting the course's actual book
 
 ---
 
+### D-13 — Chronogolf post-poll sleep: 1500 ms → 2500 ms (tuning, not re-architecture)
+
+**Decision:** Bump `SLEEP_AFTER_POLL_MS.chronogolf` from 1500 ms to 2500 ms in `src/lib/batch.ts`. Leaves every other platform at 250 ms default.
+
+**Context:** PR #100 shipped Option A at 1500 ms on 2026-04-20 ~02:40 CT. A short-window (15 min) verification at ~02:59 CT showed 0% error rate. A longer-window (1-hour) check at ~05:39 CT showed 25% error rate — still all HTTP 429s. The initial verification was a low-activity sampling artifact; steady-state load produces more contention.
+
+Per the design doc's own rubric (`docs/plans/2026-04-20-chronogolf-rate-limit-fix.md`), 10-25% → tune sleep value to 2500 ms → then 4000 ms if insufficient → then escalate to Option C/D if that also plateaus. This is the first step of that tuning ladder.
+
+**3x adversarial review:**
+
+1. **Could the real issue be per-key not per-IP?** No — all 429s have identical error messages and they affect both pre-existing Chronogolf courses (baker, dwan, bluff-creek) and newly-added ones. The rate-limit behavior is consistent with a per-IP sliding window. If it were per-key, a larger sleep wouldn't help — we'd see the same rate regardless of cadence. This change is the correct next step.
+2. **Does 2500 ms fit inside the 5-min batch window?** 8 Chronogolf per batch × 7 dates = 56 calls × 2500 ms = 140 s of sleep + ~28 s API time = ~168 s per batch. Batch window is 300 s. Plenty of headroom. If the catalog grows further (say, 2× more Chronogolf), recompute.
+3. **Why not jump to 4000 ms directly?** The rubric intentionally steps 1500 → 2500 → 4000 to find the minimum safe value and avoid over-slowing polls. Skipping steps means coarser tuning and unnecessary staleness. If 2500 ms is still >10% at next verification, we'll bump to 4000 ms without ceremony.
+
+**Verification plan post-merge:** wait at least 1 hour, then re-run the 1-hour aggregate query. Target: Chronogolf error rate <10%. If <5%, done. If 10-25%, tune to 4000 ms. If >25%, probe per-IP vs per-key (use the Lambda proxy as a second-IP test) and escalate.
+
+---
+
+### D-12 — Hidden Haven: booking_horizon_days shrunk to 7 (data fix, not code)
+
+**Decision:** Direct D1 update `UPDATE courses SET booking_horizon_days = 7, last_horizon_probe = '2026-04-21T12:00:00Z' WHERE id = 'hidden-haven'` applied 2026-04-21 ~05:50 CT.
+
+**Context:** PR #99 added Hidden Haven (CPS Golf). Post-deploy check on 2026-04-21 found 6 `HTTP 400` errors against it in a 1-hour window. Investigation:
+
+1. Reproduced locally via Playwright — Hidden Haven returned HTTP 400 with body `"Sorry, you are not able to book this tee time currently. Your membership only allows 7 days in advance."`
+2. Other CPS courses in the catalog allow up to 14 days. Hidden Haven's facility has a 7-day booking horizon for the `R` (regular/public) class.
+3. Hidden Haven was seeded with the default `booking_horizon_days = 14`. The cron polls today + 13 future days; days 8-13 hit the facility's limit and fail.
+4. The cron's horizon probe only INCREASES the horizon (never shrinks). So a course whose real horizon is narrower than the default never self-corrects.
+
+**Why a direct D1 update (not a code change):** `booking_horizon_days` is NOT in the seed script's ON CONFLICT DO UPDATE list (confirmed in `scripts/seed.ts:49-57`). The update sticks across deploys without a schema or seed change. This is a DATA fix appropriate for a single-course edge case.
+
+**3x adversarial review:**
+
+1. **Is a direct D1 write "destructive" per CLAUDE.md?** CLAUDE.md bans git `--force` / `reset --hard` / schema drops. A single-row UPDATE of a non-seeded column is reversible (`UPDATE ... SET booking_horizon_days = 14` any time), affects one course, and matches the API's actual semantics. Not destructive in the harmful sense.
+2. **Should we instead teach the horizon probe to shrink?** Yes, eventually — see the "Not-yet-fixed" follow-up below. But for tonight that's a risky cron-handler change without proper TDD; the D1 fix is a stop-gap that eliminates ~7 errors per cycle while we figure out the right architectural answer.
+3. **What if other CPS courses have similarly tight horizons?** We'd see them produce 400s with the same "X days in advance" error. Easy to detect by grepping poll_log errors. None observed today besides Hidden Haven.
+
+**Not-yet-fixed follow-up:**
+- The horizon probe should learn to SHRINK the horizon on error responses that indicate "beyond booking window," not just extend on success. Filed as a future cron-handler improvement. Until implemented, any new CPS course with a <14-day horizon will produce horizon-probe noise after its first probe cycle.
+- Alternatively: add an optional `bookingHorizonDays` field to `CourseConfig` in `src/config/courses.json`, and have the seed script include it in the INSERT (but NOT in the UPDATE clause, so only new courses get the initial value). Lighter-weight than changing the cron handler.
+
+---
+
 ### D-11 — Catalog expansion: 43 courses added autonomously
 
 **Decision:** Expand the course catalog from 49 to 92 courses (+43). Includes 38 Chronogolf + 4 TeeItUp + 1 CPS Golf (Hidden Haven) additions. All empirically verified via live API calls before commit.
