@@ -142,6 +142,31 @@ describe("CpsGolfAdapter", () => {
     expect(v9.openSlots).toBe(v18.openSlots);
   });
 
+  it("expands multi-hole slot when 18-hole SKU is qualified (GreenFee18Online)", async () => {
+    // Phalen and Como return the 18-hole rate as `GreenFee18Online` instead of
+    // `GreenFee18`. An exact-match filter drops the 18-hole variant — causing
+    // the app to show 9-hole only while the booking site shows both.
+    mockCpsFlow({
+      ...fixture,
+      content: [
+        {
+          ...fixture.content[0],
+          holes: 18,
+          shItemPrices: [
+            { shItemCode: "GreenFee18Online", price: 39, itemDesc: "18 Hole Website Greens Fee" },
+            { shItemCode: "GreenFee9", price: 27, itemDesc: "9 Hole Greens Fee" },
+          ],
+        },
+      ],
+    });
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
+    expect(results.find((r) => r.holes === 9)!.price).toBe(27);
+    expect(results.find((r) => r.holes === 18)!.price).toBe(39);
+  });
+
   it("gets bearer token then registers transaction before querying", async () => {
     const fetchSpy = mockCpsFlow(fixture);
 

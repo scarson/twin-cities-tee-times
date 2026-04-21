@@ -50,6 +50,8 @@ async function findPlaceId(course: Course): Promise<string | null> {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": API_KEY!,
       "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
+      // API key is referrer-restricted; supply a referer allowed by the key.
+      Referer: "http://localhost/",
     },
     body: JSON.stringify(body),
   });

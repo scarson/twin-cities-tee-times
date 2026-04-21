@@ -27,14 +27,15 @@ describe("EagleClubAdapter", () => {
     expect(adapter.platformId).toBe("eagle_club");
   });
 
-  it("parses tee times from API response", async () => {
+  it("parses tee times from API response, emitting both 9 and 18 variants when both fees are present", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
 
-    expect(results).toHaveLength(3);
+    // 3 appointments × 2 variants (9 + 18) = 6 records
+    expect(results).toHaveLength(6);
     expect(results[0]).toEqual({
       courseId: "valleywood",
       time: "2026-04-15T06:36:00",
@@ -44,6 +45,61 @@ describe("EagleClubAdapter", () => {
       bookingUrl:
         "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115",
     });
+    expect(results[1]).toEqual({
+      courseId: "valleywood",
+      time: "2026-04-15T06:36:00",
+      price: 30.52,
+      holes: 9,
+      openSlots: 4,
+      bookingUrl:
+        "https://player.eagleclubsystems.online/#/tee-slot?dbname=mnvalleywood20250115",
+    });
+  });
+
+  it("emits a single 18-hole record when only EighteenFee is present", async () => {
+    const only18Fixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], NineFee: "", EighteenFee: "33.30" },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(only18Fixture), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+    expect(results[0].price).toBe(33.3);
+  });
+
+  it("emits a single 9-hole record when only NineFee is present", async () => {
+    const only9Fixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], NineFee: "30.52", EighteenFee: "" },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(only9Fixture), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(9);
+    expect(results[0].price).toBe(30.52);
+  });
+
+  it("skips appointments with neither fee populated", async () => {
+    const noFeeFixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], NineFee: "", EighteenFee: "" },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(noFeeFixture), { status: 200 })
+    );
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toEqual([]);
   });
 
   it("sends correct POST body with BCC and date", async () => {
@@ -74,8 +130,10 @@ describe("EagleClubAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    // results[0]/[1] are the 18-hole/9-hole of the 06:36 appointment;
+    // results[2]/[3] are the 06:45 appointment's pair.
     expect(results[0].time).toBe("2026-04-15T06:36:00");
-    expect(results[1].time).toBe("2026-04-15T06:45:00");
+    expect(results[2].time).toBe("2026-04-15T06:45:00");
   });
 
   it("parses slots correctly", async () => {
@@ -84,8 +142,8 @@ describe("EagleClubAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results[0].openSlots).toBe(4);
-    expect(results[2].openSlots).toBe(2);
+    expect(results[0].openSlots).toBe(4); // 06:36 / 18-hole
+    expect(results[4].openSlots).toBe(2); // 06:54 / 18-hole (third appointment has Slots: 2)
   });
 
   it("throws on HTTP error", async () => {
@@ -152,11 +210,11 @@ describe("EagleClubAdapter", () => {
     ).rejects.toThrow("Software version is out of date");
   });
 
-  it("returns null price when EighteenFee is empty", async () => {
+  it("does not emit an 18-hole record when EighteenFee is empty (emits 9-hole only)", async () => {
     const emptyFeeFixture = {
       ...fixture,
       LstAppointment: [
-        { ...fixture.LstAppointment[0], EighteenFee: "" },
+        { ...fixture.LstAppointment[0], EighteenFee: "", NineFee: "30.52" },
       ],
     };
 
@@ -165,7 +223,9 @@ describe("EagleClubAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results[0].price).toBeNull();
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(9);
+    expect(results[0].price).toBe(30.52);
   });
 
   it("uses StrExceptions when BoolSuccess is false and StrResult is empty", async () => {
@@ -187,11 +247,11 @@ describe("EagleClubAdapter", () => {
     ).rejects.toThrow("Connection timeout; Retry failed");
   });
 
-  it("returns null price for non-numeric EighteenFee", async () => {
+  it("emits an 18-hole record with null price when EighteenFee is present but non-numeric", async () => {
     const naFeeFixture = {
       ...fixture,
       LstAppointment: [
-        { ...fixture.LstAppointment[0], EighteenFee: "N/A" },
+        { ...fixture.LstAppointment[0], EighteenFee: "N/A", NineFee: "" },
       ],
     };
 
@@ -200,6 +260,8 @@ describe("EagleClubAdapter", () => {
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
     expect(results[0].price).toBeNull();
   });
 
@@ -217,12 +279,15 @@ describe("EagleClubAdapter", () => {
     expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("uses EighteenFee as price for 18-hole course", async () => {
+  it("emits 18-hole records using EighteenFee and 9-hole records using NineFee", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify(fixture), { status: 200 })
     );
 
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
-    expect(results[0].price).toBe(33.3);
+    const r18 = results.find((r) => r.holes === 18);
+    const r9 = results.find((r) => r.holes === 9);
+    expect(r18?.price).toBe(33.3);
+    expect(r9?.price).toBe(30.52);
   });
 });

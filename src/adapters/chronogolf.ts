@@ -1,6 +1,7 @@
 // ABOUTME: Chronogolf/Lightspeed platform adapter for fetching tee times.
 // ABOUTME: Handles the v2 marketplace API, time format conversion, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { classifyHoles, parseHoleVariants } from "@/lib/parse-holes";
 
 interface ChronogolfTeeTime {
   start_time: string; // local time e.g. "9:15"
@@ -62,15 +63,15 @@ export class ChronogolfAdapter implements PlatformAdapter {
       const data: ChronogolfResponse = await response.json();
 
       for (const tt of data.teetimes) {
-        const defaultHoles: 9 | 18 = tt.default_price.bookable_holes === 9 ? 9 : 18;
-        const courseHoles = tt.course?.bookable_holes;
-        const candidateVariants: (9 | 18)[] = Array.isArray(courseHoles)
-          ? courseHoles.filter((h): h is 9 | 18 => h === 9 || h === 18)
-          : [defaultHoles];
-
-        // If the course array yielded nothing (empty or all unknown values),
-        // fall back to the default variant alone — honest one-record output.
-        const variants = candidateVariants.length > 0 ? candidateVariants : [defaultHoles];
+        // The per-rate `default_price.bookable_holes` tells us which variant
+        // the quoted price applies to; the per-course `course.bookable_holes`
+        // (array when multi-hole) enumerates every variant bookable in this
+        // slot. When neither parses cleanly we fall back to 18 so a
+        // misclassified record is still surfaced (the alternative — silently
+        // dropping it — is worse).
+        const defaultHoles: 9 | 18 = classifyHoles(tt.default_price.bookable_holes) ?? 18;
+        const courseVariants = parseHoleVariants(tt.course?.bookable_holes);
+        const variants: (9 | 18)[] = courseVariants.length > 0 ? courseVariants : [defaultHoles];
 
         for (const h of variants) {
           allTeeTimes.push({

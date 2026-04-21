@@ -87,16 +87,40 @@ export class EagleClubAdapter implements PlatformAdapter {
       throw new Error(`Eagle Club API error: ${message}`);
     }
 
-    return data.LstAppointment.map((appt) => ({
-      courseId: config.id,
-      time: this.toIso(date, appt.Time),
-      price: appt.EighteenFee && !Number.isNaN(parseFloat(appt.EighteenFee))
-        ? parseFloat(appt.EighteenFee)
-        : null,
-      holes: 18 as const,
-      openSlots: appt.Slots,
-      bookingUrl: config.bookingUrl,
-    }));
+    // Each appointment can carry both NineFee and EighteenFee. Emit one
+    // record per populated fee so the app surfaces every bookable variant
+    // (mirrors CPS Golf multi-hole expansion).
+    const parseFee = (fee: string | undefined | null): number | null => {
+      if (!fee) return null;
+      const n = parseFloat(fee);
+      return Number.isNaN(n) ? null : n;
+    };
+
+    const results: TeeTime[] = [];
+    for (const appt of data.LstAppointment) {
+      const time = this.toIso(date, appt.Time);
+      if (appt.EighteenFee) {
+        results.push({
+          courseId: config.id,
+          time,
+          price: parseFee(appt.EighteenFee),
+          holes: 18,
+          openSlots: appt.Slots,
+          bookingUrl: config.bookingUrl,
+        });
+      }
+      if (appt.NineFee) {
+        results.push({
+          courseId: config.id,
+          time,
+          price: parseFee(appt.NineFee),
+          holes: 9,
+          openSlots: appt.Slots,
+          bookingUrl: config.bookingUrl,
+        });
+      }
+    }
+    return results;
   }
 
   /** Convert "HHMM" time and "YYYY-MM-DD" date to "YYYY-MM-DDTHH:MM:00" */
