@@ -1,6 +1,7 @@
 // ABOUTME: TeeItUp/Kenna platform adapter for fetching tee times.
 // ABOUTME: Handles API requests, rate selection, and cents-to-dollars price conversion.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { classifyHoles } from "@/lib/parse-holes";
 
 interface TeeItUpRate {
   holes: number;
@@ -56,10 +57,12 @@ export class TeeItUpAdapter implements PlatformAdapter {
         .flatMap((tt) => {
           // Group rates by hole count; within each group, prefer non-trade
           // rate. Emit one TeeTime per group so multi-hole slots surface
-          // both variants (same pattern as Teewire).
+          // both variants (same pattern as Teewire). Unknown rate.holes
+          // values (e.g. 27) are skipped rather than silently collapsed to 18.
           const ratesByHoles = new Map<9 | 18, TeeItUpRate[]>();
           for (const rate of tt.rates) {
-            const holes: 9 | 18 = rate.holes === 9 ? 9 : 18;
+            const holes = classifyHoles(rate.holes);
+            if (holes === null) continue;
             if (!ratesByHoles.has(holes)) {
               ratesByHoles.set(holes, []);
             }

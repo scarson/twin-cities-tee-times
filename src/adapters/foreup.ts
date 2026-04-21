@@ -1,6 +1,7 @@
 // ABOUTME: ForeUp platform adapter for fetching tee times.
 // ABOUTME: Handles API requests, time format conversion, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { parseHoleVariants } from "@/lib/parse-holes";
 
 interface ForeUpTeeTime {
   time: string; // "YYYY-MM-DD HH:MM"
@@ -14,27 +15,15 @@ interface ForeUpTeeTime {
 
 /**
  * Parse the upstream `holes` field into one or more hole-count variants.
- * Upstream ForeUp returns either a number (9, 18) OR a compound string
- * ("9/18", "9,18") indicating a slot bookable as either. Expands compound
- * strings into the list of variants the adapter should emit.
- *
- * Values other than 9 or 18 (e.g., hypothetical 27-hole courses) are coerced
- * to [18]. 27/36-hole support is explicitly out of scope.
+ * ForeUp returns either a number (9, 18) OR a compound string ("9/18",
+ * "9,18") indicating a slot bookable as either. Delegates to the shared
+ * `parseHoleVariants` helper; unknown/empty values fall back to [18] to
+ * preserve historical behavior (a ForeUp record with unparseable holes
+ * should still surface, annotated as 18-hole).
  */
 function parseHolesField(h: number | string | null | undefined): (9 | 18)[] {
-  if (typeof h === "number") return [h === 9 ? 9 : 18];
-  if (h == null) return [18];
-  const s = String(h).trim();
-  if (s === "") return [18];
-  const nums = s
-    .split(/\D+/)
-    .map((n) => parseInt(n, 10))
-    .filter((n) => !Number.isNaN(n));
-  const has9 = nums.includes(9);
-  const has18 = nums.includes(18);
-  if (has9 && has18) return [9, 18];
-  if (has9) return [9];
-  return [18];
+  const variants = parseHoleVariants(h);
+  return variants.length > 0 ? variants : [18];
 }
 
 export class ForeUpAdapter implements PlatformAdapter {

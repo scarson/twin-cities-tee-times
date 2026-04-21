@@ -2,6 +2,7 @@
 // ABOUTME: Calculates availability from booking/golfer data; handles seasonal closures.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
+import { classifyHoles } from "@/lib/parse-holes";
 
 interface TeensnapBooking {
   bookingId: number;
@@ -107,17 +108,17 @@ export class TeensnapAdapter implements PlatformAdapter {
       if (openSlots <= 0) continue;
 
       // Emit one record per known roundType price variant. Iterates in the
-      // order the API returned. Unknown roundTypes are skipped (empty or
-      // all-unknown prices arrays produce zero records for this slot — see
-      // decision D-1 in docs/plans/2026-04-20-overnight-decisions.md).
+      // order the API returned. Unknown roundTypes are logged and skipped
+      // (so future drift surfaces in logs instead of silently dropping
+      // tee times — see decision D-1 in docs/plans/2026-04-20-overnight-decisions.md).
       for (const priceEntry of tt.prices) {
-        const holes: 9 | 18 | null =
-          priceEntry.roundType === "EIGHTEEN_HOLE"
-            ? 18
-            : priceEntry.roundType === "NINE_HOLE"
-              ? 9
-              : null;
-        if (holes === null) continue;
+        const holes = classifyHoles(priceEntry.roundType);
+        if (holes === null) {
+          console.warn(
+            `Teesnap: unknown roundType "${priceEntry.roundType}" for course ${config.id} — skipping`
+          );
+          continue;
+        }
 
         const priceNum =
           priceEntry.price && !Number.isNaN(parseFloat(priceEntry.price))

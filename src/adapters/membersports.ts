@@ -1,6 +1,7 @@
 // ABOUTME: MemberSports platform adapter for fetching tee times.
 // ABOUTME: Uses POST with static API key; converts minutes-since-midnight to ISO times.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { classifyHoles } from "@/lib/parse-holes";
 
 const API_URL =
   "https://api.membersports.com/api/v1.0/GolfClubs/onlineBookingTeeTimes";
@@ -74,8 +75,25 @@ export class MemberSportsAdapter implements PlatformAdapter {
     for (const slot of data) {
       if (slot.items.length === 0) continue;
 
+      // River Oaks (our only MS course) always returns one item per slot,
+      // but the schema allows multiple. Surface that via a warn so a future
+      // MS course with multi-hole slots can't silently drop variants.
+      if (slot.items.length > 1) {
+        console.warn(
+          `MemberSports: slot ${slot.teeTime} has ${slot.items.length} items for course ${config.id} — only first is used`
+        );
+      }
+
       const item = slot.items[0];
       if (item.bookingNotAllowed || item.hide) continue;
+
+      const holes = classifyHoles(item.golfCourseNumberOfHoles);
+      if (holes === null) {
+        console.warn(
+          `MemberSports: unknown golfCourseNumberOfHoles=${item.golfCourseNumberOfHoles} for course ${config.id} — skipping`
+        );
+        continue;
+      }
 
       // availableCount is always 0 in unauthenticated responses; use standard foursome max
       const openSlots = 4 - item.playerCount;
@@ -85,7 +103,7 @@ export class MemberSportsAdapter implements PlatformAdapter {
         courseId: config.id,
         time: this.minutesToIso(date, slot.teeTime),
         price: item.price != null && !Number.isNaN(item.price) ? item.price : null,
-        holes: item.golfCourseNumberOfHoles === 9 ? 9 : 18,
+        holes,
         openSlots,
         bookingUrl: config.bookingUrl,
       });

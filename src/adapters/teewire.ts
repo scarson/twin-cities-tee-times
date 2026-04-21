@@ -2,6 +2,7 @@
 // ABOUTME: Handles API requests, walking rate selection, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
+import { classifyHoles } from "@/lib/parse-holes";
 
 interface TeeWireRate {
   rate_id: number;
@@ -77,9 +78,12 @@ export class TeeWireAdapter implements PlatformAdapter {
         // Group rates by hole count; within each group, prefer Walking rate.
         // If no Walking rate in a group, emit the group with price=null
         // (Riding rates include cart costs — not comparable to green fees).
+        // Unknown rate.holes values (e.g. 27) are skipped rather than
+        // silently collapsed to 18.
         const ratesByHoles = new Map<9 | 18, TeeWireRate[]>();
         for (const rate of slot.pricing.rates) {
-          const holes: 9 | 18 = rate.holes === 9 ? 9 : 18;
+          const holes = classifyHoles(rate.holes);
+          if (holes === null) continue;
           if (!ratesByHoles.has(holes)) {
             ratesByHoles.set(holes, []);
           }
