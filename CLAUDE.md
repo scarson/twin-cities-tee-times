@@ -137,8 +137,6 @@ When asked to do something, just do it - including obvious follow-up actions nee
 - YOU MUST NEVER implement mocks in end to end tests. We always use real data and real APIs.
 - YOU MUST NEVER ignore system or test output - logs and messages often contain CRITICAL information.
 - Test output MUST BE PRISTINE TO PASS. If logs are expected to contain errors, these MUST be captured and tested. If a test is intentionally triggering an error, we *must* capture and validate that the error output is as we expect
-- UI regressions that need real browser behavior — responsive CSS at specific viewports, click flows across pages, accessibility audits — belong in `e2e/*.spec.ts` Playwright specs. Run via `npm run test:a11y`. The suite runs against the built OpenNext app under `wrangler dev`, so it only runs in CI (OpenNext doesn't build on Windows). Add a spec whenever a visual-layout bug slips past vitest.
-
 
 ## Issue tracking
 
