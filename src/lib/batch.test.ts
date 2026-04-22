@@ -35,8 +35,10 @@ describe("platformWeight", () => {
 });
 
 describe("sleepAfterPoll", () => {
-  it("returns 1500ms for chronogolf to avoid Chronogolf API rate limits (429s)", () => {
-    expect(sleepAfterPoll("chronogolf")).toBe(1500);
+  it("returns 2500ms for chronogolf to avoid Chronogolf API rate limits (429s)", () => {
+    // Tuned up from 1500ms after steady-state monitoring found 25% 429 rate;
+    // see docs/plans/2026-04-20-chronogolf-rate-limit-fix.md.
+    expect(sleepAfterPoll("chronogolf")).toBe(2500);
   });
 
   it("returns the default 250ms for platforms with healthy rate-limit headroom", () => {

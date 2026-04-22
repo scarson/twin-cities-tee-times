@@ -21,6 +21,16 @@ Revisit this doc if:
 - Chronogolf adds per-API-key limits (Option C staggering applies).
 - Adding many more Chronogolf courses causes the 1500 ms window to no longer fit inside the 5-minute batch cycle (re-check the math in §Root cause; then Option D if needed).
 
+### Post-deploy regression observed 2026-04-21 ~05:39 CT (later that same night)
+
+A second check three hours after the initial 0% verification found the Chronogolf error rate had drifted up to **25%** (367 errors / 1455 total in a 1-hour window). All errors are still `HTTP 429`. The 0% result at 02:59 CT was a low-activity window (15 minutes, 13 polls). The sustained steady-state load across a full hour produces more contention than the initial sampling captured.
+
+Per this doc's own decision rubric, 10-25% → tune Option A further (2500 ms first, then 4000 ms if still elevated). The single-iteration 1500 ms fix was insufficient for steady-state load, even though it eliminated the acute regression.
+
+Subsequent action (documented in a follow-on commit):
+- Tune `SLEEP_AFTER_POLL_MS.chronogolf` to 2500 ms.
+- Re-verify across a full 1-hour window, not a short one.
+
 ## Symptom evidence
 
 Query: `SELECT c.platform, p.status, COUNT(*) FROM poll_log p JOIN courses c ON p.course_id = c.id WHERE p.polled_at >= '2026-04-20T05:30:00Z' GROUP BY c.platform, p.status`
