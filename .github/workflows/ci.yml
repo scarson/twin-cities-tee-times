@@ -105,7 +105,7 @@ jobs:
         run: npx wrangler d1 migrations apply tee-times-db --local
       - name: Run Playwright tests
         run: npm run test:a11y
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
