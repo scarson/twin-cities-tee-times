@@ -57,7 +57,7 @@
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.5",
     "vitest-axe": "^0.1.0",
     "wrangler": "^4.71.0"
   }
