@@ -39,11 +39,11 @@ PR #98 contents, grouped by feature:
 - [Design doc](./2026-04-20-multi-hole-tee-times-design.md) — approved decision on (c) multi-row DB + UI-merge approach.
 - [Plan v2](./2026-04-20-multi-hole-tee-times-plan.md) — task-level execution plan, 5x-reviewed. Execution status summary at the bottom references this handoff's D-entries.
 - [Overnight decision log](./2026-04-20-overnight-decisions.md) — D-1..D-8, each with 3x adversarial review notes and alternatives considered. **This is the primary artifact for future-me or any reviewer trying to understand "why X?"**
-- [dev/testing-pitfalls.md](../../dev/testing-pitfalls.md) §9.5 — new adapter-specific shape gotchas added this session.
+- [docs/pitfalls/testing-pitfalls.md](../../docs/pitfalls/testing-pitfalls.md) §9.5 — new adapter-specific shape gotchas added this session.
 
 ## Deep-link Book buttons (feedback #1) — REMOVED FROM SCOPE, see D-10
 
-Live Playwright MCP verification on 2026-04-20 confirmed URL-based date deep-linking is **architecturally infeasible** for ForeUp, CPS Golf, and Chronogolf. Findings are captured in [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md) and [D-10](./2026-04-20-overnight-decisions.md#d-10). The research is durable — a future session revisiting this can start from those findings.
+Live Playwright MCP verification on 2026-04-20 confirmed URL-based date deep-linking is **architecturally infeasible** for ForeUp, CPS Golf, and Chronogolf. Findings are captured in [`docs/research/2026-04-20-deep-link-research.md`](../../docs/research/2026-04-20-deep-link-research.md) and [D-10](./2026-04-20-overnight-decisions.md#d-10). The research is durable — a future session revisiting this can start from those findings.
 
 The only viable next step is an informational UI note ("after clicking Book, select Apr 25 at 8:00 AM") — captured as possible future enhancement, not implemented tonight.
 
@@ -69,7 +69,7 @@ The only viable next step is an informational UI note ("after clicking Book, sel
    - **Albion Ridges** has 3 variants (Boulder/Granite, Rock/Boulder, Granite/Rock). These may be a rotating-27-hole arrangement — the adapter may need nuance if only 2 of 3 are bookable on any given day. Monitor poll results.
    - **Le Sueur Country Club** reported `bookable_holes: [9, 16, 18]` — the 16 is a data anomaly. Our adapter filters to 9/18 only; verify display is correct.
    - **Wayzata vs Orono**: the course `orono-public-golf-course` has city=Wayzata per Chronogolf's address (265 Orono Orchard Rd S, Wayzata), but is named "Orono Public Golf Course." Google's name for this Place ID is "Orono Orchards Golf Course." Kept Chronogolf's name; Sam should verify this is the correct course.
-3. **Deep-link Book buttons (feedback #1) — REMOVED FROM SCOPE (D-10).** URL deep-linking is architecturally infeasible for tested SPAs. If/when revisited, start from [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md). Alternative: an informational UI note next to the Book button ("after clicking, select your date + time on the booking site") — low-effort, documented in D-10 alternatives.
+3. **Deep-link Book buttons (feedback #1) — REMOVED FROM SCOPE (D-10).** URL deep-linking is architecturally infeasible for tested SPAs. If/when revisited, start from [`docs/research/2026-04-20-deep-link-research.md`](../../docs/research/2026-04-20-deep-link-research.md). Alternative: an informational UI note next to the Book button ("after clicking, select your date + time on the booking site") — low-effort, documented in D-10 alternatives.
 4. **Gaps remaining after tonight's expansion:**
    - GolfNow primary-booked (6 courses): requires adapter implementation.
    - City/Custom booking (Birnamwood, Mendota Heights Par 3, Island Lake): would each need a custom adapter.
@@ -143,7 +143,7 @@ This session touched 6 of 9 platform adapters, each with different API shapes. C
 Rationale for choosing this perspective: the session's character was heavily adapter-technical. Multiple adapters share bug patterns (`.find()` / `[0]` selection anti-patterns), so a future session that touches any remaining adapter (e.g., deep-link Book URLs) could benefit from recognizing these patterns.
 
 Findings:
-1. **Silent truncation pattern taxonomy** is implicit across D-1..D-4 but not summarized. Future adapter work benefits from a one-paragraph summary: "Single-pick from an array of variants (`find()`, `[0]`, or chained `??`) is the common bug-shape for multi-variant APIs. Iterate, group, and emit." **Fixed** — added to Operational guardrails as an implicit "adapter fixture array-size assumptions" note, which covers this at the test-change level. The anti-pattern itself is now documented in `dev/testing-pitfalls.md §9.5` via the new entries. Good.
+1. **Silent truncation pattern taxonomy** is implicit across D-1..D-4 but not summarized. Future adapter work benefits from a one-paragraph summary: "Single-pick from an array of variants (`find()`, `[0]`, or chained `??`) is the common bug-shape for multi-variant APIs. Iterate, group, and emit." **Fixed** — added to Operational guardrails as an implicit "adapter fixture array-size assumptions" note, which covers this at the test-change level. The anti-pattern itself is now documented in `docs/pitfalls/testing-pitfalls.md §9.5` via the new entries. Good.
 2. **MemberSports `items[0]` is a latent bug for a DIFFERENT reason** (multi-course, not multi-hole). D-4 captures this, but a future deep-link agent researching MemberSports might forget the distinction and apply the multi-hole fix incorrectly. **Fixed** — D-4's closing paragraph specifically contrasts the two classes of bug.
 3. **CPS Golf's `is18HoleOnly` flag inversion.** When field IS present on a record it means "18 only"; when ABSENT it means "supports multi-hole." Counter-intuitive API design. Captured in D-3 but worth surfacing separately. **Not critical — D-3 has the detail; a fresh agent reading it finds this.**
 
@@ -166,5 +166,5 @@ After Round 6: no material findings remain. Handoff is complete.
 - All 6 adapter files (`foreup.ts`, `chronogolf.ts`, `teesnap.ts`, `teewire.ts`, `teeitup.ts`, `cps-golf.ts`) + their test files
 - `src/components/tee-time-list.tsx` (integration point)
 - `src/lib/db.integration.test.ts` (large-batch regression)
-- `dev/testing-pitfalls.md` (§9.5 adapter gotchas)
+- `docs/pitfalls/testing-pitfalls.md` (§9.5 adapter gotchas)
 - `src/app/page.tsx` (9/18 filter wiring)

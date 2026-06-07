@@ -9,8 +9,8 @@
 **Tech Stack:** TypeScript, Vitest, existing adapter patterns
 
 **Design doc:** `docs/plans/2026-03-27-teesnap-membersports-design.md`
-**Teesnap API research:** `dev/research/teesnap-platform-investigation.md`
-**MemberSports API research:** `dev/research/membersports-platform-investigation.md`
+**Teesnap API research:** `docs/research/teesnap-platform-investigation.md`
+**MemberSports API research:** `docs/research/membersports-platform-investigation.md`
 
 ---
 
@@ -32,8 +32,8 @@ Tasks 1 and 2 are **fully independent** and can run in parallel. Task 3 depends 
 
 BEFORE starting work:
 1. Invoke the `superpowers:test-driven-development` skill
-2. Read `dev/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
-3. Read `dev/research/teesnap-platform-investigation.md` for full API details
+2. Read `docs/pitfalls/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
+3. Read `docs/research/teesnap-platform-investigation.md` for full API details
 4. Read `src/adapters/eagle-club.ts` and `src/adapters/eagle-club.test.ts` as the reference pattern
 Follow TDD: write failing test → implement fix → verify green.
 
@@ -560,7 +560,7 @@ git commit -m "feat: add Teesnap adapter with tests"
 ```
 
 BEFORE marking this task complete:
-1. Review your tests against `dev/testing-pitfalls.md`
+1. Review your tests against `docs/pitfalls/testing-pitfalls.md`
 2. Verify: HTTP errors throw (§1.1)? Malformed JSON throws (§6.2)? Missing config throws (§3.1)? `date_not_allowed` returns `[]` with clear comment distinguishing it from error swallowing?
 3. Run `npx vitest run src/adapters/teesnap.test.ts` and confirm ALL PASS
 
@@ -570,8 +570,8 @@ BEFORE marking this task complete:
 
 BEFORE starting work:
 1. Invoke the `superpowers:test-driven-development` skill
-2. Read `dev/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
-3. Read `dev/research/membersports-platform-investigation.md` for full API details
+2. Read `docs/pitfalls/testing-pitfalls.md` — pay special attention to sections 1 (Silent Failure), 3 (Config Validation), and 6 (External API Resilience)
+3. Read `docs/research/membersports-platform-investigation.md` for full API details
 4. Read `src/adapters/eagle-club.ts` and `src/adapters/eagle-club.test.ts` as the reference pattern
 Follow TDD: write failing test → implement fix → verify green.
 
@@ -1054,7 +1054,7 @@ git commit -m "feat: add MemberSports adapter with tests"
 ```
 
 BEFORE marking this task complete:
-1. Review your tests against `dev/testing-pitfalls.md`
+1. Review your tests against `docs/pitfalls/testing-pitfalls.md`
 2. Verify: HTTP errors throw (§1.1)? Malformed JSON throws (§6.2)? Missing config throws (§3.1)? String-to-int conversion tested for POST body (§3.2)?
 3. Run `npx vitest run src/adapters/membersports.test.ts` and confirm ALL PASS
 
@@ -1082,7 +1082,7 @@ Review checklist:
 BEFORE starting work:
 1. Read `src/adapters/index.ts` for the registration pattern
 2. Read `src/config/courses.json` for the catalog entry format — look at existing ForeUp entries (search for `"platform": "foreup"`) for the Emerald Greens pattern
-3. Read `dev/research/tc-courses-platforms.md` for the documentation format
+3. Read `docs/research/tc-courses-platforms.md` for the documentation format
 
 **Scope boundary:** Make ONLY the changes listed below. Do NOT modify any other sections of `tc-courses-platforms.md` beyond the specific edits listed. Do NOT "improve" or reformat existing content.
 
@@ -1090,7 +1090,7 @@ BEFORE starting work:
 - Modify: `src/adapters/index.ts`
 - Modify: `src/config/courses.json`
 - Regenerate: `scripts/seed.sql` (via `npx tsx scripts/seed.ts`)
-- Modify: `dev/research/tc-courses-platforms.md`
+- Modify: `docs/research/tc-courses-platforms.md`
 
 ### Step 1: Register both adapters in `src/adapters/index.ts`
 
@@ -1185,7 +1185,7 @@ Insert these entries after the closing `}` of the Ft. Snelling entry (`"id": "ft
 Run: `npx tsx scripts/seed.ts`
 Expected output: `Wrote 49 courses to .../seed.sql`
 
-### Step 4: Update `dev/research/tc-courses-platforms.md`
+### Step 4: Update `docs/research/tc-courses-platforms.md`
 
 Make these exact changes:
 
@@ -1266,7 +1266,7 @@ Expected: ALL PASS, no type errors
 git add src/adapters/index.ts src/config/courses.json scripts/seed.sql
 git commit -m "feat: register Teesnap/MemberSports adapters and add 5 courses to catalog"
 
-git add dev/research/tc-courses-platforms.md
+git add docs/research/tc-courses-platforms.md
 git commit -m "docs: update platform catalog — River Oaks to MemberSports, Emerald Greens to ForeUp"
 ```
 

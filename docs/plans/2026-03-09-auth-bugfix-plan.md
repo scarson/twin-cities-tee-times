@@ -1223,6 +1223,6 @@ Expected: No errors.
 **Step 4: Commit bug reports**
 
 ```bash
-git add dev/bug-reports/
+git add docs/bug-reports/
 git commit -m "docs: add auth bug hunt analysis reports"
 ```
