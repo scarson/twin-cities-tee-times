@@ -1,8 +1,8 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents (Codex, Cursor, Cline, Aider, and other AGENTS.md-aware frameworks) when working with code in this repository.
 
-> **Sibling sync.** This file has a sibling at `AGENTS.md` carrying the same rules for the other agent framework. When updating either, update the other — the two files should stay identical except for framework-specific phrasing (agent names, tool names, the intro line, and this reminder). If you make a change here and you're not sure whether to apply it there, apply it there.
+> **Sibling sync.** This file has a sibling at `CLAUDE.md` carrying the same rules for the other agent framework. When updating either, update the other — the two files should stay identical except for framework-specific phrasing (agent names, tool names, the intro line, and this reminder). If you make a change here and you're not sure whether to apply it there, apply it there.
 
 ## Terminology
 
