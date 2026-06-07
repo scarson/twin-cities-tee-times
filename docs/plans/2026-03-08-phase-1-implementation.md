@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 15 (App Router), TypeScript, Cloudflare Workers + D1 + Cron Triggers, OpenNext for Cloudflare, Vitest, Tailwind CSS, GitHub Actions CI/CD.
 
-**Reference:** Design doc at `docs/plans/2026-03-08-tee-times-app-design.md`. Research at `dev/research/`.
+**Reference:** Design doc at `docs/plans/2026-03-08-tee-times-app-design.md`. Research at `docs/research/`.
 
 ---
 
@@ -272,7 +272,7 @@ git commit -m "feat: add shared TypeScript types for courses, tee times, adapter
 
 **Step 1: Create the course catalog JSON**
 
-Create `src/config/courses.json` with all 16 Phase 1 courses (13 CPS Golf + 3 ForeUp). The `platformConfig` values come from `dev/research/booking-platform-investigation.md` and `dev/research/tc-courses-platforms.md`.
+Create `src/config/courses.json` with all 16 Phase 1 courses (13 CPS Golf + 3 ForeUp). The `platformConfig` values come from `docs/research/booking-platform-investigation.md` and `docs/research/tc-courses-platforms.md`.
 
 > **Removed from Phase 1:** Highland 9-Hole (shares CPS subdomain `highlandnationalmn` with Highland National — can't differentiate without `courseIds`, which are unknown; add back once discovered). Pheasant Acres (ForeUp facility ID unknown; add back once discovered).
 
@@ -448,7 +448,7 @@ Create `src/config/courses.json` with all 16 Phase 1 courses (13 CPS Golf + 3 Fo
 
 > **Note on incomplete config:** Most courses won't return data yet — adapters skip courses with missing required config:
 >
-> - **CPS Golf:** Only Theodore Wirth has `apiKey`, `courseIds`, `websiteId` populated. The other 12 CPS courses need these values discovered via `GetAllOptions` or by intercepting API calls during the spring verification sprint (same technique used for T. Wirth in `dev/research/booking-platform-investigation.md`). The `siteId` and `terminalId` headers are also per-facility and discoverable the same way.
+> - **CPS Golf:** Only Theodore Wirth has `apiKey`, `courseIds`, `websiteId` populated. The other 12 CPS courses need these values discovered via `GetAllOptions` or by intercepting API calls during the spring verification sprint (same technique used for T. Wirth in `docs/research/booking-platform-investigation.md`). The `siteId` and `terminalId` headers are also per-facility and discoverable the same way.
 > - **ForeUp:** Bunker Hills is missing `scheduleId` (the ForeUp API's course identifier). The booking page at facility 20252 uses a default schedule — visit the page and inspect network requests to find the `schedule_id`. Braemar (7829) and Roseville Cedarholm (10216) have complete config.
 >
 > **Courses that can actually poll at launch:** Theodore Wirth (CPS), Braemar (ForeUp), Roseville Cedarholm (ForeUp) — 3 of 16. The rest are present in the catalog and will start polling once their config is completed.
@@ -549,7 +549,7 @@ git commit -m "feat: add course catalog config and D1 seed script"
 
 **Step 1: Record a CPS Golf API fixture**
 
-Create `src/test/fixtures/cps-golf-tee-times.json`. This is a representative response based on the API format documented in `dev/research/booking-platform-investigation.md`. Since courses are closed in March, use this synthetic fixture matching the known response shape:
+Create `src/test/fixtures/cps-golf-tee-times.json`. This is a representative response based on the API format documented in `docs/research/booking-platform-investigation.md`. Since courses are closed in March, use this synthetic fixture matching the known response shape:
 
 ```json
 {
@@ -585,9 +585,9 @@ Create `src/test/fixtures/cps-golf-tee-times.json`. This is a representative res
 }
 ```
 
-> **Important:** This fixture format is based on our research but MUST be verified against live API responses. The field names and nesting shown here are best guesses — the actual response structure was not captured during winter research because no MN tee times were available. See `dev/research/booking-platform-investigation.md` for the raw API details. The `searchDate` format and required headers are confirmed.
+> **Important:** This fixture format is based on our research but MUST be verified against live API responses. The field names and nesting shown here are best guesses — the actual response structure was not captured during winter research because no MN tee times were available. See `docs/research/booking-platform-investigation.md` for the raw API details. The `searchDate` format and required headers are confirmed.
 >
-> **San Diego test courses:** Use Encinitas Ranch (`jcgsc5.cps.golf`) for live CPS Golf testing while MN courses are closed. Discover its API key via `GetAllOptions`, hit the TeeTimes endpoint, and record the real response as the fixture. See `dev/research/sd-test-courses.md`.
+> **San Diego test courses:** Use Encinitas Ranch (`jcgsc5.cps.golf`) for live CPS Golf testing while MN courses are closed. Discover its API key via `GetAllOptions`, hit the TeeTimes endpoint, and record the real response as the fixture. See `docs/research/sd-test-courses.md`.
 
 **Step 2: Write the failing tests**
 
@@ -845,7 +845,7 @@ git commit -m "feat: add CPS Golf adapter with tests"
 
 **Step 1: Record a ForeUp API fixture**
 
-Create `src/test/fixtures/foreup-tee-times.json`. Based on the API documented in `dev/research/booking-platform-investigation.md`:
+Create `src/test/fixtures/foreup-tee-times.json`. Based on the API documented in `docs/research/booking-platform-investigation.md`:
 
 ```json
 [
@@ -873,7 +873,7 @@ Create `src/test/fixtures/foreup-tee-times.json`. Based on the API documented in
 ]
 ```
 
-> **Important:** This fixture format must be verified against live API responses. **San Diego test courses:** Use Balboa Park (facility 19348, schedule 1470) or Goat Hill (facility 20906, schedule 6161) for live ForeUp testing while MN courses are closed. See `dev/research/sd-test-courses.md`.
+> **Important:** This fixture format must be verified against live API responses. **San Diego test courses:** Use Balboa Park (facility 19348, schedule 1470) or Goat Hill (facility 20906, schedule 6161) for live ForeUp testing while MN courses are closed. See `docs/research/sd-test-courses.md`.
 
 **Step 2: Write the failing tests**
 

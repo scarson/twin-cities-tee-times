@@ -2,13 +2,13 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Close all 68 test coverage gaps identified in `dev/test-coverage-reports/2026-03-26-pr42-43-test-coverage-review.md`.
+**Goal:** Close all 68 test coverage gaps identified in `docs/test-coverage-reports/2026-03-26-pr42-43-test-coverage-review.md`.
 
 **Architecture:** Fix foundation (test helpers) first, then work outward: security-critical gaps → correctness → nice-to-have. Tests are added to existing test files where they exist; new test files created only for courses/page.tsx which has none.
 
 **Tech Stack:** Vitest 4, React Testing Library 16, better-sqlite3 (for integration tests via `d1-test-helper.ts`), jsdom (via `// @vitest-environment jsdom` pragma for React component tests)
 
-**Coverage report:** `dev/test-coverage-reports/2026-03-26-pr42-43-test-coverage-review.md`
+**Coverage report:** `docs/test-coverage-reports/2026-03-26-pr42-43-test-coverage-review.md`
 
 **Scope:** ONLY add/modify test files and the `seedCourse` helper. Do NOT modify any source/production code. If a gap reveals an actual bug, note it in the commit message but do NOT fix it — that's a separate task.
 
@@ -17,7 +17,7 @@
 ## Task 1: Update Test Helpers (seedCourse + makeCourseRow)
 
 **BEFORE starting work:**
-1. Read `dev/testing-pitfalls-coverage-review.md`
+1. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 2. Follow TDD where applicable
 
 **Gaps closed:** #7 (seedCourse missing state/disabled)
@@ -114,7 +114,7 @@ test: add state and disabled columns to seedCourse helper
 **BEFORE starting work:**
 1. Read `src/lib/cron-handler.ts` — understand how `allCourses` is queried and split into active/inactive
 2. Read `src/lib/cron-handler.test.ts` — understand the existing mock patterns (`makeCourseRow`, `makeMockDb`)
-3. Read `dev/testing-pitfalls-coverage-review.md`
+3. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 
 **Gaps closed:** #1, #2 (disabled filter unverified for polling and auto-reactivation)
 
@@ -176,7 +176,7 @@ test: verify disabled courses excluded from cron polling SQL
 
 **BEFORE starting work:**
 1. Read `src/lib/cron-handler.test.ts` — find the existing tests for `last_had_tee_times` and auto-activation
-2. Read `dev/testing-pitfalls-coverage-review.md`
+2. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 
 **Gaps closed:** #16 (last_had_tee_times UPDATE), #17 (auto-activation DB write)
 
@@ -277,7 +277,7 @@ test: verify last_had_tee_times and auto-activation DB writes in cron handler
 2. Read `src/app/api/tee-times/route.ts` — the ACTUAL query builder (lines 58-92)
 3. Read both `route.integration.test.ts` files — the STALE SQL that needs updating
 4. Task 1 must be complete (needs `seedCourse` with `state` and `disabled` support)
-5. Read `dev/testing-pitfalls-coverage-review.md`
+5. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 
 **Gaps closed:** #3 (stale integration SQL), #4 (disabled in courses API), #5 (disabled in tee-times API), #9 (state sorting), #10 (course_state in SELECT), #14 (minSlots validation)
 
@@ -968,7 +968,7 @@ and revise/refine as appropriate. Repeat this review loop (minimum three rounds)
 
 **BEFORE marking this task complete:**
 1. Run `npm test && npx tsc --noEmit` and confirm green
-2. Review tests against `dev/testing-pitfalls-coverage-review.md`
+2. Review tests against `docs/pitfalls/testing-pitfalls-coverage-review.md`
 
 ---
 

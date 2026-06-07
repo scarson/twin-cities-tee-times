@@ -118,6 +118,6 @@ Note: 9 gaps from the type-only file overlap with gaps in other files. Deduplica
 ## Evidence
 
 Per-function tables are in the subagent reports:
-- `dev/test-coverage-reports/subagent-adapters-findings.md`
-- `dev/test-coverage-reports/subagent-api-ui-findings.md`
-- `dev/test-coverage-reports/subagent-core-findings.md`
+- `docs/test-coverage-reports/subagent-adapters-findings.md`
+- `docs/test-coverage-reports/subagent-api-ui-findings.md`
+- `docs/test-coverage-reports/subagent-core-findings.md`
