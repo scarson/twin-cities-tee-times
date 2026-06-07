@@ -224,11 +224,11 @@ response messages.
 ```bash
 # Orchestrator computes absolute path before dispatch:
 WORKTREE_ROOT=$(git rev-parse --show-toplevel)
-PERSISTENCE_PATH="${WORKTREE_ROOT}/dev/bug-hunts/YYYY-MM-DD-<topic>-<variant>.md"
+PERSISTENCE_PATH="${WORKTREE_ROOT}/docs/bug-hunts/YYYY-MM-DD-<topic>-<variant>.md"
 # Then substitute this absolute value into the dispatch prompt.
 ```
 
-Shapes to use: `<worktree-root>/dev/bug-hunts/YYYY-MM-DD-<topic>-<variant>.md`, `<worktree-root>/docs/audits/<topic>/<subagent-name>.md`, or similar. The relative forms (`dev/bug-hunts/...`) are what the PATH-under-worktree looks like — but pass the absolute form to the subagent. Known failure mode: a hunter received the relative form, wrote to the root checkout's `dev/bug-hunts/` instead of the worktree's, orchestrator had to recover. `/tmp` is NOT durable across sessions — never use it.
+Shapes to use: `<worktree-root>/docs/bug-hunts/YYYY-MM-DD-<topic>-<variant>.md`, `<worktree-root>/docs/audits/<topic>/<subagent-name>.md`, or similar. The relative forms (`docs/bug-hunts/...`) are what the PATH-under-worktree looks like — but pass the absolute form to the subagent. Known failure mode: a hunter received the relative form, wrote to the root checkout's `docs/bug-hunts/` instead of the worktree's, orchestrator had to recover. `/tmp` is NOT durable across sessions — never use it.
 
 **Why this rule:** the failure mode it prevents is that an orchestrator dispatches several parallel analysis subagents, each returns a large report in its response message, the orchestrator tries to consolidate them while its context approaches compaction, compaction lossily summarizes the reports, and findings silently disappear. The fix is to make the reports durable before the orchestrator has to hold them in memory.
 
