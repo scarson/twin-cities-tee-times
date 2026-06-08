@@ -1019,7 +1019,9 @@ describe("runCronPoll chronogolf lane", () => {
       { chronogolfLaneBudgetMs: 1000 }
     ));
 
-    expect(result.pollCount).toBeLessThan(40);   // truncated by the wall-clock deadline
+    // 1000ms budget at 250ms/poll truncates after ~4-5 polls — far short of 40,
+    // proving the deadline stops the lane EARLY (not merely leaving a few unpolled).
+    expect(result.pollCount).toBeLessThanOrEqual(8);
     expect(result.budgetExhausted).toBe(false);  // time deadline ≠ subrequest budget exhaustion
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("chronogolf lane")
