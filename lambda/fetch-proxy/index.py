@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from curl_cffi import requests
 
+from challenge import PROFILES, is_cf_challenge
+
 # Hostnames the proxy may reach. A host matches an entry when it equals the
 # entry's apex or is a subdomain of it — never merely ends with the string
 # (which would let an attacker-registered "evilteewire.app" through).
@@ -23,20 +25,10 @@ STRIP_REQUEST_HEADERS = frozenset(
 # an already-decompressed body, so forwarding these would misdescribe it.
 STRIP_RESPONSE_HEADERS = frozenset({"content-encoding", "content-length"})
 
-# curl_cffi impersonation profile. The versionless "chrome" alias tracks the
-# newest Chrome fingerprint the installed curl_cffi build supports. Cloudflare
-# allowlists current browser fingerprints, so an aging pinned profile (e.g.
-# "chrome124") gets challenged while "chrome" is accepted — keep curl_cffi
-# reasonably fresh (see requirements.txt) and redeploy when poll_log starts
-# logging "blocked by Cloudflare challenge" again. If the primary profile is
-# challenged, fall back to a different vendor fingerprint before giving up.
-PRIMARY_PROFILE = "chrome"
-FALLBACK_PROFILE = "safari17_0"
-
 # Per-upstream-attempt timeout, and the total upstream budget across the
-# primary + one challenge fallback. TOTAL_BUDGET stays under the Worker's 12s
-# client abort (proxy-fetch.ts) and the Lambda's 15s ceiling, so the fallback
-# is bounded by remaining time rather than blindly adding a second full 10s.
+# profile cascade (challenge.PROFILES). TOTAL_BUDGET stays under the Worker's
+# 12s client abort (proxy-fetch.ts) and the Lambda's 15s ceiling, so each
+# fallback is bounded by remaining time rather than blindly adding a full 10s.
 UPSTREAM_TIMEOUT = 10
 TOTAL_BUDGET = 11
 
@@ -44,17 +36,6 @@ TOTAL_BUDGET = 11
 def _host_allowed(hostname):
     return any(
         hostname == apex or hostname.endswith("." + apex) for apex in ALLOWED_HOSTS
-    )
-
-
-def _is_cf_challenge(status, headers, body):
-    """Detect a Cloudflare managed-challenge interstitial (mirrors the adapter's
-    classifier in src/adapters/cps-golf.ts)."""
-    if str(headers.get("cf-mitigated", "")).lower() == "challenge":
-        return True
-    return status == 403 and any(
-        marker in body
-        for marker in ("Just a moment", "challenges.cloudflare.com", "cdn-cgi/challenge-platform", "__cf_chl")
     )
 
 
@@ -107,22 +88,27 @@ def handler(event, _context):
                 ),
             }
 
+        # Cascade over installed impersonation profiles: stop at the first that
+        # is NOT challenged (a cleared origin response — including a non-2xx
+        # origin error, which no fingerprint change would fix). If every profile
+        # is challenged the trusted fingerprints have all aged out; return the
+        # last (challenged) response so the adapter's canary surfaces it. Every
+        # attempt — including the first — is time-bounded by the remaining
+        # TOTAL_BUDGET so a stalled upstream can't blow the Worker's 12s abort.
         start = time.monotonic()
-        resp = _request(PRIMARY_PROFILE, url, method, headers, body)
-        resp_headers = _response_headers(resp.headers)
-
-        # If the trusted fingerprint has aged out of Cloudflare's allowlist the
-        # primary profile gets challenged; try one alternate vendor fingerprint
-        # with whatever time is left before the caller aborts, then surface the
-        # block (the adapter classifies it as a distinct error either way).
-        if _is_cf_challenge(resp.status_code, resp_headers, resp.text):
+        resp = None
+        resp_headers = None
+        for profile in PROFILES:
             remaining = TOTAL_BUDGET - (time.monotonic() - start)
-            if remaining >= 2:
-                resp = _request(
-                    FALLBACK_PROFILE, url, method, headers, body,
-                    timeout=min(UPSTREAM_TIMEOUT, remaining),
-                )
-                resp_headers = _response_headers(resp.headers)
+            if resp is not None and remaining < 2:
+                break  # no budget left to try another fingerprint
+            resp = _request(
+                profile, url, method, headers, body,
+                timeout=min(UPSTREAM_TIMEOUT, max(remaining, 2)),
+            )
+            resp_headers = _response_headers(resp.headers)
+            if not is_cf_challenge(resp.status_code, resp_headers, resp.text):
+                break  # cleared (or a non-challenge origin response) — done
 
         return {
             "statusCode": 200,
