@@ -59,21 +59,27 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** 3/5 phases shipped (on branch `fix/chronogolf-429-pacing`). Code group (1–3) complete; adversarial code review next.
+**Overall:** 4/5 phases shipped (on branch `fix/chronogolf-429-pacing`). Code group (1–3) complete; adversarial code review done (3 rounds, all SHIP — fixes `f3130c1`/`8ad4f24`/`2e9159d`). PR next.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Single Chronogolf lane (`batch.ts`) | ✅ Shipped | `7362bac` | full suite green (740), `tsc` clean |
 | 2 — Per-request throttle (`chronogolf.ts`) | ✅ Shipped | `a8c2d7e` | throttle + sleep removal; suite 743 green, `tsc` clean |
 | 3 — Lane deadline + fair ordering (`cron-handler.ts`) | ✅ Shipped | `251fb07` | deadline + oldest-first; suite 745 green, `tsc` clean |
-| 4 — Docs, pitfalls, memory | ⬜ Not started | — | — |
-| 5 — Verification + PR | ⬜ Not started | — | — |
+| 4 — Docs, pitfalls, memory | ✅ Shipped | (this commit) | CF-4 pitfall; 2026-04-20 follow-up; Prompt 3 status; memory |
+| 5 — Verification + PR | 🚧 In progress | — | branch `fix/chronogolf-429-pacing` |
+
+### Code review trail (mandatory ≥3 rounds — all SHIP)
+- **Round 1** (`feature-dev:code-reviewer` + `superpowers:code-reviewer`, parallel): SHIP. Found the inactive-probe inner loop lacked a deadline guard and the housekeeping gate used a bare `0`; both fixed in `f3130c1`. Also surfaced the pre-existing refresh-route residual (Discoveries).
+- **Round 2** (`feature-dev:code-reviewer`): SHIP. Verified the round-1 fixes + stress-tested the numbers (1100ms / 210_000ms / BATCH_COUNT=5 all traceable to Volume Math). One low-confidence test-rigor note → tightened the deadline assertion to prove early truncation (`8ad4f24`).
+- **Round 3** (`superpowers:code-reviewer`): SHIP, convergence confirmed (3-round minimum satisfied). End-to-end traced that the cron path's global Chronogolf rate stays ≤ ~0.9 req/sec. Found a stale `50`-subrequest doc-comment → corrected (`2e9159d`).
 
 ### Deviations
 - **Phase 1 Task 1.3 (test repair method):** the plan's default rule was "retarget lane-broken `cron-handler.test.ts` tests to `BATCH_1_CRON`, keep fixtures." In execution I instead **swapped most fixtures to `chronogolf`** (so they land in the lane and keep `BATCH_0_CRON`), because the shared/identical `course-NN` fixture lines made fixture-swap the lower-collision, fewer-edit change. Kept `BATCH_1_CRON` only for the 3 weight-sensitive budget-exhaustion tests (keeps them off-lane → no coupling to Phase 3's wall-clock deadline, weight math intact). Verified the lane-coupling for the swapped tests is benign: Phase 3's deadline (210 s) never triggers in these tests, and oldest-first ordering is stable with empty `poll_log`. All repaired assertions kept at equal strength (vacuous "empty-batch-0" passes were fixed, not left).
 
 ### Discoveries
 - **Pre-existing jsdom noise:** the full suite prints `Not implemented: HTMLCanvasElement's getContext()` warnings from a chart/canvas component test (unrelated to this change — no canvas code touched). Flagged only; out of scope for this PR.
+- **Residual cross-isolate Chronogolf path (out of scope, pre-existing):** the user-triggered refresh route (`src/app/api/courses/[id]/refresh/route.ts`) calls `pollCourse` → the Chronogolf adapter in the **HTTP isolate**, whose throttle state is NOT shared with the cron `scheduled()` isolate. So a manual refresh can fire a Chronogolf request concurrent with the lane. It is bounded by the refresh rate-limiter (global 20/min, per-course 30s cooldown) and is NOT the systemic ~35-course burst this fix targets. Surfaced by code review (round 1/3). Left as-is; **post-deploy note:** when reading `/check-logs`, treat occasional refresh-driven Chronogolf 429s as expected noise, not lane failure. Globally serializing across isolates would need a Durable Object / shared coordinator — the documented escalation, not this PR.
 
 ---
 
@@ -504,7 +510,7 @@ Review the batch from multiple perspectives. **Minimum 3 review rounds** (`super
 
 ## Phase 4 — Docs, Pitfalls, Memory
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED on 2026-06-08 — CF-4 pitfall added (entry + TOC + §2.C checklist + Appendix B + Appendix A); `2026-04-20-chronogolf-rate-limit-fix.md` structural-follow-up section appended; Prompt 3 status marked in `2026-06-08-followup-prompts.md`; auto-memory `project_cps_chronogolf_polling_failures.md` updated.
 
 **Files:**
 - Modify: `docs/plans/2026-04-20-chronogolf-rate-limit-fix.md` (append a "2026-06-08 structural follow-up" section: the per-invocation-vs-per-IP root cause, why sleep-tuning regressed, and the lane+throttle+deadline fix; link to this plan).

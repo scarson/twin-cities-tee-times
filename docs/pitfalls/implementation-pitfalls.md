@@ -25,7 +25,7 @@ This document serves three audiences. Start here, then go directly to the sectio
 | § | Section | You're working on... | Entries | Checklist |
 |---|---------|---------------------|---------|-----------|
 | 1 | [Time & Timezones](#section-1-time--timezones) | Any date/time logic, "today", date strings | TIME-1 | §1.C |
-| 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-3 | §2.C |
+| 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-4 | §2.C |
 | 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
 | 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
@@ -96,11 +96,24 @@ Do not assume Workers, D1, Cron Trigger, or Wrangler semantics from memory. Use 
 
 ---
 
+### CF-4: Per-Invocation Pacing Cannot Bound a Per-IP Rate Limit
+
+**The Flaw:** Throttling an external API with an *in-process* delay (a `sleep()` between calls, a per-invocation counter) when that API enforces its limit **per egress IP** — a resource shared across *every concurrent Worker invocation*. This project's cron uses 5 staggered Cron Trigger schedules (`wrangler.jsonc`) that fire 1 minute apart and each run longer than a minute, so 2–5 invocations overlap. Their request streams **sum at the shared Cloudflare egress IP**, so each invocation's local pacing is multiplied by the number of overlapping invocations. An adapter that paginates (N HTTP requests per logical "poll") compounds it: a per-poll sleep does not space the within-poll burst at all.
+
+**Why It Matters:** The limiter (per-IP, global) and the throttle (per-invocation, local) are scoped to **different things**, so the throttle silently fails to bound the real rate. It is invisible in any single-invocation test and in `next dev` (one invocation). Chronogolf 429s persisted through two rounds of `sleepAfterPoll` tuning (1500ms → 2500ms) for exactly this reason — ~35 courses spread across 5 overlapping batches, each pacing itself but collectively far over Chronogolf's ~1 req/sec per-IP ceiling.
+
+**The Fix:** Bound the rate at the scope the limit is enforced. Two levers, used together: (1) **serialize to one lane** — pin all of the rate-limited platform's work to a single cron batch so only one invocation polls it at a time (`CHRONOGOLF_LANE` in `src/lib/batch.ts`); (2) **space per-request, not per-poll** — enforce the minimum interval before *every* HTTP request including pagination, in the adapter (`CHRONOGOLF_MIN_REQUEST_INTERVAL_MS` + the `throttle()` reservation gate in `src/adapters/chronogolf.ts`). Add a wall-clock deadline (`CHRONOGOLF_LANE_BUDGET_MS` in `src/lib/cron-handler.ts`) so the single lane never runs past its own next cron firing, which would re-introduce the concurrency. Note the corollary: the subrequest-budget weight (`platformWeight`) intentionally under-counts paginated requests — the **wall-clock deadline**, not the subrequest budget, is the binding guard on the lane. If one polite lane genuinely can't keep up, escalate to a shared cross-invocation coordinator (Durable Object) or a second egress IP (the documented Lambda-proxy fallback) — but confirm one lane is insufficient first; IP-rotation is circumvention, not a fix.
+
+**The Lesson:** Match the throttle's scope to the limit's scope. A local delay cannot enforce a global limit; a per-poll sleep cannot enforce a per-request rate. When "we added a sleep and it still rate-limits under load," suspect a scope mismatch — not an insufficient delay. (Full design + volume math: `docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`.)
+
+---
+
 ### Review Checklist {#section-2c}
 
 - [ ] **No `process.env` for bindings/secrets** — uses `getCloudflareContext()` (or `scheduled()`'s `env`) (CF-1)
 - [ ] **Local secrets present in `.dev.vars`** for any new secret binding added to `env.d.ts` (CF-2)
 - [ ] **Platform-behavior claims verified** against Cloudflare docs / `docs/research/cloudflare-limits.md`, not assumed (CF-3)
+- [ ] **Rate-limited external APIs are throttled at the limit's scope** — per-IP limits need single-lane serialization + per-request (not per-poll) spacing across overlapping cron invocations, not an in-process `sleep()` (CF-4)
 
 ---
 
@@ -281,6 +294,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 
 # Appendix A: Historical Changelog
 
+## 2026-06-08 — CF-4 added
+
+- Added **CF-4** (per-invocation pacing cannot bound a per-IP rate limit) to the Cloudflare Workers Runtime section, from the Chronogolf HTTP 429 pacing fix (`docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`). Root cause: `sleepAfterPoll` paced each cron invocation locally, but Chronogolf's ~1 req/sec limit is per egress IP, summed across 5 overlapping staggered batches; the adapter's pagination compounded it. Status VALIDATED — the single-lane + per-request-throttle + wall-clock-deadline fix shipped and is tested in the same PR. TOC range, §2.C checklist, and Appendix B updated alongside.
+
 ## 2026-06-08 — DB-4 added
 
 - Added **DB-4** (never rewrite cached rows unconditionally — compare-then-replace) to the Database & D1 section, from the D1 write-amplification fix (`docs/plans/2026-06-07-d1-write-amplification-fix.md`). Root cause: `upsertTeeTimes` ran an unconditional `DELETE + N×INSERT` every poll, driving ~175M D1 rows written/month (~$125 overage). Status VALIDATED — the compare-then-replace fix shipped and is tested in the same PR. TOC range, §3.C checklist, and Appendix B updated alongside.
@@ -301,6 +318,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | CF-1 | Read bindings via `getCloudflareContext()`, not `process.env` | HIGH | VALIDATED | CF Runtime |
 | CF-2 | Local secrets in `.dev.vars` | MEDIUM | VALIDATED | CF Runtime |
 | CF-3 | Verify CF platform behavior, never guess | MEDIUM | VALIDATED | CF Runtime |
+| CF-4 | Per-invocation pacing can't bound a per-IP rate limit | HIGH | VALIDATED | CF Runtime |
 | DB-1 | Never `datetime()` in comparisons — use `sqliteIsoNow()` | HIGH | VALIDATED | Database & D1 |
 | DB-2 | Never hard-delete courses (`CASCADE` data loss) | CRITICAL | VALIDATED | Database & D1 |
 | DB-3 | Seed script overwrites D1 on every deploy | MEDIUM | VALIDATED | Database & D1 |
