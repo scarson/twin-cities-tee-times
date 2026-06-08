@@ -334,6 +334,7 @@ export async function runCronPoll(
         let foundTeeTimes = false;
 
         for (const date of probeDates) {
+          if (laneExpired()) break;
           const weight = platformWeight(course.platform);
           if (budget < weight) {
             budgetExhausted = true;
@@ -372,8 +373,12 @@ export async function runCronPoll(
       }
     }
 
-    // --- Housekeeping: batch 0 only ---
-    if (batchIndex === 0) {
+    // --- Housekeeping: runs only in the lane batch ---
+    // Gated to CHRONOGOLF_LANE (not a bare 0) because the horizon probe below
+    // issues Chronogolf requests; it MUST run in the same batch as the lane so
+    // the single-lane invariant holds. The other cleanup tasks are batch-agnostic
+    // and ride along here.
+    if (batchIndex === CHRONOGOLF_LANE) {
       try {
         const deactivatedCount = await deactivateStaleCourses(db);
         if (deactivatedCount > 0) {
