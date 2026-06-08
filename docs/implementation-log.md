@@ -38,3 +38,34 @@ Per-phase: full `npm test` suite + `npx tsc --noEmit` + `npm run lint` green at 
 2. **Cloudflare D1 dashboard:** confirm the projected number against actual billed rows-written for the week.
 
 **Revisit trigger (concrete, not open-ended):** *only if* the sustained set-change rate keeps writes above 50M/month does a finer-grained approach (row-level diff) get reconsidered. If writes land under 50M, close this out — do not pursue row-level diffing speculatively (it was rejected in design review for the concurrency-race cost).
+
+## 2026-06-08 — CPS Golf Cloudflare-challenge fix (browser TLS impersonation)
+
+**Branch:** `fix/cps-cloudflare-impersonation` → PR targets `dev` (Review-class — architecture/infra + security-sensitive proxy; Sam merges). Root-cause writeup: `docs/research/2026-06-08-cps-cloudflare-challenge.md`. Pitfall: DEPLOY-2.
+
+### Problem
+
+All ~13 CPS "v5" courses failed every poll with `CPS Golf transaction registration failed` (~42k errors/week, uniform, zero CPS data). Root cause: CPS moved its v5 reservation API (`/onlineres/onlineapi/*`) behind **Cloudflare Bot Management with a managed challenge** (403 "Just a moment…", `cf-mitigated: challenge`). The challenge is **fingerprint-gated, not JS-gated** — a real browser TLS fingerprint (JA3/JA4 + HTTP/2 frame order) passes; Node `fetch`/undici does not, regardless of headers or IP. The token endpoint (`/identityapi/`) is not behind the challenge, so the break surfaces only at the first reservation call. v4 facilities are on a legacy origin and unaffected. The task's SD-vs-MN hypothesis was refuted: SD `jcgsc5` is challenged identically — the split is v4-legacy vs v5-Cloudflare.
+
+### What shipped
+
+- **Proxy rewrite (`lambda/fetch-proxy/index.py`, was `index.mjs`).** Node → Python + `curl_cffi` with `impersonate="chrome"` (fallback `"safari17_0"`, time-bounded under an 11s budget). Review-hardened: apex/subdomain allowlist matching (closed an SSRF hole carried from the Node proxy), transport-header stripping (`host`/`content-length`/`connection`/`accept-encoding`/`transfer-encoding`) to protect the fingerprint, and dropping `content-encoding`/`content-length` from the decompressed response. Response contract (`{status, lowercased headers, body}` / `proxyError`) preserved. Deps vendored at deploy time, not committed (`lambda/fetch-proxy/.gitignore`).
+- **Deploy (`.github/workflows/deploy.yml`).** Runtime `nodejs24.x` → `python3.14`, memory 128 → 256 MB, plus a vendoring step cross-targeting manylinux x86_64 cp314 wheels (`curl_cffi` cp310-abi3 + `cffi` cp314; pre-flighted locally with `--only-binary=:all:`, no source builds).
+- **Canary (`src/adapters/cps-golf.ts`).** `doFetch` classifies the challenge (`cf-mitigated: challenge` or body signature); token, v5/v4 registration, and TeeTimes throw a distinct `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)` error. TDD: 5 new adapter tests.
+- **Smoke test (`cps-golf.smoke.test.ts`).** Now accepts real data OR the distinct challenge error and rejects any other error — captures the live contract instead of masking the outage; verified Level 1 passes by detecting the real challenge.
+- **Docs.** DEPLOY-2 pitfall (with rotation runbook), `checkV4Upgrades` caveat comment, root-cause research doc, this log entry.
+
+### Key decisions
+
+- **TLS impersonation over header spoofing / API key / headless browser / unblocker service.** The challenge is fingerprint-gated, so a lightweight TLS-impersonating client is sufficient and correct; the alternatives were ruled out (see research doc). Vehicle chosen with Sam: Python 3.14 + `curl_cffi`, versionless `chrome` profile.
+- **Maintenance tail accepted explicitly.** Cloudflare allowlists current fingerprints, so the profile ages out (`chrome124`/`chrome131` already challenged). Recovery = bump `curl_cffi`, redeploy; the canary is the early-warning. Not set-and-forget.
+- **`checkV4Upgrades` documented, not restructured.** Token-200 doesn't prove the (Cloudflare-fronted) reservation API is reachable; if the profile ages out a promoted course fails with the challenge error. Accepted (small v4 population, gated on CPS migration, canary-visible) rather than risk a prod cron-path change.
+
+### Quality checks
+
+`npm test` (742 passing) + `npx tsc --noEmit` (clean) + `npm run lint` (0 errors; 3 pre-existing warnings) green. Proxy verified live end-to-end through `handler()`: token 200 → register 200 → TeeTimes 200 with 16–17 real tee times; teesnap path and host allowlist unaffected; SSRF host-matching verified (evil variants blocked). Three adversarial review rounds (R1 found SSRF + header + content-encoding issues; R2 found challenge-blind token + unbounded fallback + missing caveat; R3 clean) — all must/should-fix items addressed.
+
+### Open items (own before/at first deploy to `main`)
+
+- **IAM precondition:** the runtime flip makes `aws-lambda-deploy` call `UpdateFunctionConfiguration`. Confirm `AWS_DEPLOY_ROLE_ARN` holds `lambda:UpdateFunctionConfiguration` + `lambda:GetFunctionConfiguration`, else CI is green while the Lambda runs Python under the Node runtime.
+- **Post-deploy watch:** confirm the ~13 v5 CPS courses return to `success` in `poll_log`, and watch the D1 write rate (dedup PR #119 absorbs the resumed writes).

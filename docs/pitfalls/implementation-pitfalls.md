@@ -4,7 +4,7 @@
 >
 > **Relationship to testing-pitfalls.md:** This document specifies *what* to implement and *why*. `docs/pitfalls/testing-pitfalls.md` specifies *how to verify* those implementations work correctly. They are complementary — cross-references are noted inline.
 >
-> **Last validated against codebase:** 2026-06-07
+> **Last validated against codebase:** 2026-06-08
 
 ---
 
@@ -29,7 +29,7 @@ This document serves three audiences. Start here, then go directly to the sectio
 | 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
 | 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
-| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 | §6.C |
+| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 – DEPLOY-2 | §6.C |
 | — | [Orchestration](#orchestration) | Parallel subagent dispatch and output persistence | ORCH-1 | §Orchestration.C |
 | A | [Historical Changelog](#appendix-a-historical-changelog) | Provenance, validation dates | — | — |
 | B | [Unified Summary Table](#appendix-b-unified-summary-table) | All pitfalls at a glance, with severity and status | — | — |
@@ -245,15 +245,30 @@ Every app cookie is namespaced with `tct-`: `tct-session`, `tct-refresh`, `tct-o
 
 **Why It Matters:** The deploy workflow (`.github/workflows/deploy.yml`) redeploys the Lambda from `lambda/fetch-proxy/` on every merge to `main`. Any live hotfix is silently overwritten on the next deploy — the fix appears to work, then "regresses" mysteriously.
 
-**The Fix:** Always update `lambda/fetch-proxy/index.mjs` in the repo and let CI deploy it.
+**The Fix:** Always update `lambda/fetch-proxy/index.py` in the repo and let CI deploy it.
 
 **The Lesson:** When CI deploys an artifact from source on every merge, the repo is the only durable place to change it. No out-of-band edits.
 
 ---
 
+### DEPLOY-2: CPS Golf's v5 Reservation API Is Behind a Cloudflare Challenge — the Proxy Must Impersonate a Browser
+
+**The Flaw:** Calling CPS Golf's v5 reservation API (`/onlineres/onlineapi/*`) with a plain HTTP client (Node `fetch`/undici, Python `requests`). Every call returns a 403 "Just a moment..." Cloudflare managed-challenge interstitial (header `cf-mitigated: challenge`), which the adapter would otherwise surface as the misleading `CPS Golf transaction registration failed`.
+
+**Why It Matters:** CPS migrated its v5 facilities (all Minneapolis Parks, St. Paul, Chaska, Highland, Pioneer Creek, Victory Links, and the SD JC Golf test courses) behind Cloudflare Bot Management. The challenge is **fingerprint-gated, not JS-gated**: it inspects the TLS handshake (JA3/JA4) and HTTP/2 frame ordering, not just headers — so spoofing User-Agent/headers does nothing, and the AWS proxy IP is challenged just like a residential one. A real browser TLS fingerprint passes silently. The token endpoint (`/identityapi/*`) is NOT behind the challenge, which is why the break manifests only at the first reservation call (registration). v4 facilities (Edinburgh, Brookview, Gem, Oak Glen) are on a legacy origin (`server: hide`) and are unaffected.
+
+**The Fix:** The fetch proxy (`lambda/fetch-proxy/index.py`) supplies a browser TLS fingerprint via `curl_cffi` (`impersonate="chrome"`, falling back to `"safari17_0"`). The CPS adapter classifies the challenge (`cf-mitigated: challenge` or the body signature) and throws a distinct `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)` error so it is recognizable in `poll_log`/`check-logs` instead of masquerading as an auth failure.
+
+**Rotation (recurring maintenance):** Cloudflare allowlists *current* browser fingerprints, so a pinned profile ages out — pinned `chrome124`/`chrome131` already get challenged while the versionless `chrome` alias passes. When `poll_log` starts logging "blocked by Cloudflare challenge" again, bump `curl_cffi` in `lambda/fetch-proxy/requirements.txt` and redeploy. Use the versionless `chrome`; do NOT pin a `chromeNNN` profile.
+
+**The Lesson:** A 403 carrying `cf-mitigated: challenge` is an anti-bot *fingerprint* block, not an auth or API-contract bug. Header spoofing won't clear it; only a real TLS fingerprint (`curl_cffi impersonate=`) or a solved JS challenge will. Verify with impersonation before concluding a CPS endpoint is unreachable.
+
+---
+
 ### Review Checklist {#section-6c}
 
-- [ ] **Lambda changes made in `lambda/fetch-proxy/index.mjs`**, not via the AWS console/CLI on the live function (DEPLOY-1)
+- [ ] **Lambda changes made in `lambda/fetch-proxy/index.py`**, not via the AWS console/CLI on the live function (DEPLOY-1)
+- [ ] **CPS v5 reservation calls go through the impersonating fetch proxy**; a 403 with `cf-mitigated: challenge` means the impersonation profile needs rotation (bump `curl_cffi`, redeploy), not an auth fix (DEPLOY-2)
 
 ---
 
@@ -280,6 +295,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 ---
 
 # Appendix A: Historical Changelog
+
+## 2026-06-08 — DEPLOY-2 added (CPS Cloudflare challenge)
+
+- Added **DEPLOY-2** (CPS's v5 reservation API is behind a fingerprint-gated Cloudflare challenge; the fetch proxy must supply a browser TLS fingerprint via `curl_cffi`) to Deploy & Infrastructure, from the CPS polling-failure fix. Root cause: CPS moved its v5 facilities behind Cloudflare Bot Management, so all ~13 v5 courses failed every poll with the misleading "transaction registration failed". The Lambda proxy was rewritten Node→Python+`curl_cffi` (`impersonate="chrome"`), and the adapter now throws a distinct "blocked by Cloudflare challenge" error as the rotation canary. Also corrected DEPLOY-1's stale `index.mjs` reference to `index.py`. TOC range, §6.C checklist, and Appendix B updated alongside. Status VALIDATED — live-verified (16+ real tee times returned through the proxy).
 
 ## 2026-06-08 — DB-4 added
 
@@ -310,6 +329,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | AUTH-1 | Authenticate via `authenticateRequest()`, not middleware | HIGH | VALIDATED | Auth & Sessions |
 | AUTH-2 | App cookies use `tct-` prefix | LOW | VALIDATED | Auth & Sessions |
 | DEPLOY-1 | Lambda proxy deployed from source by CI | MEDIUM | VALIDATED | Deploy & Infra |
+| DEPLOY-2 | CPS v5 API behind Cloudflare challenge — proxy must impersonate a browser | HIGH | VALIDATED | Deploy & Infra |
 | ORCH-1 | Analysis dispatches must persist findings | HIGH | VALIDATED | Orchestration |
 
 Severity levels: `CRITICAL` (production data loss / security), `HIGH` (correctness bug under predictable conditions), `MEDIUM` (correctness bug under edge cases), `LOW` (cleanliness / clarity).
