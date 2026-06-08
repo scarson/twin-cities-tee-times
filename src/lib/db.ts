@@ -6,6 +6,39 @@ import type { TeeTime } from "@/types";
 // @cloudflare/workers-types (included by the Cloudflare scaffold in tsconfig).
 // No import needed — they're ambient.
 
+/** HH:MM-normalize a tee time string the same way the INSERT path stores it. */
+function canonicalTime(time: string): string {
+  return time.includes("T") ? time.split("T")[1].substring(0, 5) : time;
+}
+
+/**
+ * Canonical, comparison-safe representation of one tee time.
+ * Conservative by design: serialized as a JSON array, so null is distinct from 0
+ * and "" (a real change is never masked as "unchanged") and JSON string quoting
+ * keeps each field unambiguous across boundaries.
+ */
+export function canonicalTeeTime(
+  time: string,
+  price: number | null,
+  holes: number,
+  openSlots: number,
+  bookingUrl: string,
+  nines: string | null
+): string {
+  // Ordered-array JSON: null serializes distinctly from 0 and "", and JSON quoting
+  // keeps each field's contents from colliding across boundaries. No separator needed.
+  return JSON.stringify([canonicalTime(time), price, holes, openSlots, bookingUrl, nines ?? null]);
+}
+
+/** True iff the two canonical-key arrays are equal as multisets. */
+export function teeTimeSetsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  for (let i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false;
+  return true;
+}
+
 /**
  * Replace all tee times for a course+date in a single transaction.
  * DELETEs existing rows, INSERTs fresh results.
