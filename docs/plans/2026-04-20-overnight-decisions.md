@@ -163,7 +163,7 @@ Current adapter's behavior on Francis A Gross: `tt.holes === 9 ? 9 : 18` → `ho
 
 ### D-7 — Catalog expansion (#4) deferred for morning review (REVERSED by Sam 2026-04-20 ~00:40 CT)
 
-**Update:** Sam reviewed this decision and overrode it. Catalog expansion is back on the overnight queue as the LAST priority item (after deep-link Book buttons). Rationale for override: "it shouldn't wait on me." Claude proceeds autonomously using `dev/research/tc-courses-platforms.md` for the course list, the Google Maps API key in `.dev.vars` for geocoding + Place ID lookup, and `scripts/lookup-place-ids.ts` for Place IDs. See D-9 for the actual expansion decision.
+**Update:** Sam reviewed this decision and overrode it. Catalog expansion is back on the overnight queue as the LAST priority item (after deep-link Book buttons). Rationale for override: "it shouldn't wait on me." Claude proceeds autonomously using `docs/research/tc-courses-platforms.md` for the course list, the Google Maps API key in `.dev.vars` for geocoding + Place ID lookup, and `scripts/lookup-place-ids.ts` for Place IDs. See D-9 for the actual expansion decision.
 
 **Original decision (preserved for context):** Skip the "add rest of TC courses (~50 more)" feedback item overnight. Move it to Sam's morning queue.
 
@@ -177,7 +177,7 @@ Each of these is a research step that requires visiting the course's actual book
 
 **3x adversarial review:**
 1. **Could I add a small, high-confidence subset autonomously?** Possibly 2-3 courses where the config follows a known pattern (e.g., Chronogolf courses sharing a club UUID). But even that requires visiting the marketplace to confirm UUIDs. Net: low speed, high review-dependency.
-2. **Could I generate the list but NOT commit it?** Yes — could produce a `dev/research/catalog-expansion-candidates.md` document for morning review. Deferring to that as a possible follow-up if I run out of other work overnight.
+2. **Could I generate the list but NOT commit it?** Yes — could produce a `docs/research/catalog-expansion-candidates.md` document for morning review. Deferring to that as a possible follow-up if I run out of other work overnight.
 3. **Does deferring this block anything?** No. The existing 49 courses serve users today. Catalog expansion is additive.
 
 **Action:** Skip for now. Priority for morning: Sam decides whether to tackle this personally (highest data quality) or delegate with specific constraints.
@@ -291,13 +291,13 @@ Batch 4 — CPS Golf (1): Hidden Haven (newly discovered via Google Places sweep
 - Applewood Hills, Bent Creek, Olympic Hills — booking platform not detected from public site.
 - Markdale (Ontario, Canada) — out of TC metro, excluded.
 
-**Gaps documented for future**: research doc (`dev/research/tc-courses-platforms.md`) has 8 GolfNow primary + 3 city/custom courses plus EZLinks/Pheasant/Brightwood that remain un-catalogued. Each requires either new adapter implementation or per-course custom handling. Not blocking.
+**Gaps documented for future**: research doc (`docs/research/tc-courses-platforms.md`) has 8 GolfNow primary + 3 city/custom courses plus EZLinks/Pheasant/Brightwood that remain un-catalogued. Each requires either new adapter implementation or per-course custom handling. Not blocking.
 
 **Result:** Catalog grew 49 → 92 courses (+43, +88%). All 669 tests pass, type-check clean, lint clean (only pre-existing warnings).
 
 **Decision:** Remove deep-link Book button feature (Sam's feedback #1) from the overnight scope. Document the research findings permanently so a future session or Sam can revisit without re-doing the discovery work. Spend remaining overnight time on catalog expansion.
 
-**Full findings:** See [`dev/research/2026-04-20-deep-link-research.md`](../../dev/research/2026-04-20-deep-link-research.md).
+**Full findings:** See [`docs/research/2026-04-20-deep-link-research.md`](../../docs/research/2026-04-20-deep-link-research.md).
 
 **Why it's infeasible (not just deferred):** Three consecutive platforms (ForeUp, CPS Golf, Chronogolf) were verified live via Playwright MCP. All three ignore URL-based date deep-link parameters. The pattern is architectural: booking SPAs seed date state from today (or an authenticated API call) at load and do not read date from the URL. This is consistent across the industry — authenticated API handshakes override any URL-provided state by design.
 
@@ -315,7 +315,7 @@ Batch 4 — CPS Golf (1): Hidden Haven (newly discovered via Google Places sweep
 
 ### D-9 — Deep-link Book buttons: use Playwright MCP for live SPA verification (SUPERSEDED by D-10)
 
-**Decision:** Use Playwright MCP browser tools to live-test each booking platform's SPA behavior before implementing any deep-link. Document per-platform capability in `dev/research/2026-04-20-deep-link-research.md`. Implement `buildBookingUrl(teeTime)` adapter method for each platform where URL-based deep-linking is verified to work.
+**Decision:** Use Playwright MCP browser tools to live-test each booking platform's SPA behavior before implementing any deep-link. Document per-platform capability in `docs/research/2026-04-20-deep-link-research.md`. Implement `buildBookingUrl(teeTime)` adapter method for each platform where URL-based deep-linking is verified to work.
 
 **Prior misdirection:** An initial draft of this decision deferred deep-link work entirely based on a fear that Playwright MCP was unreliable. Sam corrected: "Use Playwright for anything where you need live browser testing." That's the authoritative guidance. Pivoting.
 

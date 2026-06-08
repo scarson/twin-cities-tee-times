@@ -63,7 +63,7 @@ These CPS Golf and ForeUp courses are already in `courses.json` with working ada
 | Brookview Par-3 | CPS Golf V4 (ProphetServices) | Same as above |
 | Ft. Snelling | GolfNow | API not yet investigated |
 
-These are documented in `dev/research/remaining-platforms-investigation.md` for future work.
+These are documented in `docs/research/remaining-platforms-investigation.md` for future work.
 
 ### San Diego test courses
 

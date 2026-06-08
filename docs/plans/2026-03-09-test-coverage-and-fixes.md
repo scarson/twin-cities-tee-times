@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Vitest, Next.js App Router, Cloudflare D1
 
-**Reference:** See `dev/test-coverage-reports/2026-03-09-full-coverage-review.md` for the full gap analysis.
+**Reference:** See `docs/test-coverage-reports/2026-03-09-full-coverage-review.md` for the full gap analysis.
 
 ---
 
@@ -1075,12 +1075,12 @@ Expected: Build succeeds
 
 **Step 5: Update coverage report**
 
-Append a "## Remediation Summary" section to `dev/test-coverage-reports/2026-03-09-full-coverage-review.md` documenting what was fixed, tests added, and bugs found.
+Append a "## Remediation Summary" section to `docs/test-coverage-reports/2026-03-09-full-coverage-review.md` documenting what was fixed, tests added, and bugs found.
 
 **Step 6: Final commit and PR**
 
 ```bash
-git add dev/test-coverage-reports/
+git add docs/test-coverage-reports/
 git commit -m "docs: update coverage report with remediation summary"
 ```
 

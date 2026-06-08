@@ -2,6 +2,20 @@
 
 Test scenario checklist for reviewing coverage of any feature. Every item on this list exists because it catches bugs that have occurred in real codebases. Items marked with **🔥 Found in bug hunts** were discovered in *this* codebase specifically. Unmarked items are equally important — they represent bugs we haven't made *yet*. Do not deprioritize an item because it lacks a marker.
 
+> **Relationship to implementation-pitfalls.md:** `docs/pitfalls/implementation-pitfalls.md` specifies *what* to implement and *why*. This document specifies *how to verify* those implementations work correctly. Cross-references between the two are noted inline.
+
+---
+
+## How to Use This Document
+
+**If you're writing tests:** Go to the relevant topic sections below, read the checklist items, and verify your test suite covers each one that applies. Unchecked items are gaps — either add a test or explicitly note why the item doesn't apply to this feature.
+
+**If you're reviewing tests:** Use the checklist to audit coverage gaps. A passing test suite with missing coverage is worse than a failing test suite with complete coverage — you don't know what's actually protected.
+
+**If you're maintaining this document:** When a real bug slips through to production or staging because of a missing test, add the check item to the appropriate section with the 🔥 marker and a one-line note about the observed failure mode. See §How to Add a Testing-Pitfall at the end.
+
+**Section layout:** Sections 1–12 are project-specific disciplines (most carry 🔥 markers — they were found in this codebase). Sections 13–16 are universal testing disciplines — they haven't bitten us here *yet*, but they've bitten enough other projects to be worth testing against. Do not deprioritize them for lacking a 🔥 marker.
+
 ---
 
 ## 1. Silent Failure & Error Swallowing
@@ -118,3 +132,61 @@ This app is Central Time everywhere. Every date operation must be tested for tim
 - [ ] **Type-check coverage:** Run `npx tsc --noEmit` after every change. TypeScript errors that don't surface in `next dev` (which uses SWC and skips type-checking) can still break the CI build.
 - [ ] **OpenNext compatibility:** Test that the production build (`npx @opennextjs/cloudflare build`) succeeds after changes. Features that work in `next dev` may not work on Cloudflare Workers (e.g., `process.env`, Node.js APIs, dynamic imports).
 - [ ] **Environment binding availability:** When code accesses Cloudflare bindings (D1, secrets), test that it uses `getCloudflareContext()` — not `process.env`. A binding that works in `wrangler dev` via `process.env` will fail silently in production Workers.
+
+---
+
+# Universal Testing Disciplines
+
+Sections 13–16 are not project-specific — they are cross-cutting disciplines that apply to any test suite. They were added from the `pitfalls-docs-init` template because their absence here was a coverage gap, not evidence of irrelevance.
+
+## 13. Test Output Pristine
+
+Test output MUST be clean for the suite to pass — no stray errors, warnings, or stack traces. If a test legitimately produces errors (e.g. it's verifying error handling), capture them explicitly and assert on their content. Silent error spam in test output hides real failures.
+
+- [ ] **No unexpected stderr in passing tests.** Any stderr output from a passing test must be explicitly asserted on, or the test is lying about what it verifies.
+- [ ] **No unhandled promise rejections / uncaught exceptions.** These often appear as warnings rather than test failures; configure the runner to fail on them.
+- [ ] **Deprecation warnings fail the suite or are explicitly tracked.** Silently-warned deprecations become hard breaks on the next runtime upgrade.
+- [ ] **Test output doesn't contain debug prints.** Debug statements that escaped into committed tests are sometimes the only evidence of a half-finished implementation.
+
+## 14. Skipped Tests Are Not Passing Tests
+
+A test that's `skip`ped, `it.skip`'d, `todo`, or `pending` is a test that's not running. A CI job that says "100 tests passed, 5 skipped" is NOT the same as "105 tests passed."
+
+- [ ] **No unexplained skips in the suite.** Every skipped test has a comment explaining why it's skipped and the condition under which it should be re-enabled. (This project uses `describe.todo`/`it.todo` for adapters that don't exist yet — each must name the gating condition.)
+- [ ] **Skips with a linked issue/plan.** A skip without follow-up context is forgotten work.
+- [ ] **CI distinguishes skipped from passed in its summary.** If the report doesn't separate them, skipped failures hide.
+- [ ] **Skip/`todo` counts are tracked over time.** A growing skip count is eroding coverage.
+
+## 15. Concurrency & TOCTOU
+
+If the code can be executed concurrently, test it concurrently. Single-threaded happy-path tests don't catch race conditions. (See also §5 "Overlapping cron executions" and §9 "Rate limit bypass" for project-specific instances.)
+
+- [ ] **Multi-step flows under concurrent access.** When a flow reads state then writes state (check-then-act), test two callers racing through the same critical section simultaneously. Use a barrier / sync primitive to force simultaneity — `Promise.all` alone doesn't guarantee it.
+- [ ] **"Use once" tokens consumed correctly.** Any single-use token (OAuth state/verifier, password reset, verification code) must be tested with two concurrent consumers. Exactly one must succeed.
+- [ ] **Rate-limit enforcement under concurrency.** Count-then-insert rate limits can be bypassed by concurrent requests that all read the same count before any insert. Test with burst requests.
+- [ ] **Idempotency under retry/concurrency.** If an operation should be idempotent (retrying a failed refresh, re-running a poll), test concurrent execution — the second attempt must not produce a 500 from a constraint violation.
+- [ ] **Bootstrap / first-time races.** Any "only if none exist" flow (first row for a course+date) tested with concurrent attempts. Exactly one must win.
+
+## 16. Test Infrastructure Hygiene
+
+The test suite itself is code. It decays if not maintained. Messy test infrastructure produces flaky tests, which produce lost confidence, which produce skipped tests (see §14).
+
+- [ ] **No shared mutable state between tests.** Each test sets up its own state and tears it down. Tests that depend on previous tests' state are order-dependent and flaky.
+- [ ] **Setup / teardown covers the failure case.** If setup partially succeeds then teardown fails, the next test starts from a corrupted state. Teardown must be robust to partial-setup states.
+- [ ] **Test doubles are minimal and honest.** A mock that returns fixed data is testing the mock, not the code. Use real implementations where feasible (e.g. real fixtures from `src/test/fixtures/`); mock only external boundaries.
+- [ ] **No hardcoded time-of-day or timezone assumptions.** Tests that pass at 09:00 UTC but fail at 23:00 UTC are flaky by design. Use injected/fake clocks for time-sensitive tests (see §11 for fake-timer mechanics).
+- [ ] **No live network calls in unit tests.** A unit test that hits a real API is an integration test with a misleading name. Mock the boundary or move it to the integration suite (`*.integration.test.ts`).
+
+---
+
+## How to Add a Testing-Pitfall
+
+When a bug reaches production (or staging, or late integration testing) because a test was missing:
+
+1. **Identify the topic section** the missing test belongs in. Project-specific findings go in §1–§12; if none fit, add a new numbered project section. Universal disciplines belong in §13–§16.
+2. **Write the check item** as a `- [ ]` checkbox. Lead with a bolded imperative ("**X is tested.**"), then one sentence on what the check covers and why.
+3. **Mark with the 🔥 marker** if the bug was found in this project's own history: `**🔥 Found in [context]:** one-line note about the observed failure mode`.
+4. **Cross-reference implementation-pitfalls.md** if there's a corresponding implementation entry.
+5. **Resist the urge to be clever.** "Tests X under condition Y" beats a novel testing philosophy. These are pass/fail checklist items, not essays.
+
+The test suite is the enforcement mechanism for this document. If you add a check item and don't write the corresponding test, you've documented a gap, not closed one. Close it.

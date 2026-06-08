@@ -205,7 +205,7 @@ Ft. Snelling added to catalog with `disabled: 1` and `displayNotes` linking to G
 **Status: Implemented** — adapter built, Inver Wood onboarded.
 
 ### Background
-Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp but switched to TeeWire. Full API details in `dev/research/teewire-platform-investigation.md`.
+Inver Wood Golf Course (Inver Grove Heights, 27 holes) was originally cataloged as TeeItUp but switched to TeeWire. Full API details in `docs/research/teewire-platform-investigation.md`.
 
 ### Resolution
 TeeWire adapter built. Clean public JSON API, no auth needed (just a User-Agent header). Two courses added: Championship 18 (calendarId 3) and Executive 9 (calendarId 16).

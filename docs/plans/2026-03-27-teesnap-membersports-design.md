@@ -142,5 +142,5 @@ Uses existing ForeUp adapter, no new code needed.
 
 ## Research References
 
-- `dev/research/teesnap-platform-investigation.md`
-- `dev/research/membersports-platform-investigation.md`
+- `docs/research/teesnap-platform-investigation.md`
+- `docs/research/membersports-platform-investigation.md`

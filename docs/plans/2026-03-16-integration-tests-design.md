@@ -75,7 +75,7 @@ Tests for `upsertTeeTimes()`, `logPoll()`, and cross-cutting DB concerns.
 | 3 | `upsertTeeTimes` with empty array deletes existing rows | Ghost tee time cleanup |
 | 4 | `logPoll` records entries with correct status values (success, no_data, error) | Poll log write correctness |
 | 5 | Time extraction: `2026-03-16T08:30:00` stored as `08:30` | ISO → HH:MM parsing in upsertTeeTimes |
-| 22 | Batch atomicity: constraint violation in INSERT rolls back preceding DELETE | Data loss on partial batch failure (see `dev/testing-pitfalls.md` §4) |
+| 22 | Batch atomicity: constraint violation in INSERT rolls back preceding DELETE | Data loss on partial batch failure (see `docs/pitfalls/testing-pitfalls.md` §4) |
 | 23 | `sqliteIsoNow` boundary: poll at exactly 24 hours ago — included or excluded | Freshness boundary precision |
 | 25 | Time field without ISO separator: `"08:30"` stored correctly as `"08:30"` | The `tt.time.includes("T")` branch in upsertTeeTimes |
 | 28 | FK enforcement is active: inserting a tee time for non-existent course fails | Verifies PRAGMA foreign_keys = ON |
@@ -128,7 +128,7 @@ Housekeeping SQL tests. **Note:** The housekeeping queries are currently embedde
 
 | # | Scenario | What it catches |
 |---|----------|----------------|
-| 18 | Poll log cleanup deletes entries older than 7 days | Unbounded table growth (see `dev/testing-pitfalls.md` §4) |
+| 18 | Poll log cleanup deletes entries older than 7 days | Unbounded table growth (see `docs/pitfalls/testing-pitfalls.md` §4) |
 | 19 | Auto-deactivation: course with `last_had_tee_times` > 30 days ago → `is_active = 0` | Stale course detection |
 | 20 | Auto-deactivation: course with `last_had_tee_times IS NULL` is NOT deactivated | The bug from migration 0005 — NULL means "never checked", not "stale" |
 | 24 | Session cleanup: expired sessions deleted, active sessions preserved | Session table hygiene |
@@ -180,10 +180,10 @@ The test constructs a `CourseRow` (with `platform_config` as a JSON string) matc
 Each stub uses `describe.todo` with the platform name, course count, and reference to research docs:
 
 ```typescript
-describe.todo('Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see dev/research/remaining-platforms-investigation.md)');
+describe.todo('Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see docs/research/remaining-platforms-investigation.md)');
 describe.todo('GolfNow pipeline (Mandatory: implement when adapter exists — 6 courses, API research not yet conducted)');
 describe.todo('Teesnap pipeline (Mandatory: implement when adapter exists — 3 courses, API research not yet conducted)');
-describe.todo('Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see dev/research/remaining-platforms-investigation.md)');
+describe.todo('Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see docs/research/remaining-platforms-investigation.md)');
 describe.todo('EZLinks pipeline (Mandatory: implement when adapter exists — 1 course, API research not yet conducted)');
 describe.todo('City/Custom pipeline (Mandatory: implement when adapter exists — 3 courses, API research not yet conducted)');
 ```
@@ -300,7 +300,7 @@ Each stub contains ABOUTME comments, a reference to research docs, and `describe
 
 ```typescript
 // ABOUTME: Smoke tests for [Platform] adapter (not yet implemented).
-// ABOUTME: See dev/research/[file].md for API details. (or: API research not yet conducted)
+// ABOUTME: See docs/research/[file].md for API details. (or: API research not yet conducted)
 
 describe.todo('[Platform] - live API smoke tests (Mandatory: implement when adapter exists — N courses)');
 describe.todo('[Platform] - API contract validation (Mandatory: implement when adapter exists)');
@@ -308,10 +308,10 @@ describe.todo('[Platform] - parsed output validation (Mandatory: implement when 
 ```
 
 Stub files:
-- `src/adapters/chronogolf.smoke.test.ts` — 35 courses, see `dev/research/remaining-platforms-investigation.md`
+- `src/adapters/chronogolf.smoke.test.ts` — 35 courses, see `docs/research/remaining-platforms-investigation.md`
 - `src/adapters/golfnow.smoke.test.ts` — 6 courses, API research not yet conducted
 - `src/adapters/teesnap.smoke.test.ts` — 3 courses, API research not yet conducted
-- `src/adapters/eagle-club.smoke.test.ts` — 1 course, see `dev/research/remaining-platforms-investigation.md`
+- `src/adapters/eagle-club.smoke.test.ts` — 1 course, see `docs/research/remaining-platforms-investigation.md`
 - `src/adapters/ezlinks.smoke.test.ts` — 1 course, API research not yet conducted
 - `src/adapters/city-custom.smoke.test.ts` — 3 courses, API research not yet conducted
 
