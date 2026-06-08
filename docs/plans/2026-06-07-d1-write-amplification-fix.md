@@ -61,19 +61,20 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Phases 1–4 shipped to branch `fix/d1-write-amplification`. Phase 5 + Finalization remain.
+**Overall:** Phases 1–5 shipped to branch `fix/d1-write-amplification`. Only Finalization (full verification incl. OpenNext build + open the single PR to `dev`) remains.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
-| 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands after Phases 2–5). |
-| 2 — Measurability: `poll_log.content_changed` | ✅ Shipped (branch) | c7f3784, 5aaca02 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 3–5. |
-| 3 — Freshness migration to `poll_log.polled_at` | ✅ Shipped (branch) | 979b22e, b8fd064 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 4–5. Deviation: 3.2+3.3 merged into one commit (type coupling — see Deviations). |
-| 4 — Past-date `tee_times` prune | ✅ Shipped (branch) | f7e7e60, 38563c0 | On `fix/d1-write-amplification`; full suite (737) + tsc + lint green. PR opens after Phase 5. |
-| 5 — Pitfalls + verification docs | ⬜ Not started | — | — |
-| Finalization — verify + open PR | ⬜ Not started | — | Review-class; Sam merges |
+| 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands in Finalization). |
+| 2 — Measurability: `poll_log.content_changed` | ✅ Shipped (branch) | c7f3784, 5aaca02 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens in Finalization. |
+| 3 — Freshness migration to `poll_log.polled_at` | ✅ Shipped (branch) | 979b22e, b8fd064 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens in Finalization. Deviation: 3.2+3.3 merged into one commit (type coupling — see Deviations). |
+| 4 — Past-date `tee_times` prune | ✅ Shipped (branch) | f7e7e60, 38563c0 | On `fix/d1-write-amplification`; full suite (737) + tsc + lint green. PR opens in Finalization. |
+| 5 — Pitfalls + verification docs | ✅ Shipped (branch) | a1be25c, 6fa2dd7 | On `fix/d1-write-amplification`; DB-4 + Appendix C maintenance + new `docs/implementation-log.md`. tsc + lint (0 errors) + full suite (737) green. Deviation: implementation-log.md created (did not exist) — see Deviations. |
+| Finalization — verify + open PR | ⬜ Not started | — | Review-class; Sam merges. Includes the OpenNext production build + the single PR to `dev`. |
 
 ### Deviations
 - **Phase 3 (3.2 + 3.3) shipped as one commit `b8fd064`, not two.** The plan named two commit subjects (`refactor(ui): base tee-time staleness on last poll time…` and `refactor(ui): source course-detail freshness from poll log`). In practice the `TeeTimeItem.fetched_at → polled_at` change (3.2) and the course-header `teeTimes`-prop removal (3.3) are coupled through the shared `src/app/courses/[id]/page.tsx` tee-time state type: changing `TeeTimeItem` forces the detail-page state type to `polled_at`, which is incompatible with the original course-header `teeTimes: { fetched_at }[]` prop — so no file-level split produces two independently CI-green commits. Combined into one green commit rather than landing an intermediate red commit. No scope change; all 3.2 and 3.3 work is present.
+- **Phase 5 Task 5.2 created `docs/implementation-log.md` rather than modifying it.** The plan's Task 5.2 says "Modify `docs/implementation-log.md`", but the file did not exist anywhere in the repo — confirmed absent from git history (`git log --all`) and from the main checkout. `CLAUDE.md` §Development Workflow references it as the cross-session context mechanism, but it had never been stood up. Created it fresh with a newest-first entry structure consistent with that reference. No scope change; the required content (Phases 1–5 summary, post-deploy success criterion, revisit trigger) is all present.
 
 ---
 
@@ -414,7 +415,7 @@ Minimum 3 rounds (CT date correctness per TIME-1; batch-0-only; that a failed cl
 
 ## Phase 5 — Pitfalls entry + post-deploy verification
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED to branch `fix/d1-write-amplification` (2026-06-08). Commits: `a1be25c` (5.1 — DB-4 added to `implementation-pitfalls.md` with ALL Appendix C maintenance: entry, TOC range `DB-1 – DB-4`, §3.C checklist item, Appendix B `VALIDATED` row, dated Appendix A changelog, testing-pitfalls.md §4 cross-ref), `6fa2dd7` (5.2 — created `docs/implementation-log.md` and recorded the Phases 1–5 work + the post-deploy success criterion and revisit trigger). `tsc --noEmit` + `npm run lint` (0 errors, only the 3 pre-existing warnings) + full suite (737) all green. **Deviation:** `docs/implementation-log.md` did not exist — it is referenced by `CLAUDE.md` §Development Workflow but had never been created in this repo (confirmed via `git log --all` and the main checkout). Created it fresh rather than appending; see Deviations. PR opens in Finalization per the single-PR sequencing note.
 
 **Why:** Three-layer memory (`CLAUDE.md` §Thinking documentation). The write-amplification trap must travel with the repo so it isn't reintroduced.
 
