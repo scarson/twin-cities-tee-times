@@ -60,26 +60,44 @@ afterEach(() => {
 
 async function fetchWithFallback(
   adapter: CpsGolfAdapter
-): Promise<{ results: TeeTime[]; config: CourseConfig }> {
+): Promise<{ results: TeeTime[]; config: CourseConfig; challenged: boolean }> {
+  let challenged = false;
   for (const config of courses) {
     captured = [];
-    // No env arg — direct fetch (no proxy) in Node.js
-    const results = await adapter.fetchTeeTimes(config, testDate);
-    if (results.length > 0) {
-      return { results, config };
+    // No env arg — direct fetch (no proxy) in Node.js. From a client without a
+    // browser TLS fingerprint, CPS's reservation API answers with a Cloudflare
+    // managed challenge, which the adapter surfaces as its distinct error. Real
+    // tee-time data only comes back through the impersonating fetch proxy, so
+    // here we accept either outcome but reject any *other* error.
+    try {
+      const results = await adapter.fetchTeeTimes(config, testDate);
+      if (results.length > 0) {
+        return { results, config, challenged };
+      }
+    } catch (err) {
+      if (/Cloudflare challenge/i.test((err as Error).message)) {
+        challenged = true;
+        continue;
+      }
+      throw err;
     }
   }
-  return { results: [], config: courses[0] };
+  return { results: [], config: courses[0], challenged };
 }
 
 describe("CPS Golf - live API smoke tests", () => {
   const adapter = new CpsGolfAdapter();
 
   it(
-    "Level 1: adapter returns TeeTime[] without throwing",
+    "Level 1: adapter returns TeeTime[] or cleanly reports the Cloudflare challenge",
     async () => {
-      const { results } = await fetchWithFallback(adapter);
+      const { results, challenged } = await fetchWithFallback(adapter);
       expect(Array.isArray(results)).toBe(true);
+      if (challenged && results.length === 0) {
+        console.warn(
+          "CPS Golf Level 1: reservation API is behind a Cloudflare challenge from this client — expected without browser TLS impersonation (data flows only via the fetch proxy)"
+        );
+      }
     },
     15000
   );
@@ -95,7 +113,7 @@ describe("CPS Golf - API contract validation", () => {
 
       if (results.length === 0) {
         console.warn(
-          "CPS Golf Level 2: No tee times available from any test course — skipping contract validation"
+          "CPS Golf Level 2: no tee times (course empty or behind a Cloudflare challenge without browser TLS impersonation) — skipping contract validation"
         );
         ctx.skip();
         return;
@@ -154,7 +172,7 @@ describe("CPS Golf - parsed output validation", () => {
 
       if (results.length === 0) {
         console.warn(
-          "CPS Golf Level 3: No tee times available from any test course — skipping output validation"
+          "CPS Golf Level 3: no tee times (course empty or behind a Cloudflare challenge without browser TLS impersonation) — skipping output validation"
         );
         ctx.skip();
         return;

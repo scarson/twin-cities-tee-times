@@ -1,0 +1,6 @@
+# Dependencies are vendored at deploy time (see .github/workflows/deploy.yml),
+# not committed. Keep only the handler, its requirements, and this file.
+*
+!index.py
+!requirements.txt
+!.gitignore

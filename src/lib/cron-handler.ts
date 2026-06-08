@@ -119,6 +119,18 @@ export async function runHorizonProbe(
  * Check whether v4 CPS Golf courses have upgraded to v5.
  * Tries the v5 token endpoint for each unique subdomain.
  * If it returns 200, removes authType from platform_config.
+ *
+ * Caveat: the token endpoint (/identityapi/) is NOT behind CPS's Cloudflare
+ * bot-challenge, but the v5 reservation API (/onlineres/) IS, and is only
+ * reachable through the impersonating fetch proxy (see lambda/fetch-proxy).
+ * So a token-200 here proves the identity service is on v5, not that the
+ * reservation API is currently reachable. If the proxy's impersonation profile
+ * ages out of Cloudflare's allowlist, a promoted course's v5 polls fail with
+ * the distinct "blocked by Cloudflare challenge" error until the profile is
+ * refreshed; promotion is not auto-reverted. The canary makes that visible in
+ * poll_log. The remaining v4 population is small and promotion is gated on CPS
+ * migrating a facility, so this is accepted rather than gating promotion on a
+ * full proxied reservation probe.
  */
 export async function checkV4Upgrades(
   db: D1Database,

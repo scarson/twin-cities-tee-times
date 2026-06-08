@@ -52,15 +52,32 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-west-2
 
+      # Vendor curl_cffi (+ deps) as manylinux x86_64 wheels targeting cp314 so
+      # the Lambda's python3.14 runtime can supply a browser TLS fingerprint that
+      # clears CPS Golf's Cloudflare bot-challenge. curl_cffi's cp310-abi3 wheel
+      # is forward-compatible and pip selects it for --python-version 3.14; cffi
+      # resolves to its cp314 wheel. Cross-targets regardless of the runner's own
+      # Python version; --only-binary forbids source builds (which would link
+      # against the wrong libc/libffi).
+      - name: Vendor Lambda proxy dependencies
+        run: |
+          python3 -m pip install \
+            --target lambda/fetch-proxy \
+            --requirement lambda/fetch-proxy/requirements.txt \
+            --platform manylinux2014_x86_64 \
+            --implementation cp \
+            --python-version 3.14 \
+            --only-binary=:all:
+
       - name: Deploy Lambda proxy
         uses: aws-actions/aws-lambda-deploy@v1
         with:
           function-name: tee-times-fetch-proxy
           code-artifacts-dir: lambda/fetch-proxy
           handler: index.handler
-          runtime: nodejs24.x
+          runtime: python3.14
           timeout: 15
-          memory-size: 128
+          memory-size: 256
 
       - name: Deploy Worker
         run: npx wrangler deploy

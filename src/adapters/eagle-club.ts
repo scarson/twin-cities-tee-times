@@ -93,7 +93,9 @@ export class EagleClubAdapter implements PlatformAdapter {
     const parseFee = (fee: string | undefined | null): number | null => {
       if (!fee) return null;
       const n = parseFloat(fee);
-      return Number.isNaN(n) ? null : n;
+      // A "0" fee means Valleywood has not assigned a priced rate class to the
+      // slot (Master_TeePriceClassID: 0) — the price is unknown, not free.
+      return Number.isNaN(n) || n <= 0 ? null : n;
     };
 
     const results: TeeTime[] = [];

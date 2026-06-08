@@ -382,6 +382,111 @@ describe("CpsGolfAdapter", () => {
     expect(ttUrl).not.toContain("%2C"); // no commas
   });
 
+  describe("Cloudflare challenge detection", () => {
+    // CPS fronts its v5 reservation API with Cloudflare Bot Management. A client
+    // without a trusted TLS fingerprint gets a 403 "Just a moment..." interstitial
+    // (cf-mitigated: challenge) instead of the real API response. The adapter must
+    // surface this as a distinct error so poll_log/check-logs flags it immediately
+    // (e.g. when the proxy's impersonation profile ages out) rather than masking it
+    // as a generic registration failure.
+    const challengeBody =
+      '<!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title>' +
+      '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script></head></html>';
+
+    const proxyEnv = {
+      DB: {} as any,
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      JWT_SECRET: "",
+      FETCH_PROXY_URL: "https://proxy.lambda-url.us-west-2.on.aws/",
+      AWS_ACCESS_KEY_ID: "AKID",
+      AWS_SECRET_ACCESS_KEY: "SECRET",
+    } satisfies CloudflareEnv;
+
+    it("throws a distinct Cloudflare-challenge error when the token endpoint is challenged", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(challengeBody, {
+          status: 403,
+          headers: { "cf-mitigated": "challenge" },
+        })
+      );
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
+    it("throws a distinct Cloudflare-challenge error when registration is challenged (header)", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(tokenResponse.clone())
+        .mockResolvedValueOnce(
+          new Response(challengeBody, {
+            status: 403,
+            headers: { "cf-mitigated": "challenge" },
+          })
+        );
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
+    it("detects the challenge by body signature when cf-mitigated header is absent", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(tokenResponse.clone())
+        .mockResolvedValueOnce(new Response(challengeBody, { status: 403 }));
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
+    it("throws a distinct Cloudflare-challenge error in proxy mode", async () => {
+      vi.spyOn(globalThis, "fetch");
+      vi.mocked(proxyFetch)
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: JSON.stringify({ access_token: "proxy-token", expires_in: 600 }),
+        })
+        .mockResolvedValueOnce({
+          status: 403,
+          headers: { "cf-mitigated": "challenge" },
+          body: challengeBody,
+        });
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12", proxyEnv)
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
+    it("throws a distinct Cloudflare-challenge error when TeeTimes is challenged", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(tokenResponse.clone())
+        .mockResolvedValueOnce(registerResponse.clone())
+        .mockResolvedValueOnce(
+          new Response(challengeBody, {
+            status: 403,
+            headers: { "cf-mitigated": "challenge" },
+          })
+        );
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
+    it("still reports a generic registration failure for non-challenge errors", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(tokenResponse.clone())
+        .mockResolvedValueOnce(new Response("Internal Error", { status: 500 }));
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/transaction registration failed/i);
+    });
+  });
+
   describe("v4 auth mode", () => {
     const v4Config: CourseConfig = {
       id: "edinburgh-usa",
