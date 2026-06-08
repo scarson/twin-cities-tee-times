@@ -179,7 +179,8 @@ export async function checkV4Upgrades(
  * Each invocation processes one batch of courses (determined by cronExpression).
  * Courses are assigned to batches via weighted bin-packing (CPS=3, others=1).
  * Loop order is date-outer, course-inner to prioritize today for all courses.
- * A subrequest budget tracker prevents exceeding the 50-per-invocation limit.
+ * A subrequest budget tracker (SUBREQUEST_BUDGET) caps work per invocation, well
+ * under the paid plan's 10,000-subrequest-per-invocation platform limit.
  *
  * Housekeeping (cleanup, auto-deactivation) runs only in batch 0.
  */
