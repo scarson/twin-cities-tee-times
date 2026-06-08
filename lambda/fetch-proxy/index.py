@@ -2,6 +2,7 @@
 # ABOUTME: CPS Golf fronts its reservation API with a Cloudflare bot-challenge only a trusted fingerprint clears.
 import base64
 import json
+import time
 from urllib.parse import urlparse
 
 from curl_cffi import requests
@@ -32,9 +33,12 @@ STRIP_RESPONSE_HEADERS = frozenset({"content-encoding", "content-length"})
 PRIMARY_PROFILE = "chrome"
 FALLBACK_PROFILE = "safari17_0"
 
-# Per-upstream-attempt timeout. The Lambda's own ceiling is 15s; a challenge
-# triggers one fallback attempt, so worst case is two attempts (~2x) within it.
+# Per-upstream-attempt timeout, and the total upstream budget across the
+# primary + one challenge fallback. TOTAL_BUDGET stays under the Worker's 12s
+# client abort (proxy-fetch.ts) and the Lambda's 15s ceiling, so the fallback
+# is bounded by remaining time rather than blindly adding a second full 10s.
 UPSTREAM_TIMEOUT = 10
+TOTAL_BUDGET = 11
 
 
 def _host_allowed(hostname):
@@ -68,14 +72,14 @@ def _response_headers(headers):
     }
 
 
-def _request(profile, url, method, headers, body):
+def _request(profile, url, method, headers, body, timeout=UPSTREAM_TIMEOUT):
     return requests.request(
         method,
         url,
         headers=headers,
         data=body,
         impersonate=profile,
-        timeout=UPSTREAM_TIMEOUT,
+        timeout=timeout,
     )
 
 
@@ -103,15 +107,22 @@ def handler(event, _context):
                 ),
             }
 
+        start = time.monotonic()
         resp = _request(PRIMARY_PROFILE, url, method, headers, body)
         resp_headers = _response_headers(resp.headers)
 
         # If the trusted fingerprint has aged out of Cloudflare's allowlist the
         # primary profile gets challenged; try one alternate vendor fingerprint
-        # before surfacing the block to the caller.
+        # with whatever time is left before the caller aborts, then surface the
+        # block (the adapter classifies it as a distinct error either way).
         if _is_cf_challenge(resp.status_code, resp_headers, resp.text):
-            resp = _request(FALLBACK_PROFILE, url, method, headers, body)
-            resp_headers = _response_headers(resp.headers)
+            remaining = TOTAL_BUDGET - (time.monotonic() - start)
+            if remaining >= 2:
+                resp = _request(
+                    FALLBACK_PROFILE, url, method, headers, body,
+                    timeout=min(UPSTREAM_TIMEOUT, remaining),
+                )
+                resp_headers = _response_headers(resp.headers)
 
         return {
             "statusCode": 200,

@@ -142,6 +142,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     }, proxy);
 
     if (!response.ok) {
+      if (response.isChallenge) throw this.cloudflareChallengeError(response.status);
       throw new Error(
         `CPS Golf token request failed: HTTP ${response.status}`
       );

@@ -403,6 +403,19 @@ describe("CpsGolfAdapter", () => {
       AWS_SECRET_ACCESS_KEY: "SECRET",
     } satisfies CloudflareEnv;
 
+    it("throws a distinct Cloudflare-challenge error when the token endpoint is challenged", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(challengeBody, {
+          status: 403,
+          headers: { "cf-mitigated": "challenge" },
+        })
+      );
+
+      await expect(
+        adapter.fetchTeeTimes(mockConfig, "2026-03-12")
+      ).rejects.toThrow(/Cloudflare challenge/i);
+    });
+
     it("throws a distinct Cloudflare-challenge error when registration is challenged (header)", async () => {
       vi.spyOn(globalThis, "fetch")
         .mockResolvedValueOnce(tokenResponse.clone())
