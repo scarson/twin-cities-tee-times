@@ -61,7 +61,7 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Phases 1–5 shipped to branch `fix/d1-write-amplification`. Only Finalization (full verification incl. OpenNext build + open the single PR to `dev`) remains.
+**Overall:** Phases 1–5 + Finalization complete. PR #119 → `dev`: local suite + tsc + lint green; CI all gating checks green (incl. OpenNext Build + E2E); Opus adversarial review returned SHIP with 2 Minor nits, both fixed (`c58e636`, `0ea82bb`); auto-merged with `--merge --delete-branch` per Sam's explicit authorization (gated on the Opus review).
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
@@ -70,7 +70,7 @@ notes and commit messages.
 | 3 — Freshness migration to `poll_log.polled_at` | ✅ Shipped (branch) | 979b22e, b8fd064 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens in Finalization. Deviation: 3.2+3.3 merged into one commit (type coupling — see Deviations). |
 | 4 — Past-date `tee_times` prune | ✅ Shipped (branch) | f7e7e60, 38563c0 | On `fix/d1-write-amplification`; full suite (737) + tsc + lint green. PR opens in Finalization. |
 | 5 — Pitfalls + verification docs | ✅ Shipped (branch) | a1be25c, 6fa2dd7 | On `fix/d1-write-amplification`; DB-4 + Appendix C maintenance + new `docs/implementation-log.md`. tsc + lint (0 errors) + full suite (737) green. Deviation: implementation-log.md created (did not exist) — see Deviations. |
-| Finalization — verify + open PR | ⬜ Not started | — | Review-class; Sam merges. Includes the OpenNext production build + the single PR to `dev`. |
+| Finalization — verify + Opus review + merge | ✅ Done | c58e636, 0ea82bb | PR #119 → `dev`. CI green (incl. OpenNext Build + E2E). Opus adversarial review: SHIP; 2 Minor nits fixed. Auto-merged per Sam's explicit authorization (gated on the Opus review). Adapter Smoke Tests red but pre-existing (no adapter code touched). |
 
 ### Deviations
 - **Phase 3 (3.2 + 3.3) shipped as one commit `b8fd064`, not two.** The plan named two commit subjects (`refactor(ui): base tee-time staleness on last poll time…` and `refactor(ui): source course-detail freshness from poll log`). In practice the `TeeTimeItem.fetched_at → polled_at` change (3.2) and the course-header `teeTimes`-prop removal (3.3) are coupled through the shared `src/app/courses/[id]/page.tsx` tee-time state type: changing `TeeTimeItem` forces the detail-page state type to `polled_at`, which is incompatible with the original course-header `teeTimes: { fetched_at }[]` prop — so no file-level split produces two independently CI-green commits. Combined into one green commit rather than landing an intermediate red commit. No scope change; all 3.2 and 3.3 work is present.
@@ -450,7 +450,7 @@ Minimum 3 rounds (entry matches the established `DB-N` format; verification crit
 
 ## Finalization (before opening the PR)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ DONE (2026-06-08). PR #119 → `dev`. Local verification green (`npm test` 737, `tsc`, `lint` — only the 3 pre-existing warnings). CI: all gating checks green (Analyze, Build/OpenNext, CodeQL, E2E, Lint, Test, Type Check). Opus adversarial review returned **SHIP** (no Critical/Major); the 2 Minor nits it raised — `staleAge` param name + an unrealistic test stub value — were fixed in `c58e636` and `0ea82bb`. Auto-merged with `--merge --delete-branch` per Sam's explicit authorization, gated on the Opus review. **Adapter Smoke Tests are red but pre-existing**, not a regression: this PR's diff touches no adapter/poller-fetch code; the failures are live third-party API calls (CPS Golf `transaction registration failed`; Eagle Club brittle 9-vs-18 assertion) belonging to the separate, not-yet-built polling-fixes work.
 
 After all five phases are green:
 1. Invoke `superpowers:verification-before-completion` — evidence before claims.
