@@ -1,7 +1,7 @@
 // ABOUTME: Tests for cron batch assignment via weighted bin-packing.
 // ABOUTME: Covers even distribution, CPS weighting, determinism, and edge cases.
 import { describe, it, expect } from "vitest";
-import { assignBatches, BATCH_COUNT, platformWeight, cronToBatchIndex, sleepAfterPoll } from "./batch";
+import { assignBatches, BATCH_COUNT, CHRONOGOLF_LANE, platformWeight, cronToBatchIndex, sleepAfterPoll } from "./batch";
 import type { CourseRow } from "@/types";
 
 function makeCourse(id: string, platform: string): CourseRow {
@@ -69,7 +69,7 @@ describe("assignBatches", () => {
     expect(allIds).toHaveLength(10);
   });
 
-  it("balances CPS courses (weight 3) across batches", () => {
+  it("balances CPS courses (weight 3) across the non-lane batches", () => {
     const courses = [
       makeCourse("cps-a", "cps_golf"),
       makeCourse("cps-b", "cps_golf"),
@@ -79,10 +79,15 @@ describe("assignBatches", () => {
     ];
     const result = assignBatches(courses);
 
-    // 5 CPS courses with weight 3 each → one per batch
-    for (let i = 0; i < BATCH_COUNT; i++) {
-      expect(result[i]).toHaveLength(1);
-    }
+    // The chronogolf lane (batch 0) holds no CPS; 5 CPS spread across the 4 non-lane batches.
+    expect(result[CHRONOGOLF_LANE]).toHaveLength(0);
+    const nonLaneCounts = result
+      .filter((_, i) => i !== CHRONOGOLF_LANE)
+      .map((b) => b.length);
+    expect(nonLaneCounts.reduce((a, b) => a + b, 0)).toBe(5);
+    // 5 across 4 batches → balanced within one course (max 2, min 1).
+    expect(Math.max(...nonLaneCounts)).toBeLessThanOrEqual(2);
+    expect(Math.min(...nonLaneCounts)).toBeGreaterThanOrEqual(1);
   });
 
   it("assigns heavier platforms to lighter batches", () => {
@@ -140,12 +145,62 @@ describe("assignBatches", () => {
     expect(nonEmpty[0][0].id).toBe("only-one");
   });
 
-  it("breaks ties by lowest batch index", () => {
-    // Single course should always go to batch 0
+  it("breaks ties by lowest non-lane batch index", () => {
+    // A single non-chronogolf course goes to the lowest-index non-lane batch (1),
+    // since the chronogolf lane (batch 0) holds only chronogolf courses.
     const courses = [makeCourse("solo", "foreup")];
     const result = assignBatches(courses);
-    expect(result[0]).toHaveLength(1);
-    expect(result[0][0].id).toBe("solo");
+    expect(result[CHRONOGOLF_LANE]).toHaveLength(0);
+    expect(result[1]).toHaveLength(1);
+    expect(result[1][0].id).toBe("solo");
+  });
+});
+
+describe("assignBatches chronogolf lane", () => {
+  it("assigns every chronogolf course to the lane (batch 0)", () => {
+    const courses = [
+      makeCourse("a-chrono", "chronogolf"),
+      makeCourse("b-cps", "cps_golf"),
+      makeCourse("c-chrono", "chronogolf"),
+      makeCourse("d-foreup", "foreup"),
+    ];
+    const result = assignBatches(courses);
+
+    const laneIds = result[CHRONOGOLF_LANE].map((c) => c.id).sort();
+    expect(laneIds).toEqual(["a-chrono", "c-chrono"]);
+    // No chronogolf course appears outside the lane.
+    for (let i = 0; i < BATCH_COUNT; i++) {
+      if (i === CHRONOGOLF_LANE) continue;
+      expect(result[i].some((c) => c.platform === "chronogolf")).toBe(false);
+    }
+  });
+
+  it("keeps non-chronogolf courses out of the lane", () => {
+    const courses = Array.from({ length: 8 }, (_, i) =>
+      makeCourse(`f-${i}`, "foreup")
+    );
+    const result = assignBatches(courses);
+
+    expect(result[CHRONOGOLF_LANE]).toHaveLength(0);
+    const nonLaneTotal = result
+      .filter((_, i) => i !== CHRONOGOLF_LANE)
+      .reduce((n, b) => n + b.length, 0);
+    expect(nonLaneTotal).toBe(8);
+  });
+
+  it("balances non-chronogolf weight across the non-lane batches", () => {
+    const courses = Array.from({ length: 12 }, (_, i) =>
+      makeCourse(`c-${String(i).padStart(2, "0")}`, "cps_golf")
+    );
+    const result = assignBatches(courses);
+
+    const nonLaneWeights = result
+      .map((b, i) => ({ i, w: b.reduce((s, c) => s + platformWeight(c.platform), 0) }))
+      .filter((x) => x.i !== CHRONOGOLF_LANE)
+      .map((x) => x.w);
+    const max = Math.max(...nonLaneWeights);
+    const min = Math.min(...nonLaneWeights);
+    expect(max - min).toBeLessThanOrEqual(3); // within one CPS course of balanced
   });
 });
 

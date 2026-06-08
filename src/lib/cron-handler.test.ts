@@ -173,9 +173,9 @@ describe("runCronPoll batch filtering", () => {
   });
 
   it("only polls courses assigned to this batch", async () => {
-    // 10 weight-1 courses → 2 per batch
+    // All chronogolf courses land in the lane (batch 0); BATCH_0_CRON polls them.
     const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "chronogolf")
     );
 
     const batch0Ids = coursesInBatch(courses, 0);
@@ -185,7 +185,7 @@ describe("runCronPoll batch filtering", () => {
       BATCH_0_CRON
     ));
 
-    // 2 courses × 2 dates = 4 polls
+    // Each course polled for both dates.
     expect(result.pollCount).toBe(batch0Ids.length * 2);
     expect(result.courseCount).toBe(batch0Ids.length);
   });
@@ -200,13 +200,17 @@ describe("runCronPoll batch filtering", () => {
   });
 
   it("assigns different courses to different batches", async () => {
-    const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
-    );
+    // Mix so both the chronogolf lane (batch 0) and a non-lane batch are populated.
+    const courses = [
+      ...Array.from({ length: 4 }, (_, i) => makeCourseRow(`chrono-${i}`, "chronogolf")),
+      ...Array.from({ length: 6 }, (_, i) => makeCourseRow(`foreup-${i}`, "foreup")),
+    ];
 
-    const batch0Ids = coursesInBatch(courses, 0);
-    const batch1Ids = coursesInBatch(courses, 1);
+    const batch0Ids = coursesInBatch(courses, 0); // chronogolf lane
+    const batch1Ids = coursesInBatch(courses, 1); // a non-lane batch
 
+    expect(batch0Ids.length).toBeGreaterThan(0);
+    expect(batch1Ids.length).toBeGreaterThan(0);
     // Verify no overlap
     for (const id of batch0Ids) {
       expect(batch1Ids).not.toContain(id);
@@ -258,9 +262,9 @@ describe("runCronPoll date-outer loop ordering", () => {
   });
 
   it("polls today for all courses before moving to tomorrow", async () => {
-    // Need 10+ courses so batch 0 gets at least 2 (10 / 5 batches = 2 each)
+    // Chronogolf courses all land in the lane (batch 0); need ≥2 for the ordering check.
     const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "chronogolf")
     );
 
     const batch0Ids = coursesInBatch(courses, 0);
@@ -310,7 +314,8 @@ describe("runCronPoll budget tracking", () => {
     // Use 7 dates so each CPS course (weight 3) costs 21 units → fewer courses needed
     const dates = Array.from({ length: 7 }, (_, i) => `2026-04-${15 + i}`);
     mockedGetPollingDates.mockReturnValue(dates);
-    // coursesPerBatch * 7 dates * 3 weight > budget → coursesPerBatch > budget/21
+    // Non-chronogolf courses bin-pack across the 4 non-lane batches. Over-provision
+    // so batch 1 alone holds enough CPS (weight 3 × 7 dates) to exceed the budget.
     const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 21 + 1) * 5;
     const courses = Array.from({ length: coursesNeeded }, (_, i) =>
       makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf")
@@ -320,7 +325,7 @@ describe("runCronPoll budget tracking", () => {
     const db = makeMockDb(courses);
     const result = await withTimers(() => runCronPoll(
       { DB: db } as unknown as CloudflareEnv,
-      BATCH_0_CRON
+      BATCH_1_CRON
     ));
 
     expect(result.budgetExhausted).toBe(true);
@@ -333,7 +338,7 @@ describe("runCronPoll budget tracking", () => {
   });
 
   it("does not exhaust budget with lightweight courses", async () => {
-    // 10 foreup courses → 2 per batch, weight 1 × 2 dates = 4 total. Well under budget.
+    // 10 foreup courses across the 4 non-lane batches; weight 1 × 2 dates. Well under budget.
     const courses = Array.from({ length: 10 }, (_, i) =>
       makeCourseRow(`foreup-${String(i).padStart(2, "0")}`, "foreup")
     );
@@ -341,7 +346,7 @@ describe("runCronPoll budget tracking", () => {
     const db = makeMockDb(courses);
     const result = await withTimers(() => runCronPoll(
       { DB: db } as unknown as CloudflareEnv,
-      BATCH_0_CRON
+      BATCH_1_CRON
     ));
 
     expect(result.budgetExhausted).toBe(false);
@@ -362,7 +367,7 @@ describe("runCronPoll budget tracking", () => {
     const db = makeMockDb(courses);
     const result = await withTimers(() => runCronPoll(
       { DB: db } as unknown as CloudflareEnv,
-      BATCH_0_CRON
+      BATCH_1_CRON
     ));
 
     // Budget should be exhausted even though all polls errored
@@ -373,8 +378,8 @@ describe("runCronPoll budget tracking", () => {
   });
 
   it("does not consume budget for shouldPollDate=false skips", async () => {
-    // 10 foreup courses → 2 per batch. shouldPollDate returns false for all.
-    // Budget should not be consumed.
+    // 10 foreup courses across the 4 non-lane batches. shouldPollDate returns false
+    // for all, so budget should not be consumed.
     const courses = Array.from({ length: 10 }, (_, i) =>
       makeCourseRow(`foreup-${String(i).padStart(2, "0")}`, "foreup")
     );
@@ -383,7 +388,7 @@ describe("runCronPoll budget tracking", () => {
     const db = makeMockDb(courses);
     const result = await withTimers(() => runCronPoll(
       { DB: db } as unknown as CloudflareEnv,
-      BATCH_0_CRON
+      BATCH_1_CRON
     ));
 
     expect(result.pollCount).toBe(0);
@@ -586,7 +591,7 @@ describe("runCronPoll error isolation", () => {
 
     // 10 courses → 2 per batch. Both in batch 0 will be polled.
     const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "chronogolf")
     );
     const batch0Ids = coursesInBatch(courses, 0);
     expect(batch0Ids.length).toBeGreaterThanOrEqual(2);
@@ -615,7 +620,7 @@ describe("runCronPoll error isolation", () => {
 
     // Use enough courses for 2 in batch 0
     const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "foreup")
+      makeCourseRow(`course-${String(i).padStart(2, "0")}`, "chronogolf")
     );
     const batch0Ids = coursesInBatch(courses, 0);
     const targetId = batch0Ids[0];
@@ -645,8 +650,8 @@ describe("runCronPoll error isolation", () => {
   it("handles double-fault when logPoll throws inside catch block", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // Single course in batch 0
-    const courses = [makeCourseRow("solo-course", "foreup")];
+    // Single chronogolf course → lands in the lane (batch 0).
+    const courses = [makeCourseRow("solo-course", "chronogolf")];
 
     // pollCourse throws, then the catch block's logPoll will use the mock DB
     // which always resolves. To test double-fault, we verify the handler doesn't
@@ -713,7 +718,7 @@ describe("runCronPoll active/inactive polling", () => {
   it("probes inactive courses with today and tomorrow only", async () => {
     // Single inactive course → goes to batch 0
     const courses = [
-      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+      makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
     ];
 
     const db = makeMockDb(courses);
@@ -728,7 +733,7 @@ describe("runCronPoll active/inactive polling", () => {
   it("promotes inactive course to active when tee times found", async () => {
     mockedPollCourse.mockResolvedValue("success");
     const courses = [
-      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+      makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
     ];
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const db = makeMockDb(courses);
@@ -743,7 +748,7 @@ describe("runCronPoll active/inactive polling", () => {
   it("does not probe inactive courses if polled less than 1 hour ago", async () => {
     const recentPoll = new Date("2026-04-15T06:30:00-05:00").toISOString();
     const courses = [
-      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+      makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
     ];
     const db = makeMockDb(
       courses,
@@ -757,7 +762,7 @@ describe("runCronPoll active/inactive polling", () => {
   it("does not promote inactive course when poll returns error", async () => {
     mockedPollCourse.mockResolvedValue("error");
     const courses = [
-      makeCourseRow("test-inactive", "foreup", { is_active: 0 }),
+      makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
     ];
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const db = makeMockDb(courses);
@@ -774,9 +779,9 @@ describe("runCronPoll active/inactive polling", () => {
   it("continues probing other inactive courses after one throws", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // Need 10 inactive courses so batch 0 gets 2
+    // Inactive chronogolf courses all land in the lane (batch 0).
     const courses = Array.from({ length: BATCH_COUNT * 2 }, (_, i) =>
-      makeCourseRow(`inactive-${String(i).padStart(2, "0")}`, "foreup", { is_active: 0 })
+      makeCourseRow(`inactive-${String(i).padStart(2, "0")}`, "chronogolf", { is_active: 0 })
     );
     const batch0Ids = coursesInBatch(courses, 0);
     expect(batch0Ids.length).toBeGreaterThanOrEqual(2);
@@ -801,8 +806,9 @@ describe("runCronPoll active/inactive polling", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    // Inactive courses probe today+tomorrow only (2 dates, from first 2 of getPollingDates).
-    // Need coursesPerBatch * 2 * 3 > budget → coursesPerBatch > budget/6
+    // Inactive courses probe today+tomorrow only (2 dates). Non-chronogolf courses
+    // bin-pack across the 4 non-lane batches; over-provision so batch 1 alone exceeds
+    // the budget (weight 3 × 2 dates per course).
     const coursesNeeded = Math.ceil(SUBREQUEST_BUDGET / 6 + 1) * 5;
     const courses = Array.from({ length: coursesNeeded }, (_, i) =>
       makeCourseRow(`cps-${String(i).padStart(3, "0")}`, "cps_golf", { is_active: 0 })
@@ -813,7 +819,7 @@ describe("runCronPoll active/inactive polling", () => {
     const db = makeMockDb(courses);
     const result = await withTimers(() => runCronPoll(
       { DB: db } as unknown as CloudflareEnv,
-      BATCH_0_CRON
+      BATCH_1_CRON
     ));
 
     // Budget should be exhausted even though all probes errored
@@ -858,7 +864,7 @@ describe("runCronPoll per-course horizon", () => {
   });
 
   it("only polls dates up to each course's booking_horizon_days", async () => {
-    const course7 = makeCourseRow("horizon-7", "foreup", { booking_horizon_days: 7 });
+    const course7 = makeCourseRow("horizon-7", "chronogolf", { booking_horizon_days: 7 });
     const db = makeMockDb([course7]);
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
 
@@ -870,7 +876,7 @@ describe("runCronPoll per-course horizon", () => {
   });
 
   it("polls up to 14 days for courses with extended horizon", async () => {
-    const course14 = makeCourseRow("horizon-14", "foreup", { booking_horizon_days: 14 });
+    const course14 = makeCourseRow("horizon-14", "chronogolf", { booking_horizon_days: 14 });
     const db = makeMockDb([course14]);
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
 
@@ -927,7 +933,7 @@ describe("runCronPoll SQL verification", () => {
 
   it("updates last_had_tee_times when pollCourse returns success", async () => {
     mockedPollCourse.mockResolvedValue("success");
-    const courses = [makeCourseRow("success-course", "foreup")];
+    const courses = [makeCourseRow("success-course", "chronogolf")];
     const db = makeMockDb(courses);
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
 
@@ -940,7 +946,7 @@ describe("runCronPoll SQL verification", () => {
 
   it("does not update last_had_tee_times when pollCourse returns no_data", async () => {
     mockedPollCourse.mockResolvedValue("no_data");
-    const courses = [makeCourseRow("nodata-course", "foreup")];
+    const courses = [makeCourseRow("nodata-course", "chronogolf")];
     const db = makeMockDb(courses);
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
 
@@ -953,7 +959,7 @@ describe("runCronPoll SQL verification", () => {
   it("writes is_active = 1 when auto-activating an inactive course", async () => {
     mockedPollCourse.mockResolvedValue("success");
     const courses = [
-      makeCourseRow("reactivate-course", "foreup", { is_active: 0 }),
+      makeCourseRow("reactivate-course", "chronogolf", { is_active: 0 }),
     ];
     const db = makeMockDb(courses);
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));

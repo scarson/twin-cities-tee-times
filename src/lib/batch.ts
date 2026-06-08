@@ -5,6 +5,20 @@ import type { CourseRow } from "@/types";
 export const BATCH_COUNT = 5;
 
 /**
+ * Batch index reserved as the Chronogolf "lane". Every Chronogolf course is
+ * assigned here so that only one cron invocation ever polls Chronogolf at a
+ * time. Chronogolf enforces a per-IP rate limit shared across all concurrent
+ * Worker invocations, so spreading Chronogolf across the staggered, overlapping
+ * batches sums their request rates at the shared egress IP and trips HTTP 429.
+ * Batch 0 is chosen because the batch-0-gated housekeeping/horizon probe also
+ * issues Chronogolf requests — co-locating them keeps the single-lane invariant
+ * intact across every code path.
+ */
+export const CHRONOGOLF_LANE = 0;
+
+const CHRONOGOLF_PLATFORM = "chronogolf";
+
+/**
  * Subrequest weight per platform. CPS Golf requires 3 external fetches
  * per date (token + register + tee times). All others require 1.
  */
@@ -33,10 +47,12 @@ export function sleepAfterPoll(platform: string): number {
 }
 
 /**
- * Distribute courses across BATCH_COUNT batches using greedy bin-packing
- * by platform weight. Courses are sorted by ID for determinism, then each
- * is assigned to the batch with the lowest total weight (ties broken by
- * lowest batch index).
+ * Distribute courses across BATCH_COUNT batches. Chronogolf courses are all
+ * placed in the single dedicated lane (batch CHRONOGOLF_LANE); see that
+ * constant for why. Every other platform is greedily bin-packed by subrequest
+ * weight across the remaining batches — each course goes to the lowest-total-
+ * weight batch (ties broken by lowest batch index). Courses are sorted by ID
+ * first for deterministic assignment.
  */
 export function assignBatches(courses: CourseRow[]): CourseRow[][] {
   const batches: CourseRow[][] = Array.from({ length: BATCH_COUNT }, () => []);
@@ -45,10 +61,18 @@ export function assignBatches(courses: CourseRow[]): CourseRow[][] {
   const sorted = [...courses].sort((a, b) => a.id.localeCompare(b.id));
 
   for (const course of sorted) {
-    // Find batch with minimum weight (lowest index breaks ties)
-    let minIdx = 0;
-    for (let i = 1; i < BATCH_COUNT; i++) {
-      if (weights[i] < weights[minIdx]) {
+    if (course.platform === CHRONOGOLF_PLATFORM) {
+      batches[CHRONOGOLF_LANE].push(course);
+      weights[CHRONOGOLF_LANE] += platformWeight(course.platform);
+      continue;
+    }
+
+    // Bin-pack non-Chronogolf courses across the batches other than the lane:
+    // pick the minimum-weight batch, lowest index breaking ties.
+    let minIdx = -1;
+    for (let i = 0; i < BATCH_COUNT; i++) {
+      if (i === CHRONOGOLF_LANE) continue;
+      if (minIdx === -1 || weights[i] < weights[minIdx]) {
         minIdx = i;
       }
     }
