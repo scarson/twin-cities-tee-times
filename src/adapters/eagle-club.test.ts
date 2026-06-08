@@ -265,6 +265,29 @@ describe("EagleClubAdapter", () => {
     expect(results[0].price).toBeNull();
   });
 
+  it('emits records with null price when a fee is "0" (no priced rate class assigned)', async () => {
+    // Valleywood returns NineFee/EighteenFee "0" for slots with no priced rate
+    // class assigned (Master_TeePriceClassID: 0). The slot is still bookable, so
+    // the record is emitted, but the price is unknown — not a genuine $0 fee.
+    const zeroFeeFixture = {
+      ...fixture,
+      LstAppointment: [
+        { ...fixture.LstAppointment[0], NineFee: "0", EighteenFee: "0" },
+      ],
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(zeroFeeFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(2);
+    const r18 = results.find((r) => r.holes === 18);
+    const r9 = results.find((r) => r.holes === 9);
+    expect(r18?.price).toBeNull();
+    expect(r9?.price).toBeNull();
+  });
+
   it("passes AbortSignal.timeout to fetch", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
