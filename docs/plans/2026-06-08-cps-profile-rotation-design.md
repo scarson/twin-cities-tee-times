@@ -1,7 +1,7 @@
 # Automating the CPS `curl_cffi` impersonation-profile rotation — design
 
 **Date:** 2026-06-08
-**Status:** Design — recommended approach, awaiting implementation (Sam delegated execution of the recommended method).
+**Status:** Implemented on `feat/cps-profile-rotation` (PR to `dev`) — proxy cascade + live probe + pure decision + scheduled workflow shipped and locally live-verified. The full `workflow_dispatch` end-to-end run is deferred to post-merge-to-`main` (GitHub only dispatches workflows present on the default branch). See `docs/implementation-log.md` (2026-06-08 rotation entry) and `docs/plans/2026-06-08-cps-profile-rotation-plan.md`.
 **Follow-up to:** `docs/research/2026-06-08-cps-cloudflare-challenge.md` (the CPS Cloudflare-challenge fix, PR #125) and `docs/pitfalls/implementation-pitfalls.md` DEPLOY-2.
 
 ---

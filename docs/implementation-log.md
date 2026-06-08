@@ -4,6 +4,43 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-06-08 — CPS `curl_cffi` impersonation-profile rotation (self-healing)
+
+**Branch:** `feat/cps-profile-rotation` → PR targets `dev` (Review-class — CI/infra + the proxy critical path; Sam merges). Design + reasoning: `docs/plans/2026-06-08-cps-profile-rotation-design.md`. Plan: `docs/plans/2026-06-08-cps-profile-rotation-plan.md`. Follow-up to the CPS Cloudflare-challenge fix (DEPLOY-2).
+
+### Problem
+
+The CPS fix clears Cloudflare's fingerprint-gated challenge with a vendored `curl_cffi` browser fingerprint, but the pin freezes at deploy time and Cloudflare ages out *current* fingerprints (pinned `chrome124`/`chrome131` already get challenged). When the pinned alias ages out, all ~13 v5 CPS courses break and recovery was a manual "bump `curl_cffi` + redeploy" runbook.
+
+### The version-vs-profile axis (the trap this design had to get right)
+
+- **Axis 1 — profile *selection*** among fingerprints the *installed* `curl_cffi` already ships: pure config, **no redeploy**.
+- **Axis 2 — a *newer* fingerprint** than the installed `curl_cffi` knows: **requires a package bump + redeploy**. No config/DB value can conjure it. This is the only axis that truly future-proofs.
+
+A "rolling version pin in the DB" (one option Sam floated) only solves axis 1; it was **not built** (the in-proxy cascade already auto-selects among installed profiles, so a DB pin adds Worker+D1 plumbing for no axis it doesn't already cover).
+
+### What shipped
+
+- **Axis 1 — multi-vendor cascade in the proxy** (`lambda/fetch-proxy/index.py` + shared `challenge.py`). The single `chrome`→`safari17_0` fallback became a time-bounded loop over **versionless** vendor-diverse aliases `PROFILES = ("chrome", "safari", "firefox")`, every attempt (incl. the first) bounded by the remaining `TOTAL_BUDGET`. A single de-allowlisted vendor self-heals instantly, no redeploy. Live-verified against `curl_cffi==0.15.0`/`jcgsc5.cps.golf`: chrome/safari/firefox all clear; edge/chrome_android were challenged and excluded.
+- **Axis 2 — scheduled rotation workflow** (`.github/workflows/cps-profile-rotation.yml`). Daily live-probe of `jcgsc5.cps.golf`. When the pinned `curl_cffi` is challenged **and** the latest version both live-clears the real challenge **and** cross-vendors for the Lambda (`manylinux2014/cp314` deployability gate), it opens a **human-gated** PR bumping `requirements.txt` to `dev`. Fail-closed, idempotent (skips if a bump PR is already open), needs **no secrets** (challenge fires pre-auth; PR via `github.token`).
+- **The decision is a pure, exhaustively unit-tested function** (`rotate.py::decide`, 15 tests over the full pinned×latest×version-equal×profile×force matrix) — so the "CPS-broken-but-CI-green" holes a sprawling workflow `if:`-chain would leave are impossible by construction. Classifier shared with the proxy (`challenge.py`, 14 tests).
+- **`proxy-tests` CI job** (`ci.yml`) runs the pure-logic tests on every PR (they were otherwise ungated until the post-merge rotation run).
+- **Canary unchanged** (`src/adapters/cps-golf.ts::isCloudflareChallenge`) — still the production early-warning. **No `src/` changes** in this PR.
+
+### Key decisions
+
+- **Human-gated PR, not unattended auto-deploy.** Surfaced explicitly per the prompt. Fires rarely (~3–9 mo est.), auto-mutating prod Lambda infra unattended is riskier than the small MTTR saved, and the live+deploy-gated PR is a one-click merge. Flippable to auto-deploy by swapping the terminal step.
+- **The probe needs no credentials and POSTs `RegisterTransactionId`** (the adapter's first reservation call, the exact call the root-cause doc proved clears) with browser-like headers, mirroring `index.py`'s `requests.request` shape. **Load-bearing assumption live-verified:** an unauthenticated probe cleanly distinguishes a good fingerprint (`chrome` → origin `400` = CLEARED) from an aged-out one (`chrome124` → `403` cf interstitial = CHALLENGED).
+- **"Clears the challenge" ≠ "deployable."** The deployability gate reproduces the deploy's exact cross-vendoring command, so a version that clears on the runner but can't vendor for the Lambda is never proposed.
+
+### Quality checks
+
+29 Python unit tests green (`test_challenge` 14 + `test_rotate` 15). Live-verified locally with `curl_cffi==0.15.0`: probe (chrome CLEARED / chrome124 CHALLENGED), the deployability-gate command (exit 0), and the healthy-path sequence (decide → `none`). Both workflow YAMLs parse. Plan survived a 4-round adversarial `plan-review-cycle` (19 findings) + an independent reviewer.
+
+### Deferred / owed
+
+- **Full `workflow_dispatch` end-to-end run is deferred to post-merge:** GitHub only dispatches a `workflow_dispatch` workflow that exists on the **default branch**, so it can't run from the feature branch. Trigger it (default inputs = healthy no-op; `force_check:true, dry_run:true` = exercises the PR-body path) once merged to `main`, and confirm green.
+
 ## 2026-06-08 — D1 write-amplification fix (compare-then-replace)
 
 **Branch:** `fix/d1-write-amplification` → PR targets `dev` (Review-class — Sam merges). Plan: `docs/plans/2026-06-07-d1-write-amplification-fix.md`. Decision rationale and rejected alternatives: `memory/project_d1_bill_write_amplification.md`.

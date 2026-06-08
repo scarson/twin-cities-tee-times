@@ -57,14 +57,24 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Not started.
+**Overall:** 4/4 phases implemented on `feat/cps-profile-rotation` (PR to `dev`). One verification owed post-merge (see Deviations).
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
-| 1 — Shared classifier + proxy cascade (axis 1) | ⬜ Not started | — | — |
-| 2 — Live probe (axis 2 boundary) | ⬜ Not started | — | — |
-| 3 — Pure decision + rotation workflow (axis 2) | ⬜ Not started | — | — |
-| 4 — Docs (runbook, log, statuses) | ⬜ Not started | — | — |
+| 1 — Shared classifier + proxy cascade (axis 1) | ✅ Shipped | `6c92bf9`, `9246072` | 14 classifier tests green; `index.py` cascades over `PROFILES` |
+| 2 — Live probe (axis 2 boundary) | ✅ Shipped | `0b9fafb`, `27c3df9` | probe live-verified vs real CPS (chrome CLEARED / chrome124 CHALLENGED) |
+| 3 — Pure decision + rotation workflow (axis 2) | ✅ Shipped | `a1d40a5`, `d2db502`, `74939fc` | 15 matrix/body tests; YAML parses; deployability-gate + healthy-path verified locally |
+| 4 — Docs (runbook, log, statuses) | ✅ Shipped | _this commit_ | DEPLOY-2 runbook, implementation-log, design/Prompt-5 statuses |
+
+### Deviations
+- **Task 2.3 — `PROFILES` finalized to `("chrome", "safari", "firefox")`** (plan seed was `("chrome", "safari17_0")`). Planned refinement: Task 2.3 anticipated preferring versionless aliases; live-verified all three clear on `curl_cffi==0.15.0`, `edge`/`chrome_android` were challenged and excluded.
+- **Added a `proxy-tests` job to `.github/workflows/ci.yml`** (the plan said "don't touch main CI"). Justified: the pure-logic tests would otherwise be ungated at PR time (the rotation workflow only runs post-merge from the default branch). Small, fast, no pip deps.
+- **Task 3.3 (full `workflow_dispatch` end-to-end run) deferred to post-merge-to-`main`** — GitHub only dispatches a `workflow_dispatch` workflow present on the default branch. All non-GitHub pieces (probe live, deployability gate, healthy-path decide, unit tests, YAML parse) verified locally.
+
+### Discoveries
+- **`lambda/fetch-proxy/.gitignore` allowlists only `index.py`/`requirements.txt`** (deps are vendored at deploy time). Added the first-party source modules (`challenge.py`, `probe.py`, `rotate.py`, `test_*.py`) to the allowlist so they're tracked and ship with the bundle. (commit `6c92bf9`)
+- **Windows default file encoding (cp1252) can't encode the PR body's `→`/`⚠️`.** Fixed by writing probe/PR-body files as explicit UTF-8 (commit `d2db502`). CI's Linux runner is UTF-8 so it only bit local verification, but explicit encoding is correct regardless.
+- **Load-bearing assumption confirmed live:** an *unauthenticated* `RegisterTransactionId` POST cleanly distinguishes a good fingerprint (`chrome` → origin `400` = CLEARED) from an aged-out one (`chrome124` → `403` cf interstitial = CHALLENGED). No token+register fallback needed.
 
 ---
 
@@ -87,7 +97,7 @@ notes and commit messages.
 
 ## Phase 1 — Shared challenge classifier + proxy multi-vendor cascade (axis 1)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `6c92bf9`, `9246072` on 2026-06-08 (branch `feat/cps-profile-rotation`)
 
 Extract challenge detection into a pure module (**zero `curl_cffi` import**, so it is unit-testable anywhere including Windows local), then (a) have `index.py` consume it and (b) generalize the single fallback into a time-bounded ordered cascade.
 
@@ -303,7 +313,7 @@ git commit -m "feat(proxy): cascade over installed impersonation profiles"
 
 ## Phase 2 — Live probe (axis 2 boundary)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `0b9fafb`, `27c3df9` on 2026-06-08 (live-verified vs `jcgsc5.cps.golf`)
 
 A CLI that, for whatever `curl_cffi` is installed, probes the real CPS challenge endpoint per profile and emits a machine-readable verdict. It is the only network boundary; the decision logic (Phase 3) is pure.
 
@@ -453,7 +463,7 @@ git commit -m "feat(proxy): confirm vendor-diverse cascade profiles for curl_cff
 
 ## Phase 3 — Pure rotation decision + scheduled workflow (axis 2)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `a1d40a5`, `d2db502`, `74939fc` on 2026-06-08 (Task 3.3 full `workflow_dispatch` run deferred post-merge — see Deviations)
 
 The decision over the verdict matrix is a **pure, exhaustively unit-tested function** (so the "broken-but-green" holes a sprawling YAML `if:` chain would leave are impossible). The workflow is a thin actuator.
 
@@ -913,7 +923,7 @@ Record run URLs + outcomes in the PR description. This is the prompt-mandated li
 
 ## Phase 4 — Documentation
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED on 2026-06-08 (DEPLOY-2 runbook, implementation-log, design + Prompt-5 statuses)
 
 ### Task 4.1 — Update the DEPLOY-2 rotation runbook
 
