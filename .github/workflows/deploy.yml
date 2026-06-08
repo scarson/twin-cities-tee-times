@@ -52,11 +52,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-west-2
 
-      # Vendor curl_cffi (+ deps) as manylinux x86_64 / cp314 wheels so the
-      # Lambda's python3.14 runtime can supply a browser TLS fingerprint that
-      # clears CPS Golf's Cloudflare bot-challenge. Cross-targets the wheels
-      # regardless of the runner's own Python version; --only-binary forbids
-      # source builds (which would link against the wrong libc/libffi).
+      # Vendor curl_cffi (+ deps) as manylinux x86_64 wheels targeting cp314 so
+      # the Lambda's python3.14 runtime can supply a browser TLS fingerprint that
+      # clears CPS Golf's Cloudflare bot-challenge. curl_cffi's cp310-abi3 wheel
+      # is forward-compatible and pip selects it for --python-version 3.14; cffi
+      # resolves to its cp314 wheel. Cross-targets regardless of the runner's own
+      # Python version; --only-binary forbids source builds (which would link
+      # against the wrong libc/libffi).
       - name: Vendor Lambda proxy dependencies
         run: |
           python3 -m pip install \
