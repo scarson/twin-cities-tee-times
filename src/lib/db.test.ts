@@ -1,7 +1,7 @@
-// ABOUTME: Tests for the sqliteIsoNow SQL fragment helper.
-// ABOUTME: Verifies it produces strftime expressions matching JS ISO 8601 format.
+// ABOUTME: Pure unit tests for db.ts helpers — the sqliteIsoNow SQL fragment and
+// ABOUTME: the tee-time canonicalization / multiset comparison used for change detection.
 import { describe, it, expect } from "vitest";
-import { sqliteIsoNow } from "./db";
+import { sqliteIsoNow, canonicalTeeTime, teeTimeSetsEqual } from "./db";
 
 describe("sqliteIsoNow", () => {
   it("returns strftime expression with no modifier", () => {
@@ -82,5 +82,42 @@ describe("regression guard: no raw datetime('now in SQL", () => {
     }
 
     expect(violations).toEqual([]);
+  });
+});
+
+// canonicalTeeTime(time, price, holes, openSlots, bookingUrl, nines)
+describe("canonicalTeeTime", () => {
+  it("normalizes ISO time to HH:MM (matching the insert path)", () => {
+    expect(canonicalTeeTime("2026-06-20T07:30:00", 45, 18, 4, "u", null))
+      .toBe(canonicalTeeTime("07:30", 45, 18, 4, "u", null));
+  });
+  it("treats null price as DISTINCT from 0 (price is nullable)", () => {
+    expect(canonicalTeeTime("07:30", null, 18, 4, "u", null))
+      .not.toBe(canonicalTeeTime("07:30", 0, 18, 4, "u", null));
+  });
+  it("treats null nines as DISTINCT from empty string (nines is nullable)", () => {
+    expect(canonicalTeeTime("07:30", 45, 18, 4, "u", null))
+      .not.toBe(canonicalTeeTime("07:30", 45, 18, 4, "u", ""));
+  });
+  it("distinguishes a single open_slots change (4 vs 3)", () => {
+    expect(canonicalTeeTime("07:30", 45, 18, 4, "u", null))
+      .not.toBe(canonicalTeeTime("07:30", 45, 18, 3, "u", null));
+  });
+});
+
+describe("teeTimeSetsEqual", () => {
+  const k = (time: string, slots: number) => canonicalTeeTime(time, 45, 18, slots, "u", null);
+  it("is order-independent (multiset)", () => {
+    expect(teeTimeSetsEqual([k("07:30", 4), k("08:00", 4)], [k("08:00", 4), k("07:30", 4)])).toBe(true);
+  });
+  it("respects duplicate multiplicity", () => {
+    expect(teeTimeSetsEqual([k("07:30", 4), k("07:30", 4)], [k("07:30", 4)])).toBe(false);
+  });
+  it("detects a single open_slots change (4 -> 3)", () => {
+    expect(teeTimeSetsEqual([k("07:30", 4)], [k("07:30", 3)])).toBe(false);
+  });
+  it("empty vs empty is equal; empty vs non-empty is not", () => {
+    expect(teeTimeSetsEqual([], [])).toBe(true);
+    expect(teeTimeSetsEqual([], [k("07:30", 4)])).toBe(false);
   });
 });

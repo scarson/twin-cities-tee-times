@@ -27,7 +27,7 @@ export default function Home() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [holesFilter, setHolesFilter] = useState<"" | "9" | "18">("");
-  const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string }>>([]);
+  const [teeTimes, setTeeTimes] = useState<Array<TeeTimeRow & { course_name: string; course_city: string; polled_at: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const { location, radiusMiles, sortOrder } = useLocation();

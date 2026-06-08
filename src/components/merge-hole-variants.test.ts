@@ -16,7 +16,7 @@ function makeItem(overrides: Partial<TeeTimeItem> = {}): TeeTimeItem {
     holes: 18,
     open_slots: 4,
     booking_url: "https://example.com",
-    fetched_at: new Date().toISOString(),
+    polled_at: new Date().toISOString(),
     nines: null,
     ...overrides,
   };

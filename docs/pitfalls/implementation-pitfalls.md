@@ -26,7 +26,7 @@ This document serves three audiences. Start here, then go directly to the sectio
 |---|---------|---------------------|---------|-----------|
 | 1 | [Time & Timezones](#section-1-time--timezones) | Any date/time logic, "today", date strings | TIME-1 | §1.C |
 | 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-3 | §2.C |
-| 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-3 | §3.C |
+| 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
 | 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
 | 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 | §6.C |
@@ -146,11 +146,24 @@ Do not assume Workers, D1, Cron Trigger, or Wrangler semantics from memory. Use 
 
 ---
 
+### DB-4: Never Rewrite Cached Rows Unconditionally — Compare First, Skip When Unchanged
+
+**The Flaw:** Caching availability with an unconditional `DELETE + N×INSERT` on every poll — rewriting every row regardless of whether anything changed. `upsertTeeTimes` did exactly this: each poll deleted and re-inserted the full `tee_times` set for a `(course_id, date)`, even when the fetched set was byte-identical to what was already stored.
+
+**Why It Matters:** D1 bills *rows written*, and reads are ~1000× cheaper — so an unconditional rewrite is the most expensive possible shape. Worse, `tee_times` is indexed on `(course_id, date)`, and an index charges **+1 write per row** on top of the base-table write. With 5-minute polling of today/tomorrow across ~74 courses at ~75 rows each, that is ~175M rows written/month → a ~$125/month overage on an app whose data barely changes between polls. The cost is invisible in dev (no volume) and invisible in tests (no billing) — it only shows up on the production invoice.
+
+**The Fix:** **Compare-then-replace.** Before writing, `SELECT` the current rows, build a normalized multiset of both the stored and the freshly-fetched set, and **skip the write entirely when they are equal** (`upsertTeeTimes` returns `false`). Canonicalization MUST be conservative — when in doubt, declare *changed*; a wrongly-equal skip shows users stale availability, the only dangerous direction. So `null` MUST serialize distinctly from `0` and `""` (the canonical key is a `JSON.stringify`'d *ordered array*, never an object — object key-order is unstable). When the set *has* changed, the write MUST stay a single full atomic `db.batch([DELETE, ...INSERT])` over the whole set — **never a partial diff**: a whole-set replace makes a skip decided against a stale concurrent read benign (last-writer-wins, never torn), whereas a partial diff reintroduces the race. A read error in the comparison `SELECT` MUST propagate as an exception — never swallow it into `return false`, which would be a silent skip logged as success while showing stale data.
+
+**The Lesson:** On a metered row-store, "just overwrite it" is the most expensive option — gate every scheduled rewrite on an actual content change. And once writes are change-gated, per-row write time no longer means "last checked": freshness display MUST read `poll_log.polled_at` (last *checked*), not the row's `fetched_at` (which now means last *changed* and would show a false "stale" badge on a stably-polled date). (Verification: testing-pitfalls.md §4 "Delete-then-insert atomicity" and "Table growth bounds" / "Query performance with large tables" cover the atomicity-and-growth side.)
+
+---
+
 ### Review Checklist {#section-3c}
 
 - [ ] **No `datetime()` in any comparison against a JS ISO timestamp** — uses `sqliteIsoNow()` (DB-1)
 - [ ] **No `DELETE FROM courses`** — uses `disabled = 1` or `is_active` (DB-2)
 - [ ] **Seeded-column changes made in `courses.json`**, not just D1 (DB-3)
+- [ ] **Cached-row writes are change-gated** — `upsertTeeTimes` reads current rows and skips the DELETE+INSERT when the fetched set is unchanged; the changed path stays one atomic batch (DB-4)
 
 ---
 
@@ -268,6 +281,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 
 # Appendix A: Historical Changelog
 
+## 2026-06-08 — DB-4 added
+
+- Added **DB-4** (never rewrite cached rows unconditionally — compare-then-replace) to the Database & D1 section, from the D1 write-amplification fix (`docs/plans/2026-06-07-d1-write-amplification-fix.md`). Root cause: `upsertTeeTimes` ran an unconditional `DELETE + N×INSERT` every poll, driving ~175M D1 rows written/month (~$125 overage). Status VALIDATED — the compare-then-replace fix shipped and is tested in the same PR. TOC range, §3.C checklist, and Appendix B updated alongside.
+
 ## 2026-06-07 — Initial population
 
 - Created from the `pitfalls-docs-init` template during the project-docs modernization.
@@ -287,6 +304,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | DB-1 | Never `datetime()` in comparisons — use `sqliteIsoNow()` | HIGH | VALIDATED | Database & D1 |
 | DB-2 | Never hard-delete courses (`CASCADE` data loss) | CRITICAL | VALIDATED | Database & D1 |
 | DB-3 | Seed script overwrites D1 on every deploy | MEDIUM | VALIDATED | Database & D1 |
+| DB-4 | Never rewrite cached rows unconditionally — compare-then-replace | MEDIUM | VALIDATED | Database & D1 |
 | COURSE-1 | `disabled` vs `is_active` are independent | MEDIUM | VALIDATED | Course Lifecycle |
 | COURSE-2 | New courses need lat/lng + `googlePlaceId` | MEDIUM | VALIDATED | Course Lifecycle |
 | AUTH-1 | Authenticate via `authenticateRequest()`, not middleware | HIGH | VALIDATED | Auth & Sessions |

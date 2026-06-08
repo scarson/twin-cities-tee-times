@@ -18,7 +18,7 @@ export interface TeeTimeItem {
   holes: number;
   open_slots: number;
   booking_url: string;
-  fetched_at: string;
+  polled_at: string | null;
   nines?: string | null;
   distance?: number;
 }
@@ -147,8 +147,10 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
                           {tt.open_slots} {tt.open_slots === 1 ? "spot" : "spots"}
                         </span>
                         {tt.priceLabel !== null && <span>{tt.priceLabel}</span>}
-                        {isStale(tt.fetched_at) && (
-                          <span className="text-amber-600/70">* stale ({staleAge(tt.fetched_at)})</span>
+                        {isStale(tt.polled_at) && (
+                          <span className="text-amber-600/70">
+                            * stale{tt.polled_at ? ` (${staleAge(tt.polled_at)})` : ""}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -184,6 +186,7 @@ export function TeeTimeList({ teeTimes, loading, selectedDateCount }: TeeTimeLis
 
 export const STALE_THRESHOLD_MS = 75 * 60 * 1000;
 
-export function isStale(fetchedAt: string): boolean {
-  return Date.now() - new Date(fetchedAt).getTime() > STALE_THRESHOLD_MS;
+export function isStale(polledAt: string | null): boolean {
+  if (polledAt === null) return true;
+  return Date.now() - new Date(polledAt).getTime() > STALE_THRESHOLD_MS;
 }
