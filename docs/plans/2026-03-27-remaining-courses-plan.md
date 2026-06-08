@@ -9,8 +9,8 @@
 **Tech Stack:** TypeScript, Vitest, Cloudflare Workers, D1/SQLite
 
 **Research docs:**
-- `dev/research/remaining-platforms-investigation.md` — Brookview/GolfNow sections
-- `dev/research/teewire-platform-investigation.md` — full TeeWire API details
+- `docs/research/remaining-platforms-investigation.md` — Brookview/GolfNow sections
+- `docs/research/teewire-platform-investigation.md` — full TeeWire API details
 
 **Scope:** Do NOT modify any existing adapter's behavior for currently-working courses. Do NOT add features beyond what's specified. Every new `.ts`/`.tsx` file MUST start with two `// ABOUTME:` comment lines. New course entries MUST include a unique `"index"` field (check current max with `grep '"index"' src/config/courses.json | sort -t: -k2 -n | tail -1` before adding).
 
@@ -19,7 +19,7 @@
 ## Task 1: Add `display_notes` Column + Course Detail UI
 
 **BEFORE starting work:**
-1. Read `dev/testing-pitfalls-coverage-review.md`
+1. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 2. Read `src/app/api/courses/[id]/route.ts` — the course detail API
 3. Read `src/app/courses/[id]/page.tsx` — the course detail page
 4. Read `src/types/index.ts` — the `CourseRow` type
@@ -175,7 +175,7 @@ feat: add display_notes column for course-specific messages (migration 0008)
 ## Task 2: CPS Golf V4 Auth — Add Transaction Registration
 
 **BEFORE starting work:**
-1. Read `dev/testing-pitfalls-coverage-review.md`
+1. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 2. Read `src/adapters/cps-golf.ts` — the V4 branch at lines 62-67
 3. Read `src/adapters/cps-golf.test.ts` — the `describe("v4 auth mode")` section
 4. Follow TDD: write failing test → implement → verify green
@@ -340,9 +340,9 @@ rounds) until you're confident there aren't any more issues.
 ## Task 4: TeeWire Adapter
 
 **BEFORE starting work:**
-1. Read `dev/research/teewire-platform-investigation.md` — full API details including response format
+1. Read `docs/research/teewire-platform-investigation.md` — full API details including response format
 2. Read `src/adapters/foreup.ts` and `src/adapters/foreup.test.ts` — adapter pattern to follow
-3. Read `dev/testing-pitfalls-coverage-review.md`
+3. Read `docs/pitfalls/testing-pitfalls-coverage-review.md`
 4. Follow TDD: write failing test → implement → verify green
 
 **Depends on:** Nothing (independent of Tasks 1-3)
@@ -398,7 +398,7 @@ Headers: User-Agent: TwinCitiesTeeTimes/1.0
 **Step 8:** Commit: `feat: add TeeWire adapter`
 
 **BEFORE marking this task complete:**
-1. Review tests against `dev/testing-pitfalls-coverage-review.md`
+1. Review tests against `docs/pitfalls/testing-pitfalls-coverage-review.md`
 2. Verify: error paths tested? Missing config? Price parsing from "$51.00"? Walking rate not found?
 3. `npm test && npx tsc --noEmit` — all green
 
@@ -498,7 +498,7 @@ Key: `disabled: 1` prevents the cron handler from trying to poll (no GolfNow ada
 **Depends on:** All previous tasks
 
 **Files:**
-- Modify: `dev/research/remaining-platforms-investigation.md`
+- Modify: `docs/research/remaining-platforms-investigation.md`
 
 **Changes:**
 - Brookview section: change "Status: Deferred" to "Status: Implemented". Replace the WAF concerns with: "`brookview.cps.golf` works with V4 apiKey auth — no proxy or WAF workaround needed."

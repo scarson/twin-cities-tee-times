@@ -370,7 +370,7 @@ describe("pipeline integration: poll status and freshness", () => {
 
 // --- Future adapter stubs ---
 describe.todo(
-  "Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see dev/research/remaining-platforms-investigation.md)"
+  "Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see docs/research/remaining-platforms-investigation.md)"
 );
 describe.todo(
   "GolfNow pipeline (Mandatory: implement when adapter exists — 6 courses, API research not yet conducted)"
@@ -379,7 +379,7 @@ describe.todo(
   "Teesnap pipeline (Mandatory: implement when adapter exists — 3 courses, API research not yet conducted)"
 );
 describe.todo(
-  "Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see dev/research/remaining-platforms-investigation.md)"
+  "Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see docs/research/remaining-platforms-investigation.md)"
 );
 describe.todo(
   "EZLinks pipeline (Mandatory: implement when adapter exists — 1 course, API research not yet conducted)"

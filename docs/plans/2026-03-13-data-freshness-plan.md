@@ -10,7 +10,7 @@
 
 **Design doc:** `docs/plans/2026-03-13-data-freshness-design.md`
 
-**Testing pitfalls:** Review `dev/testing-pitfalls.md` before writing any test. Key concerns for this feature: silent failure (#1), timezone handling (#2), error isolation in cron/background (#5), rate limit bypass (#9).
+**Testing pitfalls:** Review `docs/pitfalls/testing-pitfalls.md` before writing any test. Key concerns for this feature: silent failure (#1), timezone handling (#2), error isolation in cron/background (#5), rate limit bypass (#9).
 
 **Task dependencies:** Tasks 1-4 are independent (backend). Tasks 5-6 depend on Task 4. Tasks 7-8 are sequential (same files). Task 9 is independent. Task 10 depends on all others.
 
@@ -501,7 +501,7 @@ git commit -m "feat: add auto-fetch module with per-date freshness check"
 
 The tee-times route gains a new optional parameter `autoFetch=true` that the course detail page sends. When present with a single `courses` param and no cached results, auto-fetch fires for that course+date.
 
-**CRITICAL: Error isolation (see `dev/testing-pitfalls.md` #1).** Auto-fetch failure must NOT kill the normal response. The auto-fetch logic gets its own try/catch so that upstream API errors or D1 failures fall through gracefully — the user still gets their cached (possibly empty) results.
+**CRITICAL: Error isolation (see `docs/pitfalls/testing-pitfalls.md` #1).** Auto-fetch failure must NOT kill the normal response. The auto-fetch logic gets its own try/catch so that upstream API errors or D1 failures fall through gracefully — the user still gets their cached (possibly empty) results.
 
 **Step 1: Add imports at the top of `src/app/api/tee-times/route.ts`**
 
@@ -524,7 +524,7 @@ The entire try/catch block is replaced. Key difference from original: auto-fetch
     // Auto-fetch: if single course requested and no cached results, poll upstream.
     // Scoped to course detail page (single course + autoFetch flag).
     // Wrapped in its own try/catch — auto-fetch failure must not kill the response
-    // (see dev/testing-pitfalls.md #1: silent failure / error swallowing).
+    // (see docs/pitfalls/testing-pitfalls.md #1: silent failure / error swallowing).
     const autoFetch = searchParams.get("autoFetch") === "true";
     if (autoFetch && courseIds && courseIds.length === 1 && result.results.length === 0) {
       try {
@@ -858,7 +858,7 @@ disabled={[
 ]}
 ```
 
-**Important:** Use `Date` constructor with year/month/day arithmetic — NOT `today.getTime() + N * 86_400_000`. The millisecond approach is timezone-fragile near midnight (see `dev/testing-pitfalls.md` #2). The `Date(year, month, day + N)` approach correctly handles month boundaries via JavaScript's Date overflow behavior.
+**Important:** Use `Date` constructor with year/month/day arithmetic — NOT `today.getTime() + N * 86_400_000`. The millisecond approach is timezone-fragile near midnight (see `docs/pitfalls/testing-pitfalls.md` #2). The `Date(year, month, day + N)` approach correctly handles month boundaries via JavaScript's Date overflow behavior.
 
 **Step 5: Run test to verify it passes**
 

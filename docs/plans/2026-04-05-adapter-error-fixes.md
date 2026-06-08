@@ -48,7 +48,7 @@ The current code always calls `registerTransaction()` for v4 courses. For Edinbu
 BEFORE starting work:
 1. Read src/adapters/cps-golf.ts in full
 2. Read src/adapters/cps-golf.test.ts in full
-3. Read dev/testing-pitfalls.md
+3. Read docs/pitfalls/testing-pitfalls.md
 Follow TDD: write failing test → implement fix → verify green.
 ```
 
@@ -267,7 +267,7 @@ BEFORE starting work:
 2. Read src/adapters/teewire.test.ts in full
 3. Read src/adapters/teesnap.ts lines 40-169 (the proxy pattern to mirror)
 4. Read lambda/fetch-proxy/index.mjs in full
-5. Read dev/testing-pitfalls.md
+5. Read docs/pitfalls/testing-pitfalls.md
 Follow TDD: write failing test → implement fix → verify green.
 ```
 
@@ -500,7 +500,7 @@ CPS Golf courses using v4 auth (`authType: "v4"` in `platform_config` JSON) may 
 BEFORE starting work:
 1. Read src/lib/cron-handler.ts in full
 2. Read src/lib/cron-handler.test.ts in full — especially the makeCourseRow helper (lines 22-49) and withTimers helper (lines 12-18)
-3. Read dev/testing-pitfalls.md — especially §5 "Error isolation between iterations"
+3. Read docs/pitfalls/testing-pitfalls.md — especially §5 "Error isolation between iterations"
 Follow TDD: write failing test → implement fix → verify green.
 ```
 
