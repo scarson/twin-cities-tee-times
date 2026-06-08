@@ -2,10 +2,20 @@
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
 import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON, PROBE_INTERVAL_DAYS } from "@/lib/poller";
 import { sqliteIsoNow, logPoll, cleanupOldPolls, cleanupPastTeeTimes, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
-import { assignBatches, cronToBatchIndex, platformWeight, sleepAfterPoll } from "@/lib/batch";
+import { assignBatches, cronToBatchIndex, platformWeight, sleepAfterPoll, CHRONOGOLF_LANE } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
 export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~80 courses
+
+/**
+ * Wall-clock budget for all Chronogolf work in the lane batch (active polls,
+ * inactive probes, and the horizon probe combined). 3.5 min leaves margin under
+ * the 5-min peak cron period for housekeeping, so the lane never runs past its
+ * own next firing (which would re-introduce the cross-invocation concurrency this
+ * fix removes). At the adapter's ~1.1s/request spacing that's ≤ ~190 requests/cycle;
+ * see docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md (Volume Math).
+ */
+export const CHRONOGOLF_LANE_BUDGET_MS = 210_000;
 
 /**
  * Determine whether this cron invocation should actually poll,
@@ -45,14 +55,15 @@ export async function runHorizonProbe(
   db: D1Database,
   courses: CourseRow[],
   todayStr: string,
-  budget: { remaining: number },
+  budget: { remaining: number; deadlineMs?: number },
   env?: CloudflareEnv
 ): Promise<{ probeCount: number; updatedCourses: string[] }> {
   let probeCount = 0;
   const updatedCourses: string[] = [];
+  const deadlineMs = budget.deadlineMs ?? Infinity;
 
   for (const course of courses) {
-    if (budget.remaining <= 0) break;
+    if (budget.remaining <= 0 || Date.now() > deadlineMs) break;
 
     try {
       let maxFound = course.booking_horizon_days;
@@ -61,7 +72,7 @@ export async function runHorizonProbe(
       const [year, month, day] = todayStr.split("-").map(Number);
 
       for (let dayOffset = course.booking_horizon_days; dayOffset < MAX_HORIZON; dayOffset++) {
-        if (budget.remaining < weight) break;
+        if (budget.remaining < weight || Date.now() > deadlineMs) break;
 
         const d = new Date(Date.UTC(year, month - 1, day + dayOffset));
         const dateStr = d.toISOString().split("T")[0];
@@ -180,13 +191,15 @@ export async function checkV4Upgrades(
  * Each invocation processes one batch of courses (determined by cronExpression).
  * Courses are assigned to batches via weighted bin-packing (CPS=3, others=1).
  * Loop order is date-outer, course-inner to prioritize today for all courses.
- * A subrequest budget tracker prevents exceeding the 50-per-invocation limit.
+ * A subrequest budget tracker (SUBREQUEST_BUDGET) caps work per invocation, well
+ * under the paid plan's 10,000-subrequest-per-invocation platform limit.
  *
  * Housekeeping (cleanup, auto-deactivation) runs only in batch 0.
  */
 export async function runCronPoll(
   env: CloudflareEnv,
-  cronExpression: string
+  cronExpression: string,
+  opts: { chronogolfLaneBudgetMs?: number } = {}
 ): Promise<{
   pollCount: number;
   courseCount: number;
@@ -241,9 +254,38 @@ export async function runCronPoll(
     let budget = SUBREQUEST_BUDGET;
     let budgetExhausted = false;
 
+    // Chronogolf lane: bound total wall-clock so the lane never runs past its own
+    // next cron firing (which would re-introduce the cross-invocation concurrency
+    // this fix removes), and poll least-recently-polled course/date pairs first so
+    // that deadline truncation rotates coverage fairly across courses. Non-lane
+    // batches get an Infinity deadline → these guards are no-ops for them.
+    const inLane = batchIndex === CHRONOGOLF_LANE;
+    const laneBudgetMs = opts.chronogolfLaneBudgetMs ?? CHRONOGOLF_LANE_BUDGET_MS;
+    const laneDeadline = inLane ? Date.now() + laneBudgetMs : Infinity;
+    let laneTimeUp = false;
+    const laneExpired = (): boolean => {
+      if (!laneTimeUp && Date.now() > laneDeadline) {
+        laneTimeUp = true;
+        console.warn(
+          `Batch ${batchIndex}: chronogolf lane time budget reached (${laneBudgetMs}ms), deferring remaining polls`
+        );
+      }
+      return laneTimeUp;
+    };
+    const lastPolledMs = (course: CourseRow, date: string): number => {
+      const lp = pollTimeMap.get(`${course.id}:${date}`);
+      return lp ? new Date(lp).getTime() : 0; // never-polled (0) sorts first
+    };
+
     // --- Active courses: date-outer, course-inner ---
     for (let i = 0; i < dates.length && !budgetExhausted; i++) {
-      for (const course of activeCourses) {
+      if (laneExpired()) break;
+      // In the lane, poll the least-recently-polled courses for this date first.
+      const orderedCourses = inLane
+        ? [...activeCourses].sort((a, b) => lastPolledMs(a, dates[i]) - lastPolledMs(b, dates[i]))
+        : activeCourses;
+      for (const course of orderedCourses) {
+        if (laneExpired()) break;
         if (i >= course.booking_horizon_days) continue;
         const lastPolled = pollTimeMap.get(`${course.id}:${dates[i]}`);
         const minutesSinceLast = lastPolled
@@ -292,7 +334,7 @@ export async function runCronPoll(
     const probeDates = dates.slice(0, 2);
 
     for (const course of inactiveCourses) {
-      if (budgetExhausted) break;
+      if (budgetExhausted || laneExpired()) break;
 
       try {
         const lastProbed = pollTimeMap.get(`${course.id}:${probeDates[0]}`);
@@ -305,6 +347,7 @@ export async function runCronPoll(
         let foundTeeTimes = false;
 
         for (const date of probeDates) {
+          if (laneExpired()) break;
           const weight = platformWeight(course.platform);
           if (budget < weight) {
             budgetExhausted = true;
@@ -343,8 +386,12 @@ export async function runCronPoll(
       }
     }
 
-    // --- Housekeeping: batch 0 only ---
-    if (batchIndex === 0) {
+    // --- Housekeeping: runs only in the lane batch ---
+    // Gated to CHRONOGOLF_LANE (not a bare 0) because the horizon probe below
+    // issues Chronogolf requests; it MUST run in the same batch as the lane so
+    // the single-lane invariant holds. The other cleanup tasks are batch-agnostic
+    // and ride along here.
+    if (batchIndex === CHRONOGOLF_LANE) {
       try {
         const deactivatedCount = await deactivateStaleCourses(db);
         if (deactivatedCount > 0) {
@@ -396,7 +443,7 @@ export async function runCronPoll(
             db,
             eligibleForProbe.results,
             todayStr,
-            { remaining: budget },
+            { remaining: budget, deadlineMs: laneDeadline },
             env
           );
 

@@ -21,11 +21,46 @@ interface ChronogolfResponse {
   teetimes: ChronogolfTeeTime[];
 }
 
+/**
+ * Minimum delay between consecutive Chronogolf HTTP requests (~0.9 req/sec).
+ * Chronogolf enforces a per-IP rate limit (~1 req/sec) shared across all
+ * concurrent Worker invocations; this spacing — combined with the single batch
+ * lane (CHRONOGOLF_LANE in src/lib/batch.ts) — keeps the global request rate
+ * under that ceiling. See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md.
+ */
+export const CHRONOGOLF_MIN_REQUEST_INTERVAL_MS = 1100;
+
 export class ChronogolfAdapter implements PlatformAdapter {
   readonly platformId = "chronogolf";
 
   private static readonly PAGE_SIZE = 24;
   private static readonly MAX_PAGES = 10;
+
+  private readonly minRequestIntervalMs: number;
+  private nextAllowedAt = 0;
+
+  constructor(opts?: { minRequestIntervalMs?: number }) {
+    this.minRequestIntervalMs =
+      opts?.minRequestIntervalMs ?? CHRONOGOLF_MIN_REQUEST_INTERVAL_MS;
+  }
+
+  /**
+   * Wait until at least minRequestIntervalMs has elapsed since the previous
+   * Chronogolf request, then reserve the next slot. Instance state spaces every
+   * request in one invocation — across pages AND across courses, since the
+   * registry reuses one adapter instance. The single-lane invariant means only
+   * one invocation polls Chronogolf at a time, so nextAllowedAt is never
+   * contended across invocations; a value left over in a warm isolate is always
+   * in the past and causes no wait.
+   */
+  private async throttle(): Promise<void> {
+    const now = Date.now();
+    const wait = this.nextAllowedAt - now;
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    this.nextAllowedAt = Math.max(now, this.nextAllowedAt) + this.minRequestIntervalMs;
+  }
 
   async fetchTeeTimes(
     config: CourseConfig,
@@ -51,6 +86,7 @@ export class ChronogolfAdapter implements PlatformAdapter {
 
       const url = `https://www.chronogolf.com/marketplace/v2/teetimes?${params}`;
 
+      await this.throttle();
       const response = await fetch(url, {
         signal: AbortSignal.timeout(10000),
         headers: { Accept: "application/json" },

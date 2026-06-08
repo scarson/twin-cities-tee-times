@@ -17,7 +17,9 @@ const mockConfig: CourseConfig = {
 };
 
 describe("ChronogolfAdapter", () => {
-  const adapter = new ChronogolfAdapter();
+  // Disable request throttling for these behavior tests so they run under real
+  // timers without per-request delays; the throttle itself is covered separately.
+  const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 0 });
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -343,5 +345,95 @@ describe("ChronogolfAdapter", () => {
     const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
     expect(results).toHaveLength(1);
     expect(results[0].holes).toBe(18);
+  });
+});
+
+describe("ChronogolfAdapter request throttle", () => {
+  // 24 == PAGE_SIZE, so a page this full always triggers another page fetch.
+  const makeFullPage = () =>
+    Array.from({ length: 24 }, () => ({
+      start_time: "9:15",
+      date: "2026-06-09",
+      max_player_size: 4,
+      default_price: { green_fee: 50, bookable_holes: 18 },
+    }));
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("spaces consecutive requests (incl. pagination) by at least the min interval", async () => {
+    vi.useFakeTimers();
+    try {
+      const callTimes: number[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        callTimes.push(Date.now());
+        return new Response(
+          JSON.stringify({ status: "open", teetimes: makeFullPage() }),
+          { status: 200 }
+        );
+      });
+      const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 1000 });
+
+      // Drain each throttled setTimeout deterministically; no reliance on MAX_PAGES.
+      let settled = false;
+      const promise = adapter
+        .fetchTeeTimes(mockConfig, "2026-06-09")
+        .finally(() => {
+          settled = true;
+        });
+      while (!settled) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await promise;
+
+      expect(callTimes.length).toBeGreaterThan(1); // pagination really ran >1 request
+      for (let i = 1; i < callTimes.length; i++) {
+        expect(callTimes[i] - callTimes[i - 1]).toBeGreaterThanOrEqual(1000);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("spaces requests across separate polls on the same adapter instance", async () => {
+    vi.useFakeTimers();
+    try {
+      const callTimes: number[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        callTimes.push(Date.now());
+        return new Response(
+          JSON.stringify({ status: "open", teetimes: [] }), // 1 page each
+          { status: 200 }
+        );
+      });
+      const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 1000 });
+
+      let settled = false;
+      const run = (async () => {
+        await adapter.fetchTeeTimes(mockConfig, "2026-06-09");
+        await adapter.fetchTeeTimes(mockConfig, "2026-06-10");
+      })().finally(() => {
+        settled = true;
+      });
+      while (!settled) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await run;
+
+      expect(callTimes).toHaveLength(2);
+      expect(callTimes[1] - callTimes[0]).toBeGreaterThanOrEqual(1000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not delay when minRequestIntervalMs is 0", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ status: "open", teetimes: [] }), { status: 200 })
+    );
+    const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 0 });
+    // Under real timers this resolves immediately — proves no throttle wait at interval 0.
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-06-09")).resolves.toBeInstanceOf(Array);
   });
 });

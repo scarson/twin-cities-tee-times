@@ -106,6 +106,8 @@ A PR to `dev` with the root-cause writeup, the fix, regression tests, the D1-dep
 
 ## Prompt 3 — Chronogolf rate-limiting (429) fix
 
+> **Status — 2026-06-08:** ✅ Implemented on branch `fix/chronogolf-429-pacing` (PR to `dev`). Fix = single Chronogolf cron lane + per-request adapter throttle (covers pagination) + wall-clock lane deadline; root cause was per-invocation pacing vs. a per-IP limit summed across overlapping batches (see `docs/pitfalls/implementation-pitfalls.md` CF-4 and `docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`). Post-deploy verification via `/check-logs` (429 → ~0 over a week).
+
 ````markdown
 # Task: Stop the systemic Chronogolf HTTP 429 rate-limiting across ~35 courses
 
