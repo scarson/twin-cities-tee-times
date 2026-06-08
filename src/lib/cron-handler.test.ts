@@ -972,6 +972,81 @@ describe("runCronPoll SQL verification", () => {
   });
 });
 
+describe("runCronPoll chronogolf lane", () => {
+  const makeMockDb = (
+    courses: ReturnType<typeof makeCourseRow>[],
+    pollLog: Array<{ course_id: string; date: string; last_polled: string }> = []
+  ) => ({
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation(() => ({
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+      })),
+      run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 0 } }),
+      all: vi.fn().mockResolvedValue({
+        results: sql.includes("FROM courses") && !sql.includes("last_horizon_probe")
+          ? courses
+          : sql.includes("poll_log")
+            ? pollLog
+            : [],
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T07:00:00-05:00"));
+    mockedPollCourse.mockResolvedValue("no_data");
+    mockedShouldPollDate.mockReturnValue(true);
+    mockedGetPollingDates.mockReturnValue(["2026-04-15"]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stops the chronogolf lane when its wall-clock budget is reached, deferring remaining polls", async () => {
+    // 40 chronogolf courses all land in the lane (batch 0); a tiny budget forces truncation.
+    const courses = Array.from({ length: 40 }, (_, i) =>
+      makeCourseRow(`chrono-${String(i).padStart(2, "0")}`, "chronogolf")
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const db = makeMockDb(courses);
+    const result = await withTimers(() => runCronPoll(
+      { DB: db } as unknown as CloudflareEnv,
+      BATCH_0_CRON,
+      { chronogolfLaneBudgetMs: 1000 }
+    ));
+
+    expect(result.pollCount).toBeLessThan(40);   // truncated by the wall-clock deadline
+    expect(result.budgetExhausted).toBe(false);  // time deadline ≠ subrequest budget exhaustion
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("chronogolf lane")
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("polls least-recently-polled chronogolf courses first (fair rotation under truncation)", async () => {
+    const courses = [
+      makeCourseRow("chrono-fresh", "chronogolf"),
+      makeCourseRow("chrono-stale", "chronogolf"),
+    ];
+    const nowMs = new Date("2026-04-15T07:00:00-05:00").getTime();
+    const pollLog = [
+      { course_id: "chrono-fresh", date: "2026-04-15", last_polled: new Date(nowMs - 60_000).toISOString() },
+      { course_id: "chrono-stale", date: "2026-04-15", last_polled: new Date(nowMs - 3_000_000).toISOString() },
+    ];
+    const db = makeMockDb(courses, pollLog);
+    await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
+
+    const order = mockedPollCourse.mock.calls.map((c) => c[1].id);
+    // chrono-stale (polled 50 min ago) is older → polled before chrono-fresh (1 min ago),
+    // overriding the default id-sorted order (fresh < stale alphabetically).
+    expect(order.indexOf("chrono-stale")).toBeLessThan(order.indexOf("chrono-fresh"));
+  });
+});
+
 describe("runHorizonProbe", () => {
   const makeMockDb = () => ({
     prepare: vi.fn().mockImplementation(() => ({
