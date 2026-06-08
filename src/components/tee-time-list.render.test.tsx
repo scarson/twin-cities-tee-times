@@ -18,7 +18,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/lib/format", () => ({
   formatTime: (t: string) => t,
-  staleAge: () => "5 min ago",
+  staleAge: () => "2h old",
 }));
 
 import { TeeTimeList } from "./tee-time-list";
@@ -283,7 +283,7 @@ describe("TeeTimeList rendering", () => {
   it("shows stale badge with age when polled_at is older than the threshold", () => {
     const tt = makeTeeTimeItem({ polled_at: hoursAgoIso(2) });
     render(<TeeTimeList teeTimes={[tt]} loading={false} />);
-    expect(screen.getByText("* stale (5 min ago)")).toBeDefined();
+    expect(screen.getByText("* stale (2h old)")).toBeDefined();
   });
 
   it("hides stale badge when polled_at is fresh", () => {
