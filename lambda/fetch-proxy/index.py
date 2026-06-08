@@ -1,13 +1,26 @@
-# ABOUTME: HTTPS forward proxy for AWS Lambda using browser TLS impersonation (curl_cffi).
-# ABOUTME: CPS Golf fronts its reservation API with a Cloudflare bot-challenge that only a
-#          trusted browser TLS fingerprint clears; this proxy supplies that fingerprint.
+# ABOUTME: HTTPS forward proxy for AWS Lambda that supplies a browser TLS fingerprint (curl_cffi).
+# ABOUTME: CPS Golf fronts its reservation API with a Cloudflare bot-challenge only a trusted fingerprint clears.
 import base64
 import json
 from urllib.parse import urlparse
 
 from curl_cffi import requests
 
-ALLOWED_HOSTS = (".cps.golf", ".teesnap.net", "teewire.app")
+# Hostnames the proxy may reach. A host matches an entry when it equals the
+# entry's apex or is a subdomain of it — never merely ends with the string
+# (which would let an attacker-registered "evilteewire.app" through).
+ALLOWED_HOSTS = ("cps.golf", "teesnap.net", "teewire.app")
+
+# Request headers the upstream HTTP client must own; forwarding the caller's
+# copies corrupts the body (stale content-length) or weakens the impersonated
+# fingerprint (accept-encoding / connection / host).
+STRIP_REQUEST_HEADERS = frozenset(
+    {"host", "content-length", "connection", "accept-encoding", "transfer-encoding"}
+)
+
+# Response headers that describe the pre-decompression body. curl_cffi returns
+# an already-decompressed body, so forwarding these would misdescribe it.
+STRIP_RESPONSE_HEADERS = frozenset({"content-encoding", "content-length"})
 
 # curl_cffi impersonation profile. The versionless "chrome" alias tracks the
 # newest Chrome fingerprint the installed curl_cffi build supports. Cloudflare
@@ -19,22 +32,40 @@ ALLOWED_HOSTS = (".cps.golf", ".teesnap.net", "teewire.app")
 PRIMARY_PROFILE = "chrome"
 FALLBACK_PROFILE = "safari17_0"
 
-UPSTREAM_TIMEOUT = 10  # seconds; the Lambda itself has a 15s ceiling
+# Per-upstream-attempt timeout. The Lambda's own ceiling is 15s; a challenge
+# triggers one fallback attempt, so worst case is two attempts (~2x) within it.
+UPSTREAM_TIMEOUT = 10
 
 
-def _is_cf_challenge(status, headers, body):
-    """Detect a Cloudflare managed-challenge interstitial."""
-    if str(headers.get("cf-mitigated", "")).lower() == "challenge":
-        return True
-    return status == 403 and (
-        "Just a moment" in body or "challenges.cloudflare.com" in body
+def _host_allowed(hostname):
+    return any(
+        hostname == apex or hostname.endswith("." + apex) for apex in ALLOWED_HOSTS
     )
 
 
-def _lower_headers(headers):
-    """Lowercase header keys so callers can look them up case-insensitively
-    (matches the previous undici `headers.entries()` contract)."""
-    return {str(k).lower(): v for k, v in headers.items()}
+def _is_cf_challenge(status, headers, body):
+    """Detect a Cloudflare managed-challenge interstitial (mirrors the adapter's
+    classifier in src/adapters/cps-golf.ts)."""
+    if str(headers.get("cf-mitigated", "")).lower() == "challenge":
+        return True
+    return status == 403 and any(
+        marker in body
+        for marker in ("Just a moment", "challenges.cloudflare.com", "cdn-cgi/challenge-platform", "__cf_chl")
+    )
+
+
+def _clean_request_headers(headers):
+    return {k: v for k, v in headers.items() if k.lower() not in STRIP_REQUEST_HEADERS}
+
+
+def _response_headers(headers):
+    """Lowercase keys (matches the previous undici `headers.entries()` contract
+    the Worker relies on) and drop headers that describe the compressed body."""
+    return {
+        str(k).lower(): v
+        for k, v in headers.items()
+        if str(k).lower() not in STRIP_RESPONSE_HEADERS
+    }
 
 
 def _request(profile, url, method, headers, body):
@@ -60,11 +91,11 @@ def handler(event, _context):
         req = _parse_event_body(event)
         url = req["url"]
         method = req.get("method", "GET")
-        headers = req.get("headers", {})
+        headers = _clean_request_headers(req.get("headers", {}))
         body = req.get("body")
 
         hostname = urlparse(url).hostname or ""
-        if not any(hostname.endswith(suffix) for suffix in ALLOWED_HOSTS):
+        if not _host_allowed(hostname):
             return {
                 "statusCode": 403,
                 "body": json.dumps(
@@ -73,14 +104,14 @@ def handler(event, _context):
             }
 
         resp = _request(PRIMARY_PROFILE, url, method, headers, body)
-        resp_headers = _lower_headers(resp.headers)
+        resp_headers = _response_headers(resp.headers)
 
         # If the trusted fingerprint has aged out of Cloudflare's allowlist the
         # primary profile gets challenged; try one alternate vendor fingerprint
         # before surfacing the block to the caller.
         if _is_cf_challenge(resp.status_code, resp_headers, resp.text):
             resp = _request(FALLBACK_PROFILE, url, method, headers, body)
-            resp_headers = _lower_headers(resp.headers)
+            resp_headers = _response_headers(resp.headers)
 
         return {
             "statusCode": 200,
