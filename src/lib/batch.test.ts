@@ -35,10 +35,11 @@ describe("platformWeight", () => {
 });
 
 describe("sleepAfterPoll", () => {
-  it("returns 2500ms for chronogolf to avoid Chronogolf API rate limits (429s)", () => {
-    // Tuned up from 1500ms after steady-state monitoring found 25% 429 rate;
-    // see docs/plans/2026-04-20-chronogolf-rate-limit-fix.md.
-    expect(sleepAfterPoll("chronogolf")).toBe(2500);
+  it("returns the default 250ms for chronogolf — per-request spacing lives in ChronogolfAdapter", () => {
+    // Chronogolf's per-IP rate limit is honored by the adapter's per-request
+    // throttle (CHRONOGOLF_MIN_REQUEST_INTERVAL_MS), not a per-poll sleep.
+    // See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md.
+    expect(sleepAfterPoll("chronogolf")).toBe(250);
   });
 
   it("returns the default 250ms for platforms with healthy rate-limit headroom", () => {
