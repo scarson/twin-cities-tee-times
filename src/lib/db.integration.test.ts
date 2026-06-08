@@ -1,5 +1,5 @@
 // ABOUTME: Integration tests for core db.ts functions against real SQLite.
-// ABOUTME: Covers upsertTeeTimes, logPoll, batch atomicity, FK enforcement, and time parsing.
+// ABOUTME: Covers upsertTeeTimes compare-then-replace, logPoll, batch atomicity, FK enforcement, and time parsing.
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestDb, seedCourse, makeTeeTime } from "@/test/d1-test-helper";
 import { upsertTeeTimes, logPoll } from "./db";
@@ -12,19 +12,85 @@ describe("upsertTeeTimes", () => {
     await seedCourse(db);
   });
 
-  it("inserts tee times that are queryable afterward", async () => {
+  it("first poll into empty storage inserts rows and returns true", async () => {
     const teeTimes = [makeTeeTime(), makeTeeTime({ time: "2026-03-16T09:00:00", price: 50 })];
 
-    await upsertTeeTimes(db, "test-course", "2026-03-16", teeTimes, new Date().toISOString());
+    const changed = await upsertTeeTimes(
+      db, "test-course", "2026-03-16", teeTimes, new Date().toISOString()
+    );
+
+    expect(changed).toBe(true);
 
     const rows = await db
-      .prepare("SELECT * FROM tee_times WHERE course_id = ? AND date = ?")
+      .prepare("SELECT * FROM tee_times WHERE course_id = ? AND date = ? ORDER BY time")
       .bind("test-course", "2026-03-16")
       .all<{ time: string; price: number }>();
 
     expect(rows.results).toHaveLength(2);
     expect(rows.results[0].time).toBe("08:30");
     expect(rows.results[1].time).toBe("09:00");
+  });
+
+  it("unchanged poll returns false and performs zero writes (rows untouched)", async () => {
+    // Seed with an ISO-time set.
+    await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [
+        makeTeeTime({ time: "2026-03-16T07:30:00", price: 30 }),
+        makeTeeTime({ time: "2026-03-16T08:00:00", price: 40 }),
+      ],
+      new Date().toISOString()
+    );
+
+    // Capture each row's id + fetched_at — a write would change them.
+    const before = await db
+      .prepare("SELECT id, time, fetched_at FROM tee_times WHERE course_id = ? AND date = ? ORDER BY time")
+      .bind("test-course", "2026-03-16")
+      .all<{ id: number; time: string; fetched_at: string }>();
+
+    // Re-poll with an equivalent set: same content, reordered, and the first
+    // time expressed as already-normalized HH:MM (proves normalization parity).
+    const changed = await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [
+        makeTeeTime({ time: "08:00", price: 40 }),
+        makeTeeTime({ time: "07:30", price: 30 }),
+      ],
+      "2099-12-31T23:59:59.999Z" // a fetchedAt that, if written, would be obvious
+    );
+
+    expect(changed).toBe(false);
+
+    const after = await db
+      .prepare("SELECT id, time, fetched_at FROM tee_times WHERE course_id = ? AND date = ? ORDER BY time")
+      .bind("test-course", "2026-03-16")
+      .all<{ id: number; time: string; fetched_at: string }>();
+
+    // Same rows, same ids, same fetched_at → nothing was rewritten.
+    expect(after.results).toEqual(before.results);
+  });
+
+  it("changed open_slots triggers full replace and returns true", async () => {
+    await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime({ time: "2026-03-16T07:30:00", openSlots: 4 })],
+      new Date().toISOString()
+    );
+
+    const changed = await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime({ time: "2026-03-16T07:30:00", openSlots: 3 })],
+      new Date().toISOString()
+    );
+
+    expect(changed).toBe(true);
+
+    const row = await db
+      .prepare("SELECT open_slots FROM tee_times WHERE course_id = ? AND date = ?")
+      .bind("test-course", "2026-03-16")
+      .first<{ open_slots: number }>();
+
+    expect(row!.open_slots).toBe(3);
   });
 
   it("replaces old data on re-upsert for same course+date", async () => {
@@ -35,11 +101,13 @@ describe("upsertTeeTimes", () => {
     );
 
     // Re-upsert with different data
-    await upsertTeeTimes(
+    const changed = await upsertTeeTimes(
       db, "test-course", "2026-03-16",
       [makeTeeTime({ time: "2026-03-16T10:00:00", price: 60 })],
       new Date().toISOString()
     );
+
+    expect(changed).toBe(true);
 
     const rows = await db
       .prepare("SELECT * FROM tee_times WHERE course_id = ? AND date = ?")
@@ -51,15 +119,16 @@ describe("upsertTeeTimes", () => {
     expect(rows.results[0].price).toBe(60);
   });
 
-  it("with empty array deletes existing rows", async () => {
+  it("no_data (empty fetched) with prior rows deletes all and returns true", async () => {
     await upsertTeeTimes(
       db, "test-course", "2026-03-16",
       [makeTeeTime()],
       new Date().toISOString()
     );
 
-    // Upsert with empty array
-    await upsertTeeTimes(db, "test-course", "2026-03-16", [], new Date().toISOString());
+    const changed = await upsertTeeTimes(db, "test-course", "2026-03-16", [], new Date().toISOString());
+
+    expect(changed).toBe(true);
 
     const rows = await db
       .prepare("SELECT * FROM tee_times WHERE course_id = ? AND date = ?")
@@ -67,6 +136,62 @@ describe("upsertTeeTimes", () => {
       .all();
 
     expect(rows.results).toHaveLength(0);
+  });
+
+  it("no_data (empty fetched) with no prior rows returns false and writes nothing", async () => {
+    const changed = await upsertTeeTimes(db, "test-course", "2026-03-16", [], new Date().toISOString());
+
+    expect(changed).toBe(false);
+
+    const rows = await db
+      .prepare("SELECT * FROM tee_times WHERE course_id = ? AND date = ?")
+      .bind("test-course", "2026-03-16")
+      .all();
+
+    expect(rows.results).toHaveLength(0);
+  });
+
+  it("distinguishes rows that share (time, holes, nines) but differ in price (conservative multiset)", async () => {
+    // Two genuinely-distinct rows at the same slot/holes but different price must
+    // round-trip without being falsely merged AND must not be seen as equal to a
+    // single-row set.
+    const stored = [
+      makeTeeTime({ time: "2026-03-16T07:30:00", holes: 18, price: 45, nines: "East/West" }),
+      makeTeeTime({ time: "2026-03-16T07:30:00", holes: 18, price: 60, nines: "East/West" }),
+    ];
+    const firstWrite = await upsertTeeTimes(db, "test-course", "2026-03-16", stored, new Date().toISOString());
+    expect(firstWrite).toBe(true);
+
+    const rows = await db
+      .prepare("SELECT price FROM tee_times WHERE course_id = ? AND date = ? ORDER BY price")
+      .bind("test-course", "2026-03-16")
+      .all<{ price: number }>();
+    expect(rows.results).toHaveLength(2);
+    expect(rows.results.map((r) => r.price)).toEqual([45, 60]);
+
+    // Re-poll with the same two distinct rows (reordered) → unchanged.
+    const unchanged = await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [
+        makeTeeTime({ time: "07:30", holes: 18, price: 60, nines: "East/West" }),
+        makeTeeTime({ time: "07:30", holes: 18, price: 45, nines: "East/West" }),
+      ],
+      new Date().toISOString()
+    );
+    expect(unchanged).toBe(false);
+
+    // Collapsing to a single row at that price IS a change (multiplicity differs).
+    const collapsed = await upsertTeeTimes(
+      db, "test-course", "2026-03-16",
+      [makeTeeTime({ time: "07:30", holes: 18, price: 45, nines: "East/West" })],
+      new Date().toISOString()
+    );
+    expect(collapsed).toBe(true);
+    const afterCollapse = await db
+      .prepare("SELECT COUNT(*) as n FROM tee_times WHERE course_id = ? AND date = ?")
+      .bind("test-course", "2026-03-16")
+      .first<{ n: number }>();
+    expect(afterCollapse!.n).toBe(1);
   });
 
   it("handles large batches (200 records) for multi-hole multi-variant scenarios", async () => {
@@ -81,7 +206,8 @@ describe("upsertTeeTimes", () => {
       })
     );
 
-    await upsertTeeTimes(db, "test-course", "2026-04-21", teeTimes, new Date().toISOString());
+    const changed = await upsertTeeTimes(db, "test-course", "2026-04-21", teeTimes, new Date().toISOString());
+    expect(changed).toBe(true);
 
     const rows = await db
       .prepare("SELECT COUNT(*) as n FROM tee_times WHERE course_id = ? AND date = ?")
@@ -148,6 +274,28 @@ describe("upsertTeeTimes", () => {
       .all();
 
     expect(rows.results).toHaveLength(3);
+  });
+
+  it("read failure propagates as a rejection (not a silent skip)", async () => {
+    // A throwing existing-rows SELECT must reject — never resolve false, which
+    // would be a silent skip: stale availability shown AND mislogged as success.
+    const failingDb = {
+      prepare() {
+        return {
+          bind() {
+            return {
+              all() {
+                return Promise.reject(new Error("D1 read failed"));
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    await expect(
+      upsertTeeTimes(failingDb, "test-course", "2026-03-16", [makeTeeTime()], new Date().toISOString())
+    ).rejects.toThrow("D1 read failed");
   });
 
   it("stores and retrieves nines field", async () => {
