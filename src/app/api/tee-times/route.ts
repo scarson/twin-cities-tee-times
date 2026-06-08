@@ -3,6 +3,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
 import { todayCT, nowTimeCT } from "@/lib/format";
+import { sqliteIsoNow } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { env } = await getCloudflareContext();
@@ -57,9 +58,17 @@ export async function GET(request: NextRequest) {
   }
 
   let query = `
-    SELECT t.*, c.name as course_name, c.city as course_city, c.state as course_state
+    SELECT t.*, c.name as course_name, c.city as course_city, c.state as course_state,
+           p.polled_at as polled_at
     FROM tee_times t
     JOIN courses c ON t.course_id = c.id
+    LEFT JOIN (
+      SELECT course_id, date, polled_at,
+             ROW_NUMBER() OVER (PARTITION BY course_id, date ORDER BY polled_at DESC) as rn
+      FROM poll_log
+      WHERE polled_at > ${sqliteIsoNow("-24 hours")}
+        AND status IN ('success', 'no_data')
+    ) p ON t.course_id = p.course_id AND t.date = p.date AND p.rn = 1
     WHERE t.date = ? AND c.disabled = 0
   `;
   const bindings: unknown[] = [date];
