@@ -45,34 +45,45 @@ The originating prompt says to surface this as an explicit decision and not assu
 
 ### Component A — extend the proxy fallback into a short, time-bounded multi-vendor cascade (axis 1)
 
-Today `lambda/fetch-proxy/index.py` tries `PRIMARY_PROFILE = "chrome"`, then one `FALLBACK_PROFILE = "safari17_0"`. Generalize to an **ordered list** of current vendor profiles (e.g. `chrome`, `safari17_0`, plus another vendor `curl_cffi==0.15.0` ships, such as `firefox`/`edge` — exact list pinned to what the installed build actually supports). Try each in order until one clears the challenge, **bounded by the existing `TOTAL_BUDGET`** so we never blow the Worker's 12 s abort / Lambda 15 s ceiling. Self-heals a single-vendor de-allowlisting **instantly, with no redeploy**.
+Today `lambda/fetch-proxy/index.py` tries `PRIMARY_PROFILE = "chrome"`, then one `FALLBACK_PROFILE = "safari17_0"`. Generalize to an **ordered list** of current vendor profiles (`chrome` first, then vendor-diverse alternates `curl_cffi==0.15.0` actually ships — the exact list is pinned to what the installed build supports, verified empirically). Try each in order until one clears the challenge, **bounded by `TOTAL_BUDGET`** so we never blow the Worker's 12 s abort / Lambda 15 s ceiling.
 
 - Keeps the existing challenge detector (`_is_cf_challenge`) and the response contract.
 - Keeps the versionless `chrome` as the first profile (DEPLOY-2: never pin `chromeNNN`).
-- Cost: each *additional* attempt is one extra upstream request, incurred **only when earlier profiles are challenged** (the healthy path still clears on the first try). Time-bounded so a fully-challenged cascade fails fast rather than serially burning the whole budget.
+- Cost: each *additional* attempt is one extra upstream request, incurred **only when earlier profiles are challenged** (the healthy path still clears on the first try). Time-bound the **first** request too, so a stalled upstream can't consume the budget before the cascade even starts.
+- **Honest scope (this is the axis-1/axis-2 conflation guarding against itself):** the cascade self-heals **only when a same-release sibling fingerprint is still allowlisted** while the primary is de-allowlisted — and as the realism check above notes, sibling fingerprints from one `curl_cffi` release tend to age out together, so *often it won't help*. It is cheap insurance, **not** a substitute for axis 2. It is also effective only when the challenge returns **fast** (Cloudflare 403s typically do, ~200–500 ms): under a slow/stalled upstream the time budget collapses the cascade to a single attempt. Worker-observed latency also includes Lambda cold start, which is outside the proxy's `time.monotonic()` budget — keep the profile list short.
 
 ### Component B — scheduled rotation workflow with a live smoke gate (axis 2, the centerpiece)
 
 A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation.yml`) that runs a **self-contained live probe** and opens a ready-to-merge PR when (and only when) rotation is both needed and verified to work.
 
-**The probe** (`scripts/cps_challenge_probe.py`, Python + `curl_cffi`): given a profile, hit a **real CPS v5 reservation endpoint** for the SD test facility `jcgsc5.cps.golf` (Encinitas Ranch) and classify the outcome into exactly three buckets, mirroring `lambda/fetch-proxy/index.py::_is_cf_challenge` and `src/adapters/cps-golf.ts::isCloudflareChallenge`:
+**The probe** (`lambda/fetch-proxy/probe.py`, Python + `curl_cffi`, sharing `challenge.py` with the proxy): given a profile, **POST `RegisterTransactionId`** (the exact first reservation call the adapter makes, and the call the root-cause doc proved clears with `200 body=true` under `impersonate=chrome`) for the SD test facility `jcgsc5.cps.golf`, using the **same `requests.request(method, headers, data, impersonate=…)` call shape and a browser-like header set the proxy sends**, then classify into three buckets that mirror `index.py::is_cf_challenge` and `src/adapters/cps-golf.ts::isCloudflareChallenge`:
 
-- **CLEARED** — reached the CPS origin (not a Cloudflare interstitial). The fingerprint is accepted. *No CPS credentials needed:* the challenge fires at the Cloudflare edge **before** origin auth, so even an unauthenticated request to `/onlineres/onlineapi/*` returns either the cf interstitial (bad fingerprint) or a genuine origin response (good fingerprint). We distinguish the two, we don't need a 200-with-data.
+- **CLEARED** — reached the CPS origin (not a Cloudflare interstitial). The fingerprint is accepted. *No CPS credentials needed:* the challenge fires at the Cloudflare edge **before** origin auth, so the request returns either the cf interstitial (bad fingerprint) or a genuine origin response (good fingerprint). We distinguish the two; we don't need a 200-with-data.
 - **CHALLENGED** — the `cf-mitigated: challenge` / "Just a moment…" interstitial. The fingerprint aged out.
-- **ERROR** — network/timeout/5xx. **Inconclusive** — never drives a rotation.
+- **ERROR** — network/timeout/transport failure (or an unsupported-profile error). **Inconclusive** — never drives a rotation.
 
-**The workflow logic** (cron, plus `workflow_dispatch` for manual runs):
+> **Load-bearing assumption that MUST be live-verified before trusting the gate** (review finding): that an *unauthenticated* `RegisterTransactionId` cleanly distinguishes a good fingerprint (non-challenge origin response) from a bad one (cf interstitial), and that the bare-but-browser-like header shape produces the *same* challenge verdict production sees. The implementation plan makes this a hard verification step (probe `chrome` → expect CLEARED; probe known-aged-out `chrome124` → expect CHALLENGED) with the actual response inspected, not assumed. If an unauthenticated probe does not cleanly distinguish, the fallback is to extend the probe through the token + register flow.
 
-1. Read the pinned version from `lambda/fetch-proxy/requirements.txt`.
-2. Install the **pinned** `curl_cffi`; probe with the primary profile → `PINNED_RESULT`.
-3. If `PINNED_RESULT == CLEARED` → **healthy, exit 0** (no rotation; this is the common case).
-4. If `PINNED_RESULT == ERROR` → **inconclusive, exit 0 with a warning** (transient CPS downtime must not spawn a spurious PR).
-5. If `PINNED_RESULT == CHALLENGED` → install the **latest** `curl_cffi`; probe the cascade profiles → `LATEST_RESULT` + the profile that cleared.
-   - `LATEST_RESULT == CLEARED` **and** latest version ≠ pinned → **open a PR** bumping `requirements.txt` to the verified version, branch `chore/cps-curl-cffi-bump-<version>`, PR body carries the probe evidence (which version, which profile, status, timestamp — IDs only, **no secrets/PII**).
-   - `LATEST_RESULT == CLEARED` but latest == pinned → already newest; the cascade can't help → **emit a loud warning** (this is the genuinely-manual terminal case: wait for `curl_cffi` upstream to ship a newer fingerprint).
-   - `LATEST_RESULT == CHALLENGED` → latest package also challenged → **emit a loud warning** (same terminal case).
+**The decision is a pure function, unit-tested over the full matrix** (review finding #3 — a sprawling GitHub Actions `if:` chain left silent holes where CPS was broken but the run went green). `rotate.py::decide(...)` takes the pinned/candidate verdicts + versions and returns a `Decision {action, exit_code, reason, degraded}`; the workflow is a thin actuator. Every combination below is a test case, so "broken-but-green" is impossible by construction.
 
-**Fail-closed invariants:** a PR is opened **only** on positive confirmation (`CHALLENGED` pinned **and** `CLEARED` latest). Negative/inconclusive states never bump anything. We never propose a version that didn't pass the live gate.
+**The detector probes the *primary* (`chrome`) only;** the candidate probe runs the *full cascade* and reports which profile cleared. Probing chrome-only as the trigger means "the primary aged out" fires a (low-urgency) rotation even while the in-proxy cascade still covers production — which is exactly when you want to refresh, before the fallback ages out too.
+
+**The workflow logic** (cron, plus `workflow_dispatch` with a `dry_run` input and a `force_check` input for manual verification):
+
+1. **Idempotency guard (first):** if an open `chore/cps-curl-cffi-bump-*` PR already exists, **exit 0** ("rotation already proposed: #N") — no daily duplicate-PR churn while a bump awaits merge.
+2. Read the pinned version; install **pinned** `curl_cffi`; probe `chrome` → `PINNED_VERDICT`.
+3. `decide()` matrix:
+   - `PINNED == CLEARED` (and not `force_check`) → **healthy, exit 0** (common case).
+   - `PINNED == ERROR` → **inconclusive, exit 0 + warning** (transient CPS downtime must not spawn a spurious PR).
+   - `PINNED == CHALLENGED` (or `force_check`) → install **latest** `curl_cffi`; probe the cascade → `LATEST_VERDICT` + `cleared_profile`:
+     - `LATEST == CLEARED` **and** latest ≠ pinned → **deployability gate, then open PR** (below). If `cleared_profile != chrome`, the PR body carries a prominent **degraded-rotation** warning (chrome still challenged even on latest; only a fallback clears).
+     - `LATEST == CLEARED` **and** latest == pinned → already newest; no newer fingerprint exists → **fail loud, exit 1** (the genuine manual terminal case — wait for `curl_cffi` upstream).
+     - `LATEST == CHALLENGED` → newer package doesn't help → **fail loud, exit 1**.
+     - `LATEST == ERROR` → couldn't evaluate the fix while the primary is challenged → **fail loud, exit 1** (re-runs next cron; never silently green).
+4. **Deployability gate (before any PR):** reproduce the deploy's exact vendoring command (`pip install --target … --platform manylinux2014_x86_64 --implementation cp --python-version 3.14 --only-binary=:all: curl_cffi==<latest>`). If the candidate can't be cross-vendored for the Lambda runtime, **fail the gate** — "clears the challenge on the runner" is not "deployable to the Lambda" (review finding #11).
+5. **Open PR:** bump `requirements.txt`, branch `chore/cps-curl-cffi-bump-<version>`, body built into a **file** and passed via `--body-file` (never a shell heredoc that command-substitutes probe output — review finding #1/#9). Evidence = version, cleared profile, verdicts, subdomain — **IDs only, no secrets/PII**. `dry_run` prints the body + intended bump instead of creating the PR (so the PR path is verifiable without a spurious bump — review finding #5).
+
+**Fail-closed invariants:** a PR is opened **only** on positive confirmation — pinned-`chrome` `CHALLENGED` **and** latest `CLEARED` **and** the candidate version is **deployable**. Every other pinned-`CHALLENGED` outcome exits non-zero (loud), never silently green. We never propose a version not live-verified against the real CPS challenge **and** not vendor-deployable.
 
 ### Component C — keep the canary, update the runbook docs
 
