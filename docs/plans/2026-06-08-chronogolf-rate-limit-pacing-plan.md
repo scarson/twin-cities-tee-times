@@ -59,15 +59,21 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Not started. 0/5 phases shipped.
+**Overall:** 1/5 phases shipped (on branch `fix/chronogolf-429-pacing`).
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
-| 1 — Single Chronogolf lane (`batch.ts`) | ⬜ Not started | — | — |
-| 2 — Per-request throttle (`chronogolf.ts`) | ⬜ Not started | — | — |
+| 1 — Single Chronogolf lane (`batch.ts`) | ✅ Shipped | `7362bac` | full suite green (740), `tsc` clean |
+| 2 — Per-request throttle (`chronogolf.ts`) | 🚧 In progress | — | branch `fix/chronogolf-429-pacing` |
 | 3 — Lane deadline + fair ordering (`cron-handler.ts`) | ⬜ Not started | — | — |
 | 4 — Docs, pitfalls, memory | ⬜ Not started | — | — |
 | 5 — Verification + PR | ⬜ Not started | — | — |
+
+### Deviations
+- **Phase 1 Task 1.3 (test repair method):** the plan's default rule was "retarget lane-broken `cron-handler.test.ts` tests to `BATCH_1_CRON`, keep fixtures." In execution I instead **swapped most fixtures to `chronogolf`** (so they land in the lane and keep `BATCH_0_CRON`), because the shared/identical `course-NN` fixture lines made fixture-swap the lower-collision, fewer-edit change. Kept `BATCH_1_CRON` only for the 3 weight-sensitive budget-exhaustion tests (keeps them off-lane → no coupling to Phase 3's wall-clock deadline, weight math intact). Verified the lane-coupling for the swapped tests is benign: Phase 3's deadline (210 s) never triggers in these tests, and oldest-first ordering is stable with empty `poll_log`. All repaired assertions kept at equal strength (vacuous "empty-batch-0" passes were fixed, not left).
+
+### Discoveries
+- **Pre-existing jsdom noise:** the full suite prints `Not implemented: HTMLCanvasElement's getContext()` warnings from a chart/canvas component test (unrelated to this change — no canvas code touched). Flagged only; out of scope for this PR.
 
 ---
 
@@ -119,7 +125,7 @@ Derived constraints:
 
 ## Phase 1 — Single Chronogolf Lane (`src/lib/batch.ts`)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `7362bac` on 2026-06-08 (branch `fix/chronogolf-429-pacing`; full suite 740 green, `tsc` clean). Test-repair deviation recorded in the top-of-plan Deviations.
 
 **Files:**
 - Modify: `src/lib/batch.ts`
