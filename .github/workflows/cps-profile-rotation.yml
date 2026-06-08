@@ -95,6 +95,7 @@ jobs:
           LATEST=$(python -c 'import curl_cffi;print(curl_cffi.__version__)')
           echo "version=$LATEST" >> "$GITHUB_OUTPUT"
           python probe.py --subdomain jcgsc5 --out latest.json || true  # verdict read from JSON; don't let a CHALLENGED exit fail the step
+          [ -f latest.json ] || { echo "::error::latest probe produced no output"; exit 1; }
 
       - name: Decide
         id: decide
@@ -117,16 +118,20 @@ jobs:
 
       - name: Deployability gate — candidate must cross-vendor for the Lambda
         if: steps.decide.outputs.action == 'open_pr'
+        env:
+          LATEST: ${{ steps.probe_latest.outputs.version }}
         run: |
           set -euo pipefail
+          # Validate the version (passed via env, not interpolated) before it reaches pip.
+          [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
           python3 -m pip install \
             --target /tmp/vendor-check \
             --platform manylinux2014_x86_64 \
             --implementation cp \
             --python-version 3.14 \
             --only-binary=:all: \
-            "curl_cffi==${{ steps.probe_latest.outputs.version }}" \
-            || { echo "::error::curl_cffi ${{ steps.probe_latest.outputs.version }} cleared the challenge but is NOT vendor-deployable to the Lambda (manylinux2014/cp314). Not proposing it."; exit 1; }
+            "curl_cffi==$LATEST" \
+            || { echo "::error::curl_cffi $LATEST cleared the challenge but is NOT vendor-deployable to the Lambda (manylinux2014/cp314). Not proposing it."; exit 1; }
 
       - name: Open bump PR (live- and deploy-gated, fail-closed)
         if: steps.decide.outputs.action == 'open_pr' && inputs.dry_run != true
