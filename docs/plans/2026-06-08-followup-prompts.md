@@ -4,7 +4,7 @@ Copyable, self-contained starting prompts to hand to fresh agents for the follow
 
 These derive from the 2026-06-07 production diagnostic captured in the project auto-memory (`project_d1_bill_write_amplification.md`, `project_cps_chronogolf_polling_failures.md`) and the Eagle Club smoke failure observed on PR #117.
 
-> **Status — updated 2026-06-08:** Prompt 1 (D1 write-amplification) is ✅ **SHIPPED** — merged to `dev` (PR #119) and published to `main` (PR #120, deployed). Three follow-ups remain: CPS Golf (Prompt 2), Chronogolf (Prompt 3), Eagle Club smoke (Prompt 4). Prompt 2's prerequisite is now satisfied.
+> **Status — updated 2026-06-08:** Prompt 1 (D1 write-amplification, PR #119 → `main` #120), Prompt 3 (Chronogolf 429, PR #126), and Prompt 4 (Eagle Club smoke, PR #122) are ✅ **SHIPPED**. Prompt 2 (CPS Golf) is implemented in **PR #125** (open, Review-class — awaiting Sam's merge). The remaining open work is **Prompt 5 — automate the CPS `curl_cffi` impersonation-profile rotation** (the maintenance tail introduced by the CPS fix).
 
 ## Sequencing
 
@@ -64,7 +64,7 @@ A PR to `dev` implementing gates 1–4 with full TDD coverage, the 3-round revie
 
 ## Prompt 2 — CPS Golf polling failure (auth / transaction registration)
 
-> **Prerequisite (satisfied 2026-06-08):** Prompt 1 (D1 dedup) has shipped — see Sequencing above. Confirm it is live in production, then proceed.
+> **Status — 2026-06-08:** ✅ **Implemented in PR #125** (open, Review-class). Root cause was NOT the auth/handshake bug this prompt assumed: CPS moved its v5 reservation API behind a **fingerprint-gated Cloudflare managed challenge**. Fix = fetch proxy rewritten Node→Python+`curl_cffi` (`impersonate="chrome"`) to send a browser TLS fingerprint, plus an adapter canary that throws a distinct "blocked by Cloudflare challenge" error. Full writeup: `docs/research/2026-06-08-cps-cloudflare-challenge.md`; pitfall **DEPLOY-2**. **Follow-up:** the impersonation profile ages out of Cloudflare's allowlist (manual "bump `curl_cffi` + redeploy" runbook today) → **Prompt 5** automates that.
 
 ````markdown
 # Task: Root-cause and fix the systemic CPS Golf "transaction registration failed" polling break
@@ -176,4 +176,65 @@ Even though this is small, three rounds of independent review are required; mini
 
 ## Deliverables
 A PR to `dev` fixing the assertion (and any siblings), confirming the adapter classifies holes correctly, with the 3-round review trail. End with a completion label + evidence (the smoke test passing against live data, or a clear note if live data is unavailable in the run).
+````
+
+---
+
+## Prompt 5 — Automate the CPS `curl_cffi` impersonation-profile rotation
+
+> **Why this exists:** the CPS fix (Prompt 2 / PR #125) defends against CPS's Cloudflare challenge by sending a browser TLS fingerprint via `curl_cffi` (`impersonate="chrome"`) from the Lambda fetch-proxy. Cloudflare allowlists *current* browser fingerprints and the `curl_cffi` version is frozen at deploy time, so the fingerprint eventually ages out (already true for pinned `chrome124`/`chrome131`). When it does, **all ~13 v5 CPS courses break again** and recovery is a manual runbook: bump `curl_cffi` in `requirements.txt` → redeploy. This task makes that self-healing / self-updating. **Design/architecture work, not a known-answer bugfix** — investigate and recommend before building.
+
+````markdown
+# Task: Automate the CPS Golf curl_cffi impersonation-profile rotation so the Cloudflare-challenge defense self-heals
+
+You are a fresh agent on the **Twin Cities Tee Times** project (Next.js 16 on Cloudflare Workers + D1; polls public golf tee times via per-platform adapters, with an AWS Lambda fetch-proxy for hosts that block Worker IPs). Read `CLAUDE.md`, `docs/git-strategy.md`, and `docs/pitfalls/*.md` first.
+
+## REQUIRED background (this is a direct follow-up to the CPS Cloudflare fix — read before designing)
+- `docs/research/2026-06-08-cps-cloudflare-challenge.md` — the root cause + fix you are extending (see its "Maintenance tail" section, which motivates this task).
+- `docs/pitfalls/implementation-pitfalls.md` **DEPLOY-2** — read-before-you-code summary + the manual rotation runbook this task automates. Its rule: use the versionless `chrome` alias, never a pinned `chromeNNN`.
+- `lambda/fetch-proxy/index.py` — the proxy. `PRIMARY_PROFILE = "chrome"`, `FALLBACK_PROFILE = "safari17_0"`, with a time-bounded challenge fallback; `_is_cf_challenge()` is the detector.
+- `lambda/fetch-proxy/requirements.txt` — the pinned `curl_cffi` (vendored at deploy time by `.github/workflows/deploy.yml`).
+- `.github/workflows/deploy.yml` — Lambda vendoring + deploy (runs on push to `main` only).
+- `src/adapters/cps-golf.ts` — the **canary**: `isCloudflareChallenge()` → throws `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)`. This is the detection signal in `poll_log`/`check-logs`. Do NOT remove it.
+- `src/lib/proxy-fetch.ts` — the Worker→Lambda seam (SigV4'd Function URL). The proxy currently **hardcodes** the impersonation profile; the Worker could pass it in the request payload.
+
+## The problem
+CPS's v5 reservation API sits behind a Cloudflare managed challenge that is **fingerprint-gated**. The proxy clears it with a browser TLS fingerprint, but the vendored `curl_cffi`'s `chrome` fingerprint eventually ages out of Cloudflare's allowlist → the challenge returns → every v5 CPS poll fails → manual bump+redeploy. Make this automatic (self-heal, or self-update with a safe gate). Sam's framing: "this should be automatable, even if we store a rolling version pin with an update mechanism in the database or something."
+
+## Approach
+Start with `superpowers:brainstorming`. Do NOT jump to code. Investigate the solution space, weigh tradeoffs, and **bring Sam a recommendation BEFORE implementing** (architectural decision per `CLAUDE.md`).
+
+### The conceptual trap you MUST get right (or the design will be wrong)
+Two separable problems — do not conflate them:
+1. **Profile *selection*** among fingerprints the installed `curl_cffi` already ships — pure config; changeable WITHOUT a Lambda redeploy (e.g. the Worker reads a profile from D1/KV and passes it to the proxy in the `proxyFetch` payload).
+2. **Getting a *newer* fingerprint** than the installed `curl_cffi` knows — REQUIRES a package update + Lambda redeploy. No config/DB value can conjure a fingerprint the vendored library does not contain.
+
+A "rolling version pin in the database" only solves (1). True future-proofing against Cloudflare advancing past *every* installed profile needs automated rebuild+redeploy for (2). **State explicitly which axis each option addresses.**
+
+### Options to evaluate (compare and recommend — don't pre-commit)
+- **(A) Multi-profile cascade in the proxy.** Extend the `chrome`→`safari17_0` fallback to a list of current profiles, trying each until one clears the challenge. Self-heals within one invocation, no redeploy — but bounded by the installed `curl_cffi`, and each fallback costs an extra upstream request (mind the `proxyFetch` ~12s / Lambda 15s budget; the proxy already time-bounds the fallback).
+- **(B) Config-driven profile selection (the "rolling pin in DB" idea, for PROFILE not VERSION).** Worker reads the desired profile from D1/KV and passes it to the proxy; an operator or automated job rotates among installed profiles without a Lambda redeploy. Note: the Worker has D1; the Lambda does not — config must flow Worker→proxy via the request payload.
+- **(C) Scheduled auto-rotation pipeline (the only thing that solves axis 2).** A scheduled GitHub Action (or Cron Trigger) that detects the challenge — via the `poll_log` canary and/or a live probe — then tries the latest `curl_cffi` and/or newer profiles, and **only if a LIVE smoke test confirms the candidate clears the actual CPS challenge**, bumps `requirements.txt` and either opens a ready-to-merge PR or auto-deploys. Automates the manual runbook.
+- **(D) Hybrid:** (A)/(B) for instant rotation among known-good profiles + (C) for pulling in newer fingerprints + the canary as the trigger.
+
+### Questions the investigation must answer
+- **How often does this actually fire?** Estimate from Chrome's release cadence (~monthly), `curl_cffi`'s release lag, and Cloudflare's allowlist lag. If rare (every several months), a monitored auto-PR with a human merge may beat unattended auto-deploy; if frequent, lean fuller automation. Reason it out / instrument it.
+- **Does Sam want unattended auto-deploy of prod infra, or a human gate?** Surface this as an explicit decision, don't assume.
+- Latency/cost of the in-proxy cascade vs. its resilience benefit.
+- Any auto-remediation MUST be gated on a live smoke test proving the candidate clears the *real* CPS challenge before shipping — **never deploy a blind/unverified profile or version.**
+
+## Hard constraints
+- Mostly infra/CI/proxy work. **TDD applies to any production `src/` logic** (e.g. if the Worker gains profile-config logic). The Lambda (Python) and CI are outside the `src/` TDD mandate but MUST be live-verified (smoke-test the chosen mechanism against a real CPS facility, as the CPS fix did via `handler()`).
+- **Never ship a profile/version not live-verified to clear the actual CPS challenge.** No secrets in logs/CLI flags; no PII (log course IDs, not emails). Verify Cloudflare platform behavior (Cron Triggers, KV, subrequest budget) via the docs MCP — don't guess (CF-1, CF-3 apply).
+- Keep the canary (the distinct challenge error) and the `chrome`→`safari` fallback. Use the versionless `chrome`, never `chromeNNN` (DEPLOY-2).
+- Worktree under `.claude/worktrees/<slug>`, branch `feat/...` or `chore/...` off `dev`, PR targets **`dev`**. Conventional Commits.
+
+## Adversarial review (REQUIRED — minimum 3 rounds)
+- **Plan stage:** `plan-review-cycle` on your design/plan; have an independent reviewer attack the **version-vs-profile distinction** — does the design actually future-proof against ALL installed profiles aging out, or only rotate among them?
+- **Implementation stage:** `superpowers:requesting-code-review` + `feature-dev:code-reviewer`.
+- Every round MUST probe: can the mechanism ship a **blind/unverified** profile to prod? What's the **self-heal latency** (how long is CPS down before rotation kicks in)? Does the cascade blow the `proxyFetch`/Lambda time budget? Does auto-deploy have a safe rollback and a fail-closed smoke gate? Does it leak secrets/PII?
+- Record the 3 rounds in the PR description.
+
+## Deliverables
+First, a brainstorming/design writeup + a recommendation to Sam — with the version-vs-profile axis made explicit and the auto-deploy-vs-human-gate decision surfaced. After Sam agrees: a plan (`writing-plans-enhanced`), then the implementation PR(s) to `dev` with the live-smoke-test gate, the 3-round review trail, and a completion label + evidence. **Out of scope:** re-solving the root cause (done in PR #125), a headless browser (the challenge is fingerprint-gated — impersonation suffices), and the other platforms' issues.
 ````
