@@ -120,10 +120,10 @@ export class TeensnapAdapter implements PlatformAdapter {
           continue;
         }
 
+        // A non-positive price means the rate is not published, not a free round.
+        const parsedPrice = parseFloat(priceEntry.price);
         const priceNum =
-          priceEntry.price && !Number.isNaN(parseFloat(priceEntry.price))
-            ? parseFloat(priceEntry.price)
-            : null;
+          !Number.isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
 
         results.push({
           courseId: config.id,

@@ -307,4 +307,21 @@ describe("ForeUpAdapter", () => {
     const result = await adapter.fetchTeeTimes(mockConfig, "2026-03-15");
     expect(result[0].price).toBeNull();
   });
+
+  it("returns null price for a non-positive green_fee", async () => {
+    // A "0" green_fee means the price is not published, not a free round.
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([{
+        time: "2026-03-15 08:00",
+        green_fee: "0",
+        holes: 18,
+        available_spots: 4,
+        schedule_id: 7829,
+      }]), { status: 200 })
+    );
+
+    const result = await adapter.fetchTeeTimes(mockConfig, "2026-03-15");
+    expect(result).toHaveLength(1);
+    expect(result[0].price).toBeNull();
+  });
 });

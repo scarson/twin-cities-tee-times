@@ -72,9 +72,9 @@ export class ForeUpAdapter implements PlatformAdapter {
         ? `${tt.teesheet_side_name}/${tt.reround_teesheet_side_name}`
         : undefined;
 
-      const priceNum = tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
-        ? parseFloat(tt.green_fee)
-        : null;
+      // A non-positive green fee means the price is not published, not a free round.
+      const parsedFee = tt.green_fee !== null ? parseFloat(tt.green_fee) : NaN;
+      const priceNum = !Number.isNaN(parsedFee) && parsedFee > 0 ? parsedFee : null;
 
       const holeVariants = parseHolesField(tt.holes);
 
