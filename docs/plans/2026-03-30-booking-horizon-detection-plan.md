@@ -17,13 +17,13 @@
 ```
 BEFORE starting work:
 1. Read the skill at .claude/skills/test-driven-development/ (or invoke /test-driven-development)
-2. Read dev/testing-pitfalls.md
+2. Read docs/pitfalls/testing-pitfalls.md
 Follow TDD: write failing test → implement fix → verify green.
 ```
 
 ```
 BEFORE marking this task complete:
-1. Review your tests against dev/testing-pitfalls.md
+1. Review your tests against docs/pitfalls/testing-pitfalls.md
 2. Verify test coverage of the fix (are error paths tested? edge cases?)
 3. Run tests (or relevant subset) and confirm green
 ```
@@ -323,7 +323,7 @@ no findings) until you're confident there aren't any more issues. Then
 update your private journal and continue onto the next tasks.
 ```
 
-Review against `dev/testing-pitfalls.md` specifically:
+Review against `docs/pitfalls/testing-pitfalls.md` specifically:
 - Section 2 (Timezone): `getPollingDates` uses `Date.UTC` — no timezone ambiguity. Good.
 - Section 5 (Cron): `shouldPollDate` boundary values are tested at exactly 30 and 60. Good.
 
@@ -476,7 +476,7 @@ git commit -m "feat: use per-course booking_horizon_days for polling date range"
 
 **CRITICAL RATCHET RULE:** The probe MUST NEVER decrease `booking_horizon_days`. Even if the probe finds no tee times on day 12 this week, a course that was previously detected at 12 stays at 12. The UPDATE query should use `MAX(booking_horizon_days, ?)` or a conditional: only update if the new value is greater.
 
-**TESTING PITFALL WARNING (from dev/testing-pitfalls.md section 5):**
+**TESTING PITFALL WARNING (from docs/pitfalls/testing-pitfalls.md section 5):**
 - Error isolation between iterations: a failure probing one course must not kill the loop for remaining courses. Wrap each course's probe in its own try/catch.
 - Error isolation within nested loops: a failure probing one date must not skip remaining dates for that course. Wrap each date poll in its own try/catch.
 - Budget tracking: probe polls consume subrequests and must decrement the budget.
@@ -855,7 +855,7 @@ no findings) until you're confident there aren't any more issues. Then
 update your private journal and continue onto the next tasks.
 ```
 
-Review against `dev/testing-pitfalls.md`:
+Review against `docs/pitfalls/testing-pitfalls.md`:
 - Section 5 (Error isolation between iterations): probe wraps each course in try/catch — tested.
 - Section 5 (Error isolation within nested loops): probe wraps each date poll in try/catch — tested.
 - Section 8 (Parameterized queries): the `sqliteIsoNow` helper generates SQL expressions. Verify the `PROBE_INTERVAL_DAYS` interpolation doesn't create injection risk — it's a constant integer, not user input. Safe.

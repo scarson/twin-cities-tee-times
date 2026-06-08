@@ -12,7 +12,7 @@
 
 **Revision note:** Original plan (v1) assumed only ForeUp and maybe CPS Golf needed adapter fixes. Task 1 investigation surfaced 4+ combined-shape adapters. This v2 plan covers the full scope.
 
-**Pitfalls reference:** Canonical project path is [dev/testing-pitfalls.md](../../dev/testing-pitfalls.md) (NOT `docs/pitfalls/` — generic template path). Re-read before each task and again before marking complete. Especially relevant: §6 External API Resilience (malformed response handling, response validation), §7 Client-Side State Management, §10 Validation & Data Quality, §12 Build & Deploy.
+**Pitfalls reference:** Canonical project path is [docs/pitfalls/testing-pitfalls.md](../../docs/pitfalls/testing-pitfalls.md) (NOT `docs/pitfalls/` — generic template path). Re-read before each task and again before marking complete. Especially relevant: §6 External API Resilience (malformed response handling, response validation), §7 Client-Side State Management, §10 Validation & Data Quality, §12 Build & Deploy.
 
 **Plan as live document:** Task 1 findings are recorded below. Later tasks reference those findings. The plan is both spec AND scratch-pad for this feature.
 
@@ -56,7 +56,7 @@ Six adapters need fixes; two (eagle-club, membersports) don't. Chronogolf uses O
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6 and §10.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6 and §10.
 
 **Step 1: Write the failing test — multi-hole expansion**
 
@@ -250,7 +250,7 @@ variant. UI merging happens in a later task."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6.
 
 **Key context:** Chronogolf API returns per-teetime records with a single `default_price.bookable_holes` value. For multi-hole courses, `course.bookable_holes` is the array `[9, 18]`. The current adapter ignores the course-level signal and emits only one variant per slot (whichever the default). Fix: detect multi-hole courses, emit the default variant with its known price AND a second variant with `price: null` (Option A from the design). Downstream merge UI handles the partial-price gracefully.
 
@@ -485,7 +485,7 @@ avoids doubling API load via separate per-hole queries."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6.
 
 **Key context:** Teesnap records have `prices: [{roundType: "NINE_HOLE", ...}, {roundType: "EIGHTEEN_HOLE", ...}]`. Current adapter picks one and drops the other. Fix: iterate the prices array, emit one record per entry.
 
@@ -568,7 +568,7 @@ prices array and emits one TeeTime per bookable roundType."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6.
 
 **Key context:** Teewire records have `pricing.rates: [{holes: 18, price: "$X"}, {holes: 9, price: "$Y"}]` plus `available_holes: [9, 18]`. Current adapter picks the Walking rate for one hole count. Fix: iterate rates, emit one TeeTime per distinct holes value, preferring Walking when available.
 
@@ -646,7 +646,7 @@ and emits one TeeTime per variant, preferring Walking within each group."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6.
 
 **Key context:** Existing fixture only shows single-rate arrays. If live courses return multiple rates with different `holes` values for the same teetime, the current `.find()` silently drops. First validate live shape.
 
@@ -732,7 +732,7 @@ per group, preserving the non-trade preference within each group."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §6.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §6.
 
 **Key context:** The test user reports Francis A Gross (CPS Golf in production) shows "9, 18" on the course's own site but only one variant in our app. So the bug is real, but the exact API shape is unknown from fixtures alone.
 
@@ -832,7 +832,7 @@ Run: `npm test && npx tsc --noEmit && npm run lint` — all clean.
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §7.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §7.
 
 **Step 0: Export `TeeTimeItem` from `tee-time-list.tsx`**
 
@@ -1103,7 +1103,7 @@ tee-time-list.tsx for use by the helper."
 
 **BEFORE starting work:**
 1. Invoke `/superpowers:test-driven-development`.
-2. Re-read `dev/testing-pitfalls.md` §7 and §12.
+2. Re-read `docs/pitfalls/testing-pitfalls.md` §7 and §12.
 
 **Step 1: Write the failing render tests**
 

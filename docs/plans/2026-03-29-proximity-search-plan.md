@@ -22,7 +22,7 @@ This task is self-contained. No dependencies on other tasks.
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 Follow TDD: write failing test → implement fix → verify green.
 
 **Step 1: Write the failing tests**
@@ -122,7 +122,7 @@ git commit -m "feat: add Haversine distance utility"
 ```
 
 BEFORE marking this task complete:
-1. Review your tests against `dev/testing-pitfalls.md`
+1. Review your tests against `docs/pitfalls/testing-pitfalls.md`
 2. Verify test coverage of the fix (are error paths tested? edge cases?)
 3. Run tests and confirm green
 
@@ -138,7 +138,7 @@ This task is self-contained. No dependencies on other tasks.
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 
 **Step 1: Create the geocoding script**
 
@@ -211,7 +211,7 @@ This task depends on: none (but ideally runs after Task 2 since courses.json wil
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 Follow TDD: write failing test → implement fix → verify green.
 
 **Context:** Currently `mapsUrl(address)` in `src/config/areas.ts:87-89` generates a Google Maps link that searches by street address. This resolves to a generic pin. We want to search by course name + city + state, which resolves to the actual business listing (with hours, reviews, photos).
@@ -322,7 +322,7 @@ git commit -m "feat: improve Maps links to show business listings, add address t
 ```
 
 BEFORE marking this task complete:
-1. Review your tests against `dev/testing-pitfalls.md`
+1. Review your tests against `docs/pitfalls/testing-pitfalls.md`
 2. Verify `mapsUrl` tests cover the new 3-argument signature
 3. Run tests and confirm green
 
@@ -411,7 +411,7 @@ This task depends on: Task 4 (zip-coords.json must exist).
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 Follow TDD: write failing test → implement fix → verify green.
 
 **Context:** We need a React context to share location state between pages. The context provides:
@@ -758,7 +758,7 @@ git commit -m "feat: add location context provider and useLocation hook"
 ```
 
 BEFORE marking this task complete:
-1. Review your tests against `dev/testing-pitfalls.md`
+1. Review your tests against `docs/pitfalls/testing-pitfalls.md`
 2. **Pitfall 7.4 — localStorage resilience**: The provider reads from localStorage on init. Verify it handles: (a) localStorage unavailable, (b) malformed stored values, (c) invalid stored radius. The code above handles these — verify it does.
 3. Run tests and confirm green
 
@@ -773,7 +773,7 @@ This task depends on: Task 5 (LocationProvider and useLocation hook must exist).
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 
 **Context:** This is a shared collapsible UI component used on both the tee times and courses pages. It renders:
 - A collapsible header that shows "Filter by location" when collapsed, or "Within X mi of {label}" when a location is active
@@ -959,7 +959,7 @@ This task depends on: Tasks 1 (distance.ts), 2 (courses.json with coords), 5 (us
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 
 **Context:** The tee times page currently shows a flat time-sorted list (no course grouping). When proximity is active, we need to:
 1. Calculate distance from user to each course
@@ -1106,7 +1106,7 @@ This task depends on: Tasks 1 (distance.ts), 2 (courses.json with coords), **3 (
 
 BEFORE starting work:
 1. Read the skill at `.claude/skills/test-driven-development/` (or invoke /test-driven-development)
-2. Read `dev/testing-pitfalls.md`
+2. Read `docs/pitfalls/testing-pitfalls.md`
 Follow TDD: write failing test → implement fix → verify green.
 
 **Context:** The courses page groups courses by area (Minneapolis, St. Paul, etc.) with alphabetical sort within each group. When proximity is active:

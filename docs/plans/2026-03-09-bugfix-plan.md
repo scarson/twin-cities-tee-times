@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Vitest, Next.js App Router, Cloudflare D1
 
-**Reference:** Bug reports in `dev/bug-reports/` (exploratory, holistic, multipass analyses).
+**Reference:** Bug reports in `docs/bug-reports/` (exploratory, holistic, multipass analyses).
 
 ---
 
@@ -1207,7 +1207,7 @@ Expected: Build succeeds
 **Step 5: Commit bug reports**
 
 ```bash
-git add dev/bug-reports/
+git add docs/bug-reports/
 git commit -m "docs: add bug hunt analysis reports"
 ```
 

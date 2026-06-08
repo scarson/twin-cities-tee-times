@@ -307,7 +307,7 @@ The `courses` table is seeded from a JSON config file checked into the repo (`sr
 
 ## Research References
 
-- `dev/research/booking-platform-investigation.md` — CPS Golf and ForeUp API deep-dive
-- `dev/research/remaining-platforms-investigation.md` — Chronogolf, TeeItUp, Eagle Club API investigation
-- `dev/research/favorite-courses-platforms.md` — Platform details for 11 favorite courses
-- `dev/research/tc-courses-platforms.md` — All ~79 TC public courses by platform
+- `docs/research/booking-platform-investigation.md` — CPS Golf and ForeUp API deep-dive
+- `docs/research/remaining-platforms-investigation.md` — Chronogolf, TeeItUp, Eagle Club API investigation
+- `docs/research/favorite-courses-platforms.md` — Platform details for 11 favorite courses
+- `docs/research/tc-courses-platforms.md` — All ~79 TC public courses by platform

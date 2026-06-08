@@ -16,7 +16,7 @@
 
 **EVERY subagent MUST do these things BEFORE writing any code:**
 
-1. **Read `dev/testing-pitfalls.md`** — this is the project's test quality checklist. Every item exists because it catches bugs that occurred in this codebase. You will use it as a QA checklist before finishing each task.
+1. **Read `docs/pitfalls/testing-pitfalls.md`** — this is the project's test quality checklist. Every item exists because it catches bugs that occurred in this codebase. You will use it as a QA checklist before finishing each task.
 2. **Invoke the `superpowers:test-driven-development` skill** — follow TDD discipline: write failing test first, verify it fails, write minimal implementation, verify it passes.
 3. **Read `CLAUDE.md`** — for project conventions, especially the ABOUTME comment requirement, naming rules, and test output cleanliness rules.
 
@@ -24,7 +24,7 @@
 
 1. Run all tests: `npm test`
 2. Run type-check: `npx tsc --noEmit`
-3. Review your tests against `dev/testing-pitfalls.md` — specifically check:
+3. Review your tests against `docs/pitfalls/testing-pitfalls.md` — specifically check:
    - Are you testing mocked behavior instead of real logic? (§1, pitfall: "NEVER write tests that test mocked behavior")
    - Do error paths produce distinguishable results? (§1)
    - Are SQL values parameterized via `.bind()`, not interpolated? (§8)
@@ -2207,7 +2207,7 @@ describe("pipeline integration: poll status and freshness", () => {
 
 // --- Future adapter stubs ---
 describe.todo(
-  "Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see dev/research/remaining-platforms-investigation.md)"
+  "Chronogolf/Lightspeed pipeline (Mandatory: implement when adapter exists — 35 courses, see docs/research/remaining-platforms-investigation.md)"
 );
 describe.todo(
   "GolfNow pipeline (Mandatory: implement when adapter exists — 6 courses, API research not yet conducted)"
@@ -2216,7 +2216,7 @@ describe.todo(
   "Teesnap pipeline (Mandatory: implement when adapter exists — 3 courses, API research not yet conducted)"
 );
 describe.todo(
-  "Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see dev/research/remaining-platforms-investigation.md)"
+  "Eagle Club Systems pipeline (Mandatory: implement when adapter exists — 1 course, see docs/research/remaining-platforms-investigation.md)"
 );
 describe.todo(
   "EZLinks pipeline (Mandatory: implement when adapter exists — 1 course, API research not yet conducted)"
@@ -2353,11 +2353,11 @@ git commit -m "chore: add vitest smoke test config and npm script"
 **Read these files first:**
 - `src/adapters/foreup.ts` — the adapter code
 - `docs/plans/2026-03-16-integration-tests-design.md` — Section "API Smoke & Contract Tests" for the 3 assertion levels and recording fetch wrapper pattern
-- `dev/research/sd-test-courses.md` — SD test course details
+- `docs/research/sd-test-courses.md` — SD test course details
 
 **IMPORTANT — Test courses (hardcoded, NOT from courses.json):**
-- Primary: Balboa Park — facilityId `19348`, scheduleId `1470` (from `dev/research/sd-test-courses.md`)
-- Fallback: Goat Hill Park — facilityId `20906`, scheduleId `6161` (from `dev/research/sd-test-courses.md`)
+- Primary: Balboa Park — facilityId `19348`, scheduleId `1470` (from `docs/research/sd-test-courses.md`)
+- Fallback: Goat Hill Park — facilityId `20906`, scheduleId `6161` (from `docs/research/sd-test-courses.md`)
 
 **IMPORTANT — Date selection:** Use a date 5 days from `new Date()`. Format as YYYY-MM-DD.
 
@@ -2376,7 +2376,7 @@ import { ForeUpAdapter } from "./foreup";
 import type { CourseConfig, TeeTime } from "@/types";
 
 // Ordered by reliability. If primary returns no data, try fallback.
-// facilityId and scheduleId values from dev/research/sd-test-courses.md
+// facilityId and scheduleId values from docs/research/sd-test-courses.md
 const TEST_COURSES: CourseConfig[] = [
   {
     id: "sd-balboa-park",
@@ -2562,7 +2562,7 @@ git commit -m "test: add ForeUp live API smoke tests with contract validation"
 - `src/adapters/teeitup.ts` — TeeItUp adapter (single fetch, `x-be-alias` header)
 - `src/adapters/cps-golf.ts` — CPS Golf adapter (3 sequential fetches: token, register, tee times)
 - `docs/plans/2026-03-16-integration-tests-design.md` — contract assertions per adapter, test courses, stub file format
-- `dev/research/sd-test-courses.md` — test course configs
+- `docs/research/sd-test-courses.md` — test course configs
 
 **IMPORTANT — CPS Golf smoke test:**
 
@@ -2580,7 +2580,7 @@ Smoke tests run in Node.js where direct fetch works. Do NOT set `FETCH_PROXY_URL
 - Primary: Encinitas Ranch — `{ subdomain: "jcgsc5", websiteId: "94ce5060-0b39-444f-2756-08d8d81fed21", siteId: "16", terminalId: "3", courseIds: "6", timezone: "America/Los_Angeles" }`, bookingUrl: `https://jcgsc5.cps.golf/onlineresweb`
 - Fallback: Twin Oaks — same subdomain/websiteId/siteId/terminalId, `courseIds: "4"`, same bookingUrl
 
-**Step 1: Read `dev/research/sd-test-courses.md` for exact config values**
+**Step 1: Read `docs/research/sd-test-courses.md` for exact config values**
 
 Read this file to get the exact `platformConfig` values for each test course. Do NOT guess.
 
@@ -2607,7 +2607,7 @@ Each stub follows this exact pattern (from the design doc):
 
 ```typescript
 // ABOUTME: Smoke tests for [Platform] adapter (not yet implemented).
-// ABOUTME: See dev/research/[file].md for API details.
+// ABOUTME: See docs/research/[file].md for API details.
 
 describe.todo("[Platform] - live API smoke tests (Mandatory: implement when adapter exists — N courses)");
 describe.todo("[Platform] - API contract validation (Mandatory: implement when adapter exists)");
@@ -2615,10 +2615,10 @@ describe.todo("[Platform] - parsed output validation (Mandatory: implement when 
 ```
 
 Stubs:
-- `chronogolf.smoke.test.ts` — 35 courses, `dev/research/remaining-platforms-investigation.md`
+- `chronogolf.smoke.test.ts` — 35 courses, `docs/research/remaining-platforms-investigation.md`
 - `golfnow.smoke.test.ts` — 6 courses, API research not yet conducted
 - `teesnap.smoke.test.ts` — 3 courses, API research not yet conducted
-- `eagle-club.smoke.test.ts` — 1 course, `dev/research/remaining-platforms-investigation.md`
+- `eagle-club.smoke.test.ts` — 1 course, `docs/research/remaining-platforms-investigation.md`
 - `ezlinks.smoke.test.ts` — 1 course, API research not yet conducted
 - `city-custom.smoke.test.ts` — 3 courses, API research not yet conducted
 

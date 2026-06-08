@@ -1,0 +1,80 @@
+name: E2E
+
+# Accessibility (axe-core) E2E runs only when UI-affecting code changes — it
+# exercises the rendered app, so it's irrelevant to backend-only or docs-only
+# PRs. Kept in its own workflow so a slow/flaky browser run never gates the
+# fast checks in ci.yml.
+on:
+  push:
+    branches: [main, dev]
+    paths: &ui-paths
+      - 'src/app/**'
+      - 'src/components/**'
+      - 'src/hooks/**'
+      - 'public/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'next.config.*'
+      - 'package-lock.json'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main, dev]
+    paths: *ui-paths
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Browsers + system deps are preinstalled in this image, so there is no
+    # `playwright install --with-deps` download/apt step to stall the job.
+    # The tag MUST match the @playwright/test version in package.json — the
+    # "version match" step below fails loudly if they drift (e.g. after a
+    # dependabot bump). Bump both together.
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Playwright version must match the container image tag
+        run: |
+          EXPECTED=1.59.1
+          ACTUAL=$(node -p "require('@playwright/test/package.json').version")
+          echo "container image:            mcr.microsoft.com/playwright:v${EXPECTED}-jammy"
+          echo "installed @playwright/test: ${ACTUAL}"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error file=.github/workflows/e2e.yml::@playwright/test is ${ACTUAL} but the E2E container is pinned to v${EXPECTED}. Update the container image tag and EXPECTED in .github/workflows/e2e.yml to v${ACTUAL}-jammy so the preinstalled browsers match the test runner."
+            exit 1
+          fi
+      - name: Write .dev.vars with CI dummy values
+        run: |
+          cat > .dev.vars <<'EOF'
+          GOOGLE_CLIENT_ID=ci-dummy
+          GOOGLE_CLIENT_SECRET=ci-dummy
+          JWT_SECRET=ci-dummy-jwt-secret-at-least-32-bytes-long
+          EOF
+      - uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
+          restore-keys: |
+            nextjs-${{ hashFiles('package-lock.json') }}-
+      - name: Apply D1 migrations to local SQLite
+        run: npx wrangler d1 migrations apply tee-times-db --local
+      - name: Run Playwright tests
+        run: npm run test:a11y
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

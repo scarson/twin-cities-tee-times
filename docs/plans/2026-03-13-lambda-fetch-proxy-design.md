@@ -15,7 +15,7 @@ Cloudflare Workers cannot reach CPS Golf's API due to HTTP 525 (SSL Handshake Fa
 
 Root cause: Cloudflare Workers' BoringSSL TLS fingerprint (JA3/JA4) is rejected by CPS Golf's F5 BIG-IP. This is a platform-level constraint — Workers provide no control over outbound TLS cipher suites, protocol version, or client fingerprint.
 
-See `dev/research/production-debugging-2026-03-11.md` for the full investigation.
+See `docs/research/production-debugging-2026-03-11.md` for the full investigation.
 
 ## Solution
 
@@ -276,7 +276,7 @@ No logs need to be collected from Lambda/CloudWatch. All observability stays in 
 This PR also:
 - Restores custom domain route in `wrangler.jsonc`
 - Removes diagnostic scripts (`scripts/diag-worker/`, `scripts/diag-cps-tls.ts`, `scripts/diag-cps-lambda.mjs`, `scripts/diag-cps-lambda.zip`)
-- Keeps `dev/research/production-debugging-2026-03-11.md` (investigation findings)
+- Keeps `docs/research/production-debugging-2026-03-11.md` (investigation findings)
 
 ## Dependencies
 

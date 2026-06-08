@@ -17,7 +17,7 @@ This is a multi-phase workflow. Follow each phase in order. Do not skip phases.
 Determine what code falls within **$ARGUMENTS**. The goal is to give each bug hunter a precise, actionable scope — not a vague "look at everything."
 
 **For a phase reference:**
-- Check `dev/plans/` for a matching plan file — it lists the files and packages involved
+- Check `docs/plans/` for a matching plan file — it lists the files and packages involved
 - Check `git log --oneline` for commits belonging to the phase
 - Run `git diff --stat <first-commit>^..<last-commit>` to get the file list
 
@@ -38,7 +38,7 @@ Also identify **adjacent code** the hunters should be aware of but that isn't th
 
 Launch **three parallel subagents** using the Agent tool. All three MUST run concurrently.
 
-Determine today's date and the scope slug (e.g., `phase9`, `pr-45`, `feed-adapters`) for file naming. Each agent writes its report to `dev/bug-hunts/`.
+Determine today's date and the scope slug (e.g., `phase9`, `pr-45`, `feed-adapters`) for file naming. Each agent writes its report to `docs/bug-hunts/`.
 
 ### Agent prompts
 
@@ -56,7 +56,7 @@ You are a bug hunter using depth-first exploration. Read the skill at
 
 Scope: [paste scope summary + file list]
 Adjacent code to be aware of: [paste adjacent context]
-Output file: dev/bug-hunts/<date>-<slug>-exploratory.md
+Output file: docs/bug-hunts/<date>-<slug>-exploratory.md
 
 Write your report to the output file. Also return your full findings in
 your response so they can be consolidated with the other hunters' results.
@@ -70,7 +70,7 @@ follow it exactly.
 
 Scope: [paste scope summary + file list]
 Adjacent code to be aware of: [paste adjacent context]
-Output file: dev/bug-hunts/<date>-<slug>-holistic.md
+Output file: docs/bug-hunts/<date>-<slug>-holistic.md
 
 Write your report to the output file. Also return your full findings in
 your response so they can be consolidated with the other hunters' results.
@@ -85,7 +85,7 @@ follow it exactly.
 
 Scope: [paste scope summary + file list]
 Adjacent code to be aware of: [paste adjacent context]
-Output file: dev/bug-hunts/<date>-<slug>-multipass.md
+Output file: docs/bug-hunts/<date>-<slug>-multipass.md
 
 Write your report to the output file. Also return your full findings in
 your response so they can be consolidated with the other hunters' results.
@@ -97,7 +97,7 @@ Wait for all three to complete before proceeding.
 
 ## Phase 3: Cross-Validate and Consolidate
 
-Read all three reports (both from agent responses and the files in `dev/bug-hunts/`). Build a unified findings list.
+Read all three reports (both from agent responses and the files in `docs/bug-hunts/`). Build a unified findings list.
 
 **COMPLETENESS REQUIREMENT:** You MUST account for every single finding from every hunter report. Before starting cross-validation, enumerate all findings across all 3 reports. Every finding must appear in the consolidated report as one of: confirmed bug, design decision, false positive, or out-of-scope. **You do NOT get to decide what's "too minor" to include — that's Sam's decision in Phase 5.** Silently dropping findings defeats the entire purpose of the bug hunt.
 
@@ -111,7 +111,7 @@ For each unique finding, determine its validity:
 
 1. **Read the actual code** at the cited location. Do not trust the hunter's description alone — verify the evidence yourself.
 2. **Check if another hunter examined the same code and found it correct** (or intentional). If the holistic hunter flags X as a bug but the exploratory hunter followed that thread and noted it was intentional, that's a resolution — document it.
-3. **Check if the "bug" is actually a documented design decision** in PLAN.md, `dev/research.md`, or `dev/implementation-pitfalls.md`.
+3. **Check if the "bug" is actually a documented design decision** in PLAN.md, `docs/research/`, or `docs/pitfalls/implementation-pitfalls.md`.
 4. **Verify the impact claim.** Is the failure mode actually reachable? Under what conditions?
 
 Classify each finding as:
@@ -131,7 +131,7 @@ If a fix has **larger scope** than the scoped work (e.g., modifying shared utili
 
 ### 3d. Write consolidated report
 
-Write the consolidated report to `dev/bug-hunts/<date>-<slug>-consolidated.md` using this structure:
+Write the consolidated report to `docs/bug-hunts/<date>-<slug>-consolidated.md` using this structure:
 
 ```markdown
 # <Scope> Bug Hunt — Consolidated Findings
@@ -206,23 +206,23 @@ For each confirmed bug, answer:
    - Integration between components isn't tested (unit tests pass individually but the composition is broken)
 3. **What test would have caught this?** Briefly describe the test — input, expected behavior, why it would fail against the buggy code. (This feeds into the fix plan in Phase 6.)
 
-### 4b. Review against `dev/testing-pitfalls.md`
+### 4b. Review against `docs/pitfalls/testing-pitfalls.md`
 
-Read `dev/testing-pitfalls.md` and check each confirmed bug's test gap against the documented pitfalls:
+Read `docs/pitfalls/testing-pitfalls.md` and check each confirmed bug's test gap against the documented pitfalls:
 
 - **Pitfall already covers this scenario** — the test gap exists because the pitfall guidance wasn't followed. Note which pitfall applies. No doc update needed, but flag it in the fix plan so the subagent knows to follow that specific pitfall.
-- **Pitfall doesn't cover this scenario** — the bug reveals a testing blind spot not yet documented. Draft a candidate addition to `dev/testing-pitfalls.md`.
+- **Pitfall doesn't cover this scenario** — the bug reveals a testing blind spot not yet documented. Draft a candidate addition to `docs/pitfalls/testing-pitfalls.md`.
 
-### 4c. Update `dev/testing-pitfalls.md` if warranted
+### 4c. Update `docs/pitfalls/testing-pitfalls.md` if warranted
 
 For each candidate addition from 4b, assess whether it's **generalizable** — would this pitfall apply to future code in this project, or is it a one-off specific to this bug?
 
-- **Generalizable:** Write the addition to `dev/testing-pitfalls.md`. Follow the existing format and conventions in the file. Keep it concise — a pitfall entry should be actionable, not a narrative.
+- **Generalizable:** Write the addition to `docs/pitfalls/testing-pitfalls.md`. Follow the existing format and conventions in the file. Keep it concise — a pitfall entry should be actionable, not a narrative.
 - **One-off:** Don't update the file. Instead, include a specific testing note in the fix plan task for this bug.
 
 ### 4d. Add test gap summary to consolidated report
 
-Append a section to `dev/bug-hunts/<date>-<slug>-consolidated.md`:
+Append a section to `docs/bug-hunts/<date>-<slug>-consolidated.md`:
 
 ```markdown
 ---
@@ -237,7 +237,7 @@ Append a section to `dev/bug-hunts/<date>-<slug>-consolidated.md`:
 (Repeat for each confirmed bug)
 
 ### Testing Pitfalls Updates
-- <List any additions made to dev/testing-pitfalls.md, or "None">
+- <List any additions made to docs/pitfalls/testing-pitfalls.md, or "None">
 ```
 
 ---
@@ -257,7 +257,7 @@ Present the findings to Sam. Structure the presentation as:
 
 ## Phase 6: Write Fix Plan
 
-After Sam has provided input on all decisions, invoke `/writing-plans` to create an implementation plan for all confirmed bugs + any out-of-scope bugs Sam chose to include. The plan file MUST be saved to `dev/plans/<date>-<slug>-remediation-plan.md` (e.g., `dev/plans/2026-03-18-phase11-mfa-bug-hunt-remediation-plan.md`).
+After Sam has provided input on all decisions, invoke `/writing-plans` to create an implementation plan for all confirmed bugs + any out-of-scope bugs Sam chose to include. The plan file MUST be saved to `docs/plans/<date>-<slug>-remediation-plan.md` (e.g., `docs/plans/2026-03-18-phase11-mfa-bug-hunt-remediation-plan.md`).
 
 When `/writing-plans` presents execution options, **include a recommendation** for which approach would be most effective. The three options are: (1) subagent-driven in this session, (2) parallel session with `/executing-plans` in a worktree, or (3) Agent Teams for multi-agent parallel execution. Base the recommendation on: how much context this session has consumed, whether the plan is self-contained enough for a fresh session, how many tasks are parallelizable vs sequential, and whether any tasks are risky enough to warrant focused attention rather than parallel dispatch. Explain the reasoning concisely.
 
@@ -283,13 +283,13 @@ The plan will be executed via `/subagent-driven-development` or `/executing-plan
    ```
    BEFORE starting work:
    1. Read the skill at .claude/skills/test-driven-development/ (or invoke /test-driven-development)
-   2. Read dev/testing-pitfalls.md
+   2. Read docs/pitfalls/testing-pitfalls.md
    Follow TDD: write failing test → implement fix → verify green.
    ```
    Every task MUST include this completion check:
    ```
    BEFORE marking this task complete:
-   1. Review your tests against dev/testing-pitfalls.md
+   1. Review your tests against docs/pitfalls/testing-pitfalls.md
    2. Verify test coverage of the fix (are error paths tested? edge cases?)
    3. Run `go test ./...` (or relevant subset) and confirm green
    ```
@@ -304,9 +304,9 @@ The plan will be executed via `/subagent-driven-development` or `/executing-plan
    update your private journal and continue onto the next tasks.
    ```
 
-5. **Review against `dev/testing-pitfalls.md`.** Read it yourself and check whether any of the planned fixes could fall into documented testing pitfalls. If so, add explicit warnings to the relevant task descriptions.
+5. **Review against `docs/pitfalls/testing-pitfalls.md`.** Read it yourself and check whether any of the planned fixes could fall into documented testing pitfalls. If so, add explicit warnings to the relevant task descriptions.
 
-6. **Review against `dev/implementation-pitfalls.md`.** Same — check if any fixes could fall into documented implementation pitfalls.
+6. **Review against `docs/pitfalls/implementation-pitfalls.md`.** Same — check if any fixes could fall into documented implementation pitfalls.
 
 7. **Group tasks to minimize cross-task conflicts.** If two bugs touch the same file, they should be in the same task or explicitly sequenced. Parallel subagents editing the same file will create merge conflicts.
 
@@ -339,8 +339,8 @@ Carefully review the plan from multiple perspectives and revise/refine as approp
 - **Unclear instructions:** Are there vague directives like "fix the issue" or "handle this correctly" instead of specific behavioral descriptions?
 - **Undesirable interpretation latitude:** Are there areas where a subagent might "improve" or "enhance" beyond scope? Add explicit "do NOT" boundaries where needed.
 - **Cross-task dependencies:** Are ordering constraints clearly stated? Would a subagent working on Task 3 know it depends on Task 1 completing first?
-- **Testing pitfalls:** Review the plan against `dev/testing-pitfalls.md` — could any planned test additions fall into documented pitfalls? Add warnings to relevant tasks.
-- **Implementation pitfalls:** Review the plan against `dev/implementation-pitfalls.md` — could any planned fixes fall into documented pitfalls?
+- **Testing pitfalls:** Review the plan against `docs/pitfalls/testing-pitfalls.md` — could any planned test additions fall into documented pitfalls? Add warnings to relevant tasks.
+- **Implementation pitfalls:** Review the plan against `docs/pitfalls/implementation-pitfalls.md` — could any planned fixes fall into documented pitfalls?
 
 After completing the review cycle, update your private journal with observations about the plan quality and any patterns in the issues you found.
 
@@ -351,8 +351,8 @@ After completing the review cycle, update your private journal with observations
 Stage and commit all bug hunt artifacts:
 
 ```bash
-git add dev/bug-hunts/<date>-<slug>-*.md
-git add dev/plans/<plan-file>            # if the plan was written
-git add dev/testing-pitfalls.md          # if updated in Phase 4
+git add docs/bug-hunts/<date>-<slug>-*.md
+git add docs/plans/<plan-file>            # if the plan was written
+git add docs/pitfalls/testing-pitfalls.md          # if updated in Phase 4
 git commit -m "docs(bug-hunt): <slug> — consolidated findings and fix plan"
 ```

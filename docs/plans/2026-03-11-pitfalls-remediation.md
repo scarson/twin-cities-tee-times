@@ -2,15 +2,15 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Address all findings from `dev/testing-pitfalls-coverage-review.md` — 27 uncovered items, 13 partial items, and 18 bug hunt findings.
+**Goal:** Address all findings from `docs/pitfalls/testing-pitfalls-coverage-review.md` — 27 uncovered items, 13 partial items, and 18 bug hunt findings.
 
 **Architecture:** Organized into 6 phases. Phase 1 is quick bug fixes (source-only). Phases 2-4 are larger fixes with tests. Phases 5-6 create missing test files and fill coverage gaps. Each phase ends with a commit.
 
 **Tech Stack:** TypeScript, Vitest, Next.js App Router, Cloudflare D1, React 19
 
 **Reference files:**
-- `dev/testing-pitfalls-coverage-review.md` — full findings
-- `dev/testing-pitfalls.md` — the checklist
+- `docs/pitfalls/testing-pitfalls-coverage-review.md` — full findings
+- `docs/pitfalls/testing-pitfalls.md` — the checklist
 - `src/test/d1-mock.ts` — D1 mock helper (use `createMockD1()`)
 
 ---

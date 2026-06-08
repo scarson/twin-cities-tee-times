@@ -1,7 +1,7 @@
 # Testing Pitfalls Coverage Review
 
 **Date:** 2026-03-11
-**Scope:** All 55 checklist items in `dev/testing-pitfalls.md` reviewed against the 24 test files and all source code in the project.
+**Scope:** All 55 checklist items in `docs/pitfalls/testing-pitfalls.md` reviewed against the 24 test files and all source code in the project.
 
 ---
 
