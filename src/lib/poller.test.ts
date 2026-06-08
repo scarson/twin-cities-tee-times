@@ -208,7 +208,7 @@ describe("pollCourse", () => {
       fetchTeeTimes: vi.fn().mockResolvedValue([]),
     };
     vi.mocked(getAdapter).mockReturnValue(mockAdapter);
-    vi.mocked(upsertTeeTimes).mockResolvedValue(undefined);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(false);
     vi.mocked(logPoll).mockRejectedValueOnce(new Error("D1 write failed"));
 
     // logPoll on the success path is inside the try block, so the catch

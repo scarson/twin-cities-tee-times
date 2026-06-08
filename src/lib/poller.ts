@@ -70,9 +70,10 @@ export async function pollCourse(
     const teeTimes = await adapter.fetchTeeTimes(config, date, env);
     const now = new Date().toISOString();
 
-    // Always upsert — when empty, this deletes stale rows so we don't
-    // show ghost availability from a previous poll.
-    await upsertTeeTimes(db, course.id, date, teeTimes, now);
+    // Always reconcile — when empty, this deletes stale rows so we don't
+    // show ghost availability from a previous poll. upsertTeeTimes skips the
+    // write when the fetched set is unchanged and reports whether it wrote.
+    const contentChanged = await upsertTeeTimes(db, course.id, date, teeTimes, now);
 
     const status = teeTimes.length === 0 ? "no_data" : "success";
     await logPoll(db, course.id, date, status, teeTimes.length, undefined);

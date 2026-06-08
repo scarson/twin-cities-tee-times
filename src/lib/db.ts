@@ -40,8 +40,10 @@ export function teeTimeSetsEqual(a: string[], b: string[]): boolean {
 }
 
 /**
- * Replace all tee times for a course+date in a single transaction.
- * DELETEs existing rows, INSERTs fresh results.
+ * Replace the tee times for a course+date only when the fetched set differs
+ * from what is stored. Reads the current rows, compares them as a normalized
+ * multiset against the fetched set, and skips the write entirely when unchanged.
+ * Returns true when it wrote (set changed), false when it skipped (unchanged).
  */
 export async function upsertTeeTimes(
   db: D1Database,
@@ -49,16 +51,34 @@ export async function upsertTeeTimes(
   date: string,
   teeTimes: TeeTime[],
   fetchedAt: string
-): Promise<void> {
+): Promise<boolean> {
+  const existing = await db
+    .prepare("SELECT time, price, holes, open_slots, booking_url, nines FROM tee_times WHERE course_id = ? AND date = ?")
+    .bind(courseId, date)
+    .all<{ time: string; price: number | null; holes: number; open_slots: number; booking_url: string; nines: string | null }>();
+
+  const existingKeys = existing.results.map((r) =>
+    canonicalTeeTime(r.time, r.price, r.holes, r.open_slots, r.booking_url, r.nines));
+  const fetchedKeys = teeTimes.map((tt) =>
+    canonicalTeeTime(tt.time, tt.price, tt.holes, tt.openSlots, tt.bookingUrl, tt.nines ?? null));
+
+  if (teeTimeSetsEqual(existingKeys, fetchedKeys)) {
+    return false; // unchanged — skip the write entirely
+  }
+
+  // Full atomic replace. MUST stay a whole-set delete+insert (not a partial
+  // diff): under a concurrent writer, a skip decision made against a stale
+  // read is benign only because every write replaces the complete set
+  // (last-writer-wins, never torn). A partial diff would reintroduce a race.
   const deleteStmt = db
     .prepare("DELETE FROM tee_times WHERE course_id = ? AND date = ?")
     .bind(courseId, date);
 
-  const insertStmts = teeTimes.map((tt) => {
-    const timeOnly = tt.time.includes("T")
-      ? tt.time.split("T")[1].substring(0, 5)
-      : tt.time;
-    return db
+  const insertStmts = teeTimes.map((tt) =>
+    // canonicalTime is the SINGLE source of HH:MM normalization — the INSERT and
+    // the comparison MUST normalize identically, or a stored value won't match its
+    // own canonical key and every poll would look "changed".
+    db
       .prepare(
         `INSERT INTO tee_times (course_id, date, time, price, holes, open_slots, booking_url, fetched_at, nines)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -66,17 +86,18 @@ export async function upsertTeeTimes(
       .bind(
         courseId,
         date,
-        timeOnly,
+        canonicalTime(tt.time),
         tt.price,
         tt.holes,
         tt.openSlots,
         tt.bookingUrl,
         fetchedAt,
         tt.nines ?? null
-      );
-  });
+      )
+  );
 
   await db.batch([deleteStmt, ...insertStmts]);
+  return true;
 }
 
 /**
