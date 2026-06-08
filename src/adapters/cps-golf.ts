@@ -93,6 +93,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     }, proxy);
 
     if (!response.ok) {
+      if (response.isChallenge) throw this.cloudflareChallengeError(response.status);
       throw new Error(`CPS Golf API returned HTTP ${response.status}`);
     }
 
@@ -169,6 +170,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     }, proxy);
 
     if (!response.ok) {
+      if (response.isChallenge) throw this.cloudflareChallengeError(response.status);
       throw new Error("CPS Golf transaction registration failed");
     }
 
@@ -203,6 +205,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     }
 
     if (!response.ok) {
+      if (response.isChallenge) throw this.cloudflareChallengeError(response.status);
       throw new Error("CPS Golf transaction registration failed");
     }
 
@@ -249,7 +252,7 @@ export class CpsGolfAdapter implements PlatformAdapter {
     url: string,
     init: { method: string; headers: Record<string, string>; body?: string },
     proxy: ProxyConfig | null
-  ): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
+  ): Promise<{ ok: boolean; status: number; isChallenge: boolean; json: () => Promise<any> }> {
     if (proxy) {
       const result = await proxyFetch(
         {
@@ -263,6 +266,11 @@ export class CpsGolfAdapter implements PlatformAdapter {
       return {
         ok: result.status >= 200 && result.status < 300,
         status: result.status,
+        isChallenge: this.isCloudflareChallenge(
+          result.status,
+          (key) => result.headers?.[key],
+          result.body
+        ),
         json: () => Promise.resolve(JSON.parse(result.body)),
       };
     }
@@ -272,7 +280,48 @@ export class CpsGolfAdapter implements PlatformAdapter {
       body: init.body,
       signal: AbortSignal.timeout(10000),
     });
-    return { ok: response.ok, status: response.status, json: () => response.json() };
+    const body = await response.text();
+    return {
+      ok: response.ok,
+      status: response.status,
+      isChallenge: this.isCloudflareChallenge(
+        response.status,
+        (key) => response.headers.get(key),
+        body
+      ),
+      json: () => Promise.resolve(JSON.parse(body)),
+    };
+  }
+
+  /**
+   * Detect a Cloudflare Bot Management interstitial. CPS fronts its v5
+   * reservation API with a managed challenge that returns a 403 "Just a
+   * moment..." HTML page (header `cf-mitigated: challenge`) to clients whose
+   * TLS fingerprint Cloudflare doesn't trust. The fetch proxy clears this by
+   * impersonating a browser; if that fingerprint ages out of Cloudflare's
+   * allowlist the challenge returns, and surfacing it as a distinct error
+   * makes the regression visible in poll_log instead of masking it as an
+   * auth failure.
+   */
+  private isCloudflareChallenge(
+    status: number,
+    getHeader: (key: string) => string | null | undefined,
+    body: string
+  ): boolean {
+    const mitigated = getHeader("cf-mitigated");
+    if (mitigated && mitigated.toLowerCase() === "challenge") return true;
+    return (
+      status === 403 &&
+      /Just a moment\.\.\.|challenges\.cloudflare\.com|cdn-cgi\/challenge-platform|__cf_chl/i.test(
+        body
+      )
+    );
+  }
+
+  private cloudflareChallengeError(status: number): Error {
+    return new Error(
+      `CPS Golf reservation API blocked by Cloudflare challenge (HTTP ${status})`
+    );
   }
 
   private buildV4Headers(
