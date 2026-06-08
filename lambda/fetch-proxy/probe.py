@@ -103,7 +103,7 @@ def main(argv=None):
     payload = json.dumps(out)
     sys.stdout.write(payload + "\n")
     if args.out:
-        with open(args.out, "w") as fh:
+        with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(payload)
     return {Outcome.CLEARED: 0, Outcome.CHALLENGED: 1, Outcome.ERROR: 2}[out["verdict"]]
 
