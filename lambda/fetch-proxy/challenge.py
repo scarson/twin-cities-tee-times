@@ -1,16 +1,17 @@
 # ABOUTME: Pure CPS Cloudflare-challenge classifier shared by the proxy and the rotation probe.
 # ABOUTME: No network and no curl_cffi import, so it is unit-testable anywhere.
 
-# Ordered impersonation profiles tried in cascade. The versionless "chrome"
-# alias leads (DEPLOY-2: never pin a chromeNNN — pinned profiles age out of
-# Cloudflare's allowlist). Subsequent entries give a de-allowlisted primary a
-# chance of another installed fingerprint still clearing, though same-release
-# siblings tend to age out together (so this is cheap insurance, not a fix —
+# Ordered impersonation profiles tried in cascade, all VERSIONLESS aliases
+# (DEPLOY-2: never pin a chromeNNN/safariNN — pinned profiles age out of
+# Cloudflare's allowlist; the versionless aliases track the newest fingerprint
+# the installed curl_cffi build ships). The vendor-diverse alternates give a
+# de-allowlisted primary a chance of another fingerprint still clearing, though
+# same-release siblings tend to age out together (cheap insurance, not a fix —
 # see docs/plans/2026-06-08-cps-profile-rotation-design.md). Every entry MUST be
-# a profile the vendored curl_cffi build supports; an unsupported profile raises
-# at request time. The exact list is confirmed empirically (see the design's
-# Task 2.3).
-PROFILES = ("chrome", "safari17_0")
+# an alias the vendored curl_cffi supports; an unsupported one raises at request
+# time. Verified live against curl_cffi 0.15.0 / jcgsc5.cps.golf: chrome, safari,
+# firefox all cleared; edge / chrome_android were challenged and excluded.
+PROFILES = ("chrome", "safari", "firefox")
 
 
 class Outcome:
