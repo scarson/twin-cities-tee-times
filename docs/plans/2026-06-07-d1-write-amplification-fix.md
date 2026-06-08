@@ -61,14 +61,14 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Phases 1–3 shipped to branch `fix/d1-write-amplification`. Phases 4–5 + Finalization remain.
+**Overall:** Phases 1–4 shipped to branch `fix/d1-write-amplification`. Phase 5 + Finalization remain.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands after Phases 2–5). |
 | 2 — Measurability: `poll_log.content_changed` | ✅ Shipped (branch) | c7f3784, 5aaca02 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 3–5. |
 | 3 — Freshness migration to `poll_log.polled_at` | ✅ Shipped (branch) | 979b22e, b8fd064 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 4–5. Deviation: 3.2+3.3 merged into one commit (type coupling — see Deviations). |
-| 4 — Past-date `tee_times` prune | ⬜ Not started | — | — |
+| 4 — Past-date `tee_times` prune | ✅ Shipped (branch) | f7e7e60, 38563c0 | On `fix/d1-write-amplification`; full suite (737) + tsc + lint green. PR opens after Phase 5. |
 | 5 — Pitfalls + verification docs | ⬜ Not started | — | — |
 | Finalization — verify + open PR | ⬜ Not started | — | Review-class; Sam merges |
 
@@ -376,7 +376,7 @@ Minimum 3 rounds (every `fetched_at` reader migrated — re-grep `fetched_at` ac
 
 ## Phase 4 — Past-date `tee_times` prune
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED to branch `fix/d1-write-amplification` (2026-06-08). Commits: `f7e7e60` (4.1 `cleanupPastTeeTimes` helper + integration tests), `38563c0` (4.2 wire into batch-0 housekeeping + cron tests). Full suite (737 tests) + `tsc --noEmit` + lint all green (only the 3 pre-existing warnings: course-header.tsx exhaustive-deps, poller.integration.test.ts, d1-test-helper.ts — none worsened; no slow test, suite 3.74s). Review gate run (3 perspectives: (1) CT date correctness — `todayStr` is CT-derived via `toLocaleDateString("en-CA", {timeZone:"America/Chicago"})`, `date`/`todayStr` are both `YYYY-MM-DD` so lexicographic `<` is correct and no `datetime()` is used per DB-1; today is kept (`date < todayStr` false), yesterday deleted; (2) batch-0-only — call lives inside `if (batchIndex === 0)`, cron test asserts it is absent for batch 1; (3) failed cleanup never aborts the cycle — wrapped in try/catch like its siblings, verified by temporarily removing the wrapper and watching the isolation test fail, then restoring). PR opens after Phase 5 per the single-PR sequencing note.
 
 **Why:** Nothing prunes past-date rows; `tee_times` holds rows back to 2026-03-09 (~90 dates, 164k rows) because `upsertTeeTimes` only touches today..+horizon. Dead weight + the "stale entries" Sam reported. Mirror the existing `cleanupOldPolls` pattern.
 
