@@ -6,9 +6,44 @@ import type { TeeTime } from "@/types";
 // @cloudflare/workers-types (included by the Cloudflare scaffold in tsconfig).
 // No import needed — they're ambient.
 
+/** HH:MM-normalize a tee time string the same way the INSERT path stores it. */
+function canonicalTime(time: string): string {
+  return time.includes("T") ? time.split("T")[1].substring(0, 5) : time;
+}
+
 /**
- * Replace all tee times for a course+date in a single transaction.
- * DELETEs existing rows, INSERTs fresh results.
+ * Canonical, comparison-safe representation of one tee time.
+ * Conservative by design: serialized as a JSON array, so null is distinct from 0
+ * and "" (a real change is never masked as "unchanged") and JSON string quoting
+ * keeps each field unambiguous across boundaries.
+ */
+export function canonicalTeeTime(
+  time: string,
+  price: number | null,
+  holes: number,
+  openSlots: number,
+  bookingUrl: string,
+  nines: string | null
+): string {
+  // Ordered-array JSON: null serializes distinctly from 0 and "", and JSON quoting
+  // keeps each field's contents from colliding across boundaries. No separator needed.
+  return JSON.stringify([canonicalTime(time), price, holes, openSlots, bookingUrl, nines ?? null]);
+}
+
+/** True iff the two canonical-key arrays are equal as multisets. */
+export function teeTimeSetsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  for (let i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false;
+  return true;
+}
+
+/**
+ * Replace the tee times for a course+date only when the fetched set differs
+ * from what is stored. Reads the current rows, compares them as a normalized
+ * multiset against the fetched set, and skips the write entirely when unchanged.
+ * Returns true when it wrote (set changed), false when it skipped (unchanged).
  */
 export async function upsertTeeTimes(
   db: D1Database,
@@ -16,16 +51,34 @@ export async function upsertTeeTimes(
   date: string,
   teeTimes: TeeTime[],
   fetchedAt: string
-): Promise<void> {
+): Promise<boolean> {
+  const existing = await db
+    .prepare("SELECT time, price, holes, open_slots, booking_url, nines FROM tee_times WHERE course_id = ? AND date = ?")
+    .bind(courseId, date)
+    .all<{ time: string; price: number | null; holes: number; open_slots: number; booking_url: string; nines: string | null }>();
+
+  const existingKeys = existing.results.map((r) =>
+    canonicalTeeTime(r.time, r.price, r.holes, r.open_slots, r.booking_url, r.nines));
+  const fetchedKeys = teeTimes.map((tt) =>
+    canonicalTeeTime(tt.time, tt.price, tt.holes, tt.openSlots, tt.bookingUrl, tt.nines ?? null));
+
+  if (teeTimeSetsEqual(existingKeys, fetchedKeys)) {
+    return false; // unchanged — skip the write entirely
+  }
+
+  // Full atomic replace. MUST stay a whole-set delete+insert (not a partial
+  // diff): under a concurrent writer, a skip decision made against a stale
+  // read is benign only because every write replaces the complete set
+  // (last-writer-wins, never torn). A partial diff would reintroduce a race.
   const deleteStmt = db
     .prepare("DELETE FROM tee_times WHERE course_id = ? AND date = ?")
     .bind(courseId, date);
 
-  const insertStmts = teeTimes.map((tt) => {
-    const timeOnly = tt.time.includes("T")
-      ? tt.time.split("T")[1].substring(0, 5)
-      : tt.time;
-    return db
+  const insertStmts = teeTimes.map((tt) =>
+    // canonicalTime is the SINGLE source of HH:MM normalization — the INSERT and
+    // the comparison MUST normalize identically, or a stored value won't match its
+    // own canonical key and every poll would look "changed".
+    db
       .prepare(
         `INSERT INTO tee_times (course_id, date, time, price, holes, open_slots, booking_url, fetched_at, nines)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -33,17 +86,18 @@ export async function upsertTeeTimes(
       .bind(
         courseId,
         date,
-        timeOnly,
+        canonicalTime(tt.time),
         tt.price,
         tt.holes,
         tt.openSlots,
         tt.bookingUrl,
         fetchedAt,
         tt.nines ?? null
-      );
-  });
+      )
+  );
 
   await db.batch([deleteStmt, ...insertStmts]);
+  return true;
 }
 
 /**
@@ -55,14 +109,15 @@ export async function logPoll(
   date: string,
   status: "success" | "error" | "no_data",
   teeTimeCount: number,
-  errorMessage?: string
+  errorMessage?: string,
+  contentChanged: boolean = false
 ): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count, error_message)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count, error_message, content_changed)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(courseId, date, new Date().toISOString(), status, teeTimeCount, errorMessage ?? null)
+    .bind(courseId, date, new Date().toISOString(), status, teeTimeCount, errorMessage ?? null, contentChanged ? 1 : 0)
     .run();
 }
 
@@ -91,6 +146,20 @@ export function sqliteIsoNow(modifier?: string): string {
 export async function cleanupOldPolls(db: D1Database): Promise<number> {
   const result = await db
     .prepare(`DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`)
+    .run();
+  return result.meta.changes;
+}
+
+/**
+ * Delete tee_times rows for dates before today (Central Time).
+ * Caller passes todayStr (YYYY-MM-DD, CT-derived); date is a YYYY-MM-DD
+ * string, so lexicographic `<` is the correct comparison (no datetime()).
+ * Returns the number of deleted rows.
+ */
+export async function cleanupPastTeeTimes(db: D1Database, todayStr: string): Promise<number> {
+  const result = await db
+    .prepare("DELETE FROM tee_times WHERE date < ?")
+    .bind(todayStr)
     .run();
   return result.meta.changes;
 }

@@ -18,7 +18,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/lib/format", () => ({
   formatTime: (t: string) => t,
-  staleAge: () => "5 min ago",
+  staleAge: () => "2h old",
 }));
 
 import { TeeTimeList } from "./tee-time-list";
@@ -33,7 +33,7 @@ interface TeeTimeItem {
   holes: number;
   open_slots: number;
   booking_url: string;
-  fetched_at: string;
+  polled_at: string | null;
   nines?: string | null;
 }
 
@@ -48,10 +48,14 @@ function makeTeeTimeItem(overrides: Partial<TeeTimeItem> = {}): TeeTimeItem {
     holes: 18,
     open_slots: 4,
     booking_url: "https://example.com/book",
-    fetched_at: new Date().toISOString(),
+    polled_at: new Date().toISOString(),
     nines: null,
     ...overrides,
   };
+}
+
+function hoursAgoIso(hoursAgo: number): string {
+  return new Date(Date.now() - hoursAgo * 3_600_000).toISOString();
 }
 
 beforeAll(() => {
@@ -274,6 +278,27 @@ describe("TeeTimeList rendering", () => {
     expect(screen.getByText("9 / 18 holes")).toBeDefined();
     expect(screen.getByText("$55.00")).toBeDefined();
     expect(screen.queryByText("$55.00 / $55.00")).toBeNull();
+  });
+
+  it("shows stale badge with age when polled_at is older than the threshold", () => {
+    const tt = makeTeeTimeItem({ polled_at: hoursAgoIso(2) });
+    render(<TeeTimeList teeTimes={[tt]} loading={false} />);
+    expect(screen.getByText("* stale (2h old)")).toBeDefined();
+  });
+
+  it("hides stale badge when polled_at is fresh", () => {
+    const tt = makeTeeTimeItem({ polled_at: hoursAgoIso(0) });
+    render(<TeeTimeList teeTimes={[tt]} loading={false} />);
+    expect(screen.queryByText(/\* stale/)).toBeNull();
+  });
+
+  it("shows stale badge without an age suffix when polled_at is null", () => {
+    const tt = makeTeeTimeItem({ polled_at: null });
+    render(<TeeTimeList teeTimes={[tt]} loading={false} />);
+    // Unknown freshness is treated as stale, but staleAge(null) would compute
+    // the epoch; the age suffix must be omitted entirely.
+    expect(screen.getByText("* stale")).toBeDefined();
+    expect(screen.queryByText(/\* stale \(/)).toBeNull();
   });
 
   it("has no accessibility violations", async () => {

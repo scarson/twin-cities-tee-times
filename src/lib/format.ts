@@ -19,9 +19,9 @@ export function formatAge(isoString: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function staleAge(fetchedAt: string): string {
+export function staleAge(isoString: string): string {
   const hours = Math.floor(
-    (Date.now() - new Date(fetchedAt).getTime()) / 3_600_000
+    (Date.now() - new Date(isoString).getTime()) / 3_600_000
   );
   if (hours < 24) return `${hours}h old`;
   const days = Math.floor(hours / 24);

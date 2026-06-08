@@ -100,6 +100,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
     ...actual,
     deactivateStaleCourses: vi.fn().mockImplementation(actual.deactivateStaleCourses),
     cleanupOldPolls: vi.fn().mockImplementation(actual.cleanupOldPolls),
+    cleanupPastTeeTimes: vi.fn().mockImplementation(actual.cleanupPastTeeTimes),
     cleanupExpiredSessions: vi.fn().mockImplementation(actual.cleanupExpiredSessions),
   };
 });
@@ -109,6 +110,7 @@ const mockedShouldPollDate = vi.mocked(shouldPollDate);
 const mockedGetPollingDates = vi.mocked(getPollingDates);
 const mockedDeactivateStaleCourses = vi.mocked(dbModule.deactivateStaleCourses);
 const mockedCleanupOldPolls = vi.mocked(dbModule.cleanupOldPolls);
+const mockedCleanupPastTeeTimes = vi.mocked(dbModule.cleanupPastTeeTimes);
 const mockedCleanupExpiredSessions = vi.mocked(dbModule.cleanupExpiredSessions);
 
 // Cron expressions for batch 0 and batch 1
@@ -434,6 +436,9 @@ describe("runCronPoll housekeeping", () => {
     const pollLogCleanup = preparedStatements.find((sql) =>
       sql.includes("DELETE FROM poll_log") && sql.includes("-7 days")
     );
+    const teeTimesCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM tee_times") && sql.includes("date < ?")
+    );
     const deactivation = preparedStatements.find((sql) =>
       sql.includes("is_active = 0") && sql.includes("-30 days")
     );
@@ -446,6 +451,8 @@ describe("runCronPoll housekeeping", () => {
     expect(pollLogCleanup).toBe(
       `DELETE FROM poll_log WHERE polled_at < ${sqliteIsoNow("-7 days")}`
     );
+    expect(teeTimesCleanup).toBeDefined();
+    expect(teeTimesCleanup).toBe("DELETE FROM tee_times WHERE date < ?");
     expect(deactivation).toBeDefined();
     expect(deactivation).toContain(sqliteIsoNow("-30 days"));
   });
@@ -460,12 +467,16 @@ describe("runCronPoll housekeeping", () => {
     const pollLogCleanup = preparedStatements.find((sql) =>
       sql.includes("DELETE FROM poll_log") && sql.includes("-7 days")
     );
+    const teeTimesCleanup = preparedStatements.find((sql) =>
+      sql.includes("DELETE FROM tee_times") && sql.includes("date < ?")
+    );
     const deactivation = preparedStatements.find((sql) =>
       sql.includes("is_active = 0") && sql.includes("-30 days")
     );
 
     expect(sessionCleanup).toBeUndefined();
     expect(pollLogCleanup).toBeUndefined();
+    expect(teeTimesCleanup).toBeUndefined();
     expect(deactivation).toBeUndefined();
   });
 
@@ -489,6 +500,21 @@ describe("runCronPoll housekeeping", () => {
     const db = makeMockDb();
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
 
+    expect(mockedCleanupExpiredSessions).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("continues cleanup when cleanupPastTeeTimes throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedCleanupPastTeeTimes.mockRejectedValueOnce(new Error("tee_times cleanup boom"));
+
+    const db = makeMockDb();
+    const result = await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
+
+    // A cleanup failure must not abort the poll cycle, and the sibling cleanup
+    // (expired sessions) still runs.
+    expect(result.skipped).toBe(false);
     expect(mockedCleanupExpiredSessions).toHaveBeenCalled();
 
     consoleSpy.mockRestore();

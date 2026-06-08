@@ -1,7 +1,7 @@
 // ABOUTME: Cron polling orchestrator that distributes courses across 5 batched invocations.
 // ABOUTME: Uses weighted bin-packing, date-priority loop ordering, and subrequest budget tracking.
 import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON, PROBE_INTERVAL_DAYS } from "@/lib/poller";
-import { sqliteIsoNow, logPoll, cleanupOldPolls, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
+import { sqliteIsoNow, logPoll, cleanupOldPolls, cleanupPastTeeTimes, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
 import { assignBatches, cronToBatchIndex, platformWeight, sleepAfterPoll } from "@/lib/batch";
 import type { CourseRow } from "@/types";
 
@@ -349,6 +349,15 @@ export async function runCronPoll(
         }
       } catch (err) {
         console.error("poll_log cleanup error:", err);
+      }
+
+      try {
+        const deletedTeeTimes = await cleanupPastTeeTimes(db, todayStr);
+        if (deletedTeeTimes > 0) {
+          console.log(`Cleaned up ${deletedTeeTimes} past-date tee_times rows`);
+        }
+      } catch (err) {
+        console.error("tee_times cleanup error:", err);
       }
 
       try {

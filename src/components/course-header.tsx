@@ -18,11 +18,10 @@ interface CourseHeaderProps {
   address?: string;
   mapsUrl?: string;
   dates: string[];
-  teeTimes: { fetched_at: string }[];
   onRefreshed: () => void;
 }
 
-export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTimes, onRefreshed }: CourseHeaderProps) {
+export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, onRefreshed }: CourseHeaderProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshedDates, setRefreshedDates] = useState<Set<string>>(new Set());
@@ -85,14 +84,9 @@ export function CourseHeader({ course, address, mapsUrl: mapsHref, dates, teeTim
     }
   };
 
-  // Derive "Last updated" from the oldest fetched_at in the displayed tee times,
-  // falling back to the last successful poll timestamp from the DB.
-  const oldestFetchedAt = teeTimes.length > 0
-    ? teeTimes.reduce((oldest, tt) =>
-        tt.fetched_at < oldest ? tt.fetched_at : oldest,
-      teeTimes[0].fetched_at)
-    : null;
-  const displayTimestamp = oldestFetchedAt ?? course.last_polled;
+  // "Last updated" reflects when the course was last polled (last checked),
+  // not per-row write time, which only changes when availability changes.
+  const displayTimestamp = course.last_polled;
 
   return (
     <div className="flex items-start justify-between gap-3">

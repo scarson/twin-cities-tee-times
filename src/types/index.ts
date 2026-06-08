@@ -66,6 +66,7 @@ export interface PollLogRow {
   status: "success" | "error" | "no_data";
   tee_time_count: number;
   error_message: string | null;
+  content_changed: number;
 }
 
 export type { UserRow, SessionRow, UserFavoriteRow, BookingClickRow } from "./auth";
