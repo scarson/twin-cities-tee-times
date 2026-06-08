@@ -59,13 +59,13 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** 1/5 phases shipped (on branch `fix/chronogolf-429-pacing`).
+**Overall:** 3/5 phases shipped (on branch `fix/chronogolf-429-pacing`). Code group (1–3) complete; adversarial code review next.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Single Chronogolf lane (`batch.ts`) | ✅ Shipped | `7362bac` | full suite green (740), `tsc` clean |
-| 2 — Per-request throttle (`chronogolf.ts`) | 🚧 In progress | — | branch `fix/chronogolf-429-pacing` |
-| 3 — Lane deadline + fair ordering (`cron-handler.ts`) | ⬜ Not started | — | — |
+| 2 — Per-request throttle (`chronogolf.ts`) | ✅ Shipped | `a8c2d7e` | throttle + sleep removal; suite 743 green, `tsc` clean |
+| 3 — Lane deadline + fair ordering (`cron-handler.ts`) | ✅ Shipped | `251fb07` | deadline + oldest-first; suite 745 green, `tsc` clean |
 | 4 — Docs, pitfalls, memory | ⬜ Not started | — | — |
 | 5 — Verification + PR | ⬜ Not started | — | — |
 
@@ -257,7 +257,7 @@ git commit -m "fix(cron): route all chronogolf polling through a single batch la
 
 ## Phase 2 — Per-Request Throttle in `ChronogolfAdapter` (`src/adapters/chronogolf.ts`)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `a8c2d7e` on 2026-06-08 (throttle + atomic `sleepAfterPoll` special-case removal; suite 743 green, `tsc` clean).
 
 **Files:**
 - Modify: `src/adapters/chronogolf.ts` (add throttle)
@@ -385,7 +385,7 @@ git commit -m "fix(chronogolf): throttle every request incl. pagination to ~1 re
 
 ## Phase 3 — Lane Deadline + Fair Ordering (`src/lib/cron-handler.ts`)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED at `251fb07` on 2026-06-08 (wall-clock deadline across active+inactive+horizon, oldest-first ordering; suite 745 green, `tsc` clean).
 
 **Files:**
 - Modify: `src/lib/cron-handler.ts`
