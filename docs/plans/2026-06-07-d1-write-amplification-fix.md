@@ -65,7 +65,7 @@ notes and commit messages.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
-| 1 — Compare-then-replace in `upsertTeeTimes` | ⬜ Not started | — | — |
+| 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands after Phases 2–5). |
 | 2 — Measurability: `poll_log.content_changed` | ⬜ Not started | — | — |
 | 3 — Freshness migration to `poll_log.polled_at` | ⬜ Not started | — | — |
 | 4 — Past-date `tee_times` prune | ⬜ Not started | — | — |
@@ -94,7 +94,7 @@ notes and commit messages.
 
 ## Phase 1 — Compare-then-replace in `upsertTeeTimes`
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED to branch `fix/d1-write-amplification` (2026-06-08). Commits: `e4ba40b` (1.1 canonicalization helpers), `f7c2424` (1.2 compare-then-replace + caller + mock fix), `4725bb6` (1.3 integration-test rewrite). Full suite (719 tests) + `tsc --noEmit` + lint all green. Review gate run (4 rounds, no code changes required). PR opens after Phases 2–5 per the single-PR sequencing note. Deviation: the planned "NEW `src/lib/db.test.ts`" already existed (held `sqliteIsoNow` unit tests) — appended the canonicalization tests rather than overwriting, to preserve existing tests (`CLAUDE.md` §Testing).
 
 **Why:** Root cause of the bill. `src/lib/poller.ts:75` calls `upsertTeeTimes` on every poll; `src/lib/db.ts:46` unconditionally runs `DELETE + N×INSERT`. With the table indexed on `(course_id, date)`, that is ~4× rows-written per tee time, every 5 min for today/tomorrow, regardless of change. Measured: ~10.07M inserts/week → ~175M writes/mo → ~$125 overage.
 
