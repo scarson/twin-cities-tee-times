@@ -1,19 +1,26 @@
 # Follow-up Agent Prompts — 2026-06-08
 
-Copyable, self-contained starting prompts to hand to fresh agents for the four follow-ups surfaced during the 2026-06-08 dependency/security/publication work. Each prompt embeds the diagnostic numbers, exact file/line anchors, the project's TDD/worktree/`dev`-targeting rules, and a **mandatory 3-round adversarial review** with task-specific attack angles.
+Copyable, self-contained starting prompts to hand to fresh agents for the follow-ups surfaced during the 2026-06-08 dependency/security/publication work. Each prompt embeds the diagnostic numbers, exact file/line anchors, the project's TDD/worktree/`dev`-targeting rules, and a **mandatory 3-round adversarial review** with task-specific attack angles.
 
 These derive from the 2026-06-07 production diagnostic captured in the project auto-memory (`project_d1_bill_write_amplification.md`, `project_cps_chronogolf_polling_failures.md`) and the Eagle Club smoke failure observed on PR #117.
 
+> **Status — updated 2026-06-08:** Prompt 1 (D1 write-amplification) is ✅ **SHIPPED** — merged to `dev` (PR #119) and published to `main` (PR #120, deployed). Three follow-ups remain: CPS Golf (Prompt 2), Chronogolf (Prompt 3), Eagle Club smoke (Prompt 4). Prompt 2's prerequisite is now satisfied.
+
 ## Sequencing
 
-- **Prompt 1 (D1 write-amplification) is a prerequisite for Prompt 2 (CPS Golf).** CPS currently fails every poll and writes almost nothing; fixing CPS auth resumes full `tee_times` rewrites on ~13 courses every 5 min, which re-inflates the ~$125/mo D1 write overage. Land the dedup first.
+- **Prompt 1 (D1 write-amplification) is ✅ SHIPPED** (PR #119 → `dev`, published to `main` via PR #120 on 2026-06-08), so Prompt 2 is unblocked: compare-then-replace now absorbs the write load, so restoring CPS's ~13 courses no longer re-inflates the ~$125/mo overage. Still confirm the dedup is live in production and watch the post-deploy write rate before/after merging CPS.
 - **Prompts 3 (Chronogolf) and 4 (Eagle Club) are independent** and can run in parallel anytime.
 
 The original first follow-up bullet ("D1 + CPS/Chronogolf polling fixes") is split here into its three independent root causes (D1 writes, CPS auth, Chronogolf throttling) so each is a clean single-agent task. Combine them again if you prefer fewer agents.
 
 ---
 
-## Prompt 1 — D1 write-amplification fix
+## Prompt 1 — D1 write-amplification fix — ✅ SHIPPED (2026-06-08)
+
+Shipped via PR #119 → `dev`, published to `main` (PR #120). Companion changes in the same PR: `poll_log.content_changed` (migration `0010`), course-detail freshness moved to `poll_log.polled_at`, past-date `tee_times` prune in batch-0 cron housekeeping, and implementation-pitfall `DB-4`. Full record: `docs/plans/2026-06-07-d1-write-amplification-fix.md` and `docs/implementation-log.md`. **Post-deploy check still owed:** confirm D1 rows-written < 50M/mo over ~1 week via `/check-logs` and the `content_changed` rate.
+
+<details>
+<summary>Original prompt — superseded; retained for reference, do not run.</summary>
 
 ````markdown
 # Task: Eliminate D1 write amplification in tee-time polling (compare-then-replace)
@@ -51,22 +58,27 @@ This must survive **three rounds** of adversarial review before the PR. A round 
 A PR to `dev` implementing gates 1–4 with full TDD coverage, the 3-round review trail in the description, and a short note on how you'll verify writes drop below the free tier post-deploy. Close with a completion label (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT) and evidence.
 ````
 
+</details>
+
 ---
 
 ## Prompt 2 — CPS Golf polling failure (auth / transaction registration)
 
-> **Prerequisite:** land Prompt 1 (D1 dedup) first — see Sequencing above.
+> **Prerequisite (satisfied 2026-06-08):** Prompt 1 (D1 dedup) has shipped — see Sequencing above. Confirm it is live in production, then proceed.
 
 ````markdown
 # Task: Root-cause and fix the systemic CPS Golf "transaction registration failed" polling break
 
 You are a fresh agent on the **Twin Cities Tee Times** project (Next.js 16 on Cloudflare Workers + D1; polls public golf tee times via per-platform adapters). Read `CLAUDE.md`, `docs/git-strategy.md`, and `docs/pitfalls/*.md` before coding. Background on the CPS Golf platform is in `docs/research/booking-platform-investigation.md`; the diagnostic is in auto-memory `project_cps_chronogolf_polling_failures.md`.
 
-## ⚠️ Sequencing prerequisite
-**Do not deploy this until the D1 write-amplification fix (`project_d1_bill_write_amplification.md`) has landed.** CPS currently fails every poll and writes almost nothing; fixing it resumes full `tee_times` rewrites on ~13 courses every 5 min, which re-inflates the ~$125/mo D1 bill. Confirm the dedup fix is merged to `dev` (or coordinate) before merging this. State this dependency in your PR.
+## ⚠️ Sequencing prerequisite (satisfied as of 2026-06-08)
+The D1 write-amplification dedup (`project_d1_bill_write_amplification.md`) has **shipped** (PR #119 → `dev`, published to `main` on 2026-06-08), so compare-then-replace now absorbs the write load when CPS resumes writing. Before merging this, confirm the dedup is live in production and watch the post-deploy write rate (`/check-logs` + D1 dashboard) as ~13 CPS courses come back online. State this dependency in your PR.
 
 ## Problem (diagnosed 2026-06-07)
 **ALL ~13 CPS Golf courses fail every poll with `Error: CPS Golf transaction registration failed`** — ~44k errors over the 7-day `poll_log` window, uniform across every CPS facility, zero successful CPS data, and it's burning subrequest budget. Uniformity across all facilities ⇒ a **systemic adapter/auth break**, not per-facility config. The error is thrown in `src/adapters/cps-golf.ts` (around lines 172/177/206/211) from the `RegisterTransactionId` flow (`tryRegisterTransaction`, ~line 183; main path ~line 161). There is a v4→v5 auth migration probe in `src/lib/cron-handler.ts` (~lines 110–150) that flips `authType` in `platform_config` — understand how it interacts.
+
+## Fresh diagnostic note (2026-06-08)
+Still failing every cron cycle as of 2026-06-08 (not self-resolved) — ~3,900–4,000 errors per CPS course over the June 1–8 `poll_log` window. **Localization clue:** a *separate* transient `CPS Golf token request failed: HTTP 503` blip hit several CPS courses only during ~07:01–07:03 on 2026-06-05 and self-resolved — meaning the token-acquisition step normally succeeds (HTTP 200). The constant break is specifically the **transaction-registration** step that runs *after* the token, so focus there, not on token auth. Fastest localizer: run a live SD course (Encinitas Ranch, `jcgsc5.cps.golf`) and diff its transaction-registration request/response against an MN facility — if SD works and MN doesn't, the endpoint/response-shape delta is the root cause.
 
 ## Your job
 Find the **root cause** (do not patch symptoms — follow `superpowers:systematic-debugging`). Likely candidates to investigate, not assume: an upstream CPS API change to the transaction-registration handshake, a rotated/expired `x-apikey` or per-facility `x-siteid`/`x-terminalid` headers (~line 283+), the v4/v5 token flow, or a changed response shape that trips the "registration failed" guard.
@@ -102,6 +114,9 @@ You are a fresh agent on the **Twin Cities Tee Times** project (Next.js 16 on Cl
 ## Problem (diagnosed 2026-06-07)
 **ALL ~35 Chronogolf courses intermittently fail with HTTP 429** — ~20k errors over the 7-day window, some successes interleaved. Chronogolf is the project's **largest** platform (~35 courses, all Three Rivers Park District). We are polling too many Chronogolf courses too fast; the current per-platform pacing is insufficient. The polling cadence/backoff lives in `src/lib/batch.ts` (`platformWeight`, `sleepAfterPoll`, `assignBatches`) and is applied in `src/lib/cron-handler.ts` (`await sleep(sleepAfterPoll(course.platform))`, ~lines 83/275/319). The adapter is `src/adapters/chronogolf.ts` (plain `fetch`, ~line 54).
 
+## Fresh diagnostic note (2026-06-08)
+The 429s arrive in **synchronized bursts**, not at random: error timestamps cluster tightly at specific cron ticks (e.g. many at ~21:35 and ~23:34), the signature of all ~35 Chronogolf courses hitting the API inside a single cron invocation. Per-course counts over June 1–8 ranged ~250–770. This favors **spreading Chronogolf across more cron batches and/or capping concurrent Chronogolf polls** over merely lengthening `sleepAfterPoll` — the goal is to stop them all firing within one tick. Occasional single Chronogolf 5xx (500/502/503) also appear; those are upstream blips, not rate-limiting, and must NOT drive the pacing math.
+
 ## Scope clarification — two distinct things, fix only the production one
 - **PRODUCTION issue = 429 (rate limiting).** This is the real bug. Fix via lower Chronogolf concurrency / longer per-platform backoff / batch spreading so ~35 courses aren't hammered within one cron tick. Consider: increasing Chronogolf's `platformWeight`/`sleepAfterPoll`, capping concurrent Chronogolf polls, or spreading Chronogolf courses across more cron batches.
 - **NOT in scope = the 403 "TLS fingerprint block from Node.js undici"** seen in the smoke test. That is a **CI/Node-only artifact** (the smoke test already skips it gracefully). Production runs on the Cloudflare Workers `fetch`, which has a different TLS stack. Do NOT contort production code to satisfy undici. If you touch it at all, only confirm the smoke skip is correct.
@@ -136,6 +151,9 @@ You are a fresh agent on the **Twin Cities Tee Times** project (Next.js 16 on Cl
 
 ## Problem
 The Adapter Smoke Tests CI job fails on `src/adapters/eagle-club.smoke.test.ts` (~line 136) with `AssertionError: expected 9 to be 18`. The test asserts `expect(tt.holes).toBe(18)` for every returned tee time, but the live Eagle Club course (Valleywood) legitimately offers **9-hole** tee times. The assertion encodes a false assumption that all Eagle Club times are 18-hole.
+
+## Fresh confirmation (2026-06-08)
+Confirmed live on 2026-06-08: Valleywood genuinely returned a **9-hole** tee time, and this is the only Adapter Smoke Tests failure besides the separate CPS Golf break — i.e. the adapter output is real data and the hard-coded `toBe(18)` assertion is the defect, exactly as framed below. Still verify the adapter classifies 9 vs 18 correctly before relaxing the assertion (don't mask a real misclassification).
 
 ## Your job — but do NOT just weaken the test
 Per `CLAUDE.md`, you must not relax a test merely to make it pass. First **confirm 9 is genuinely valid** for this platform: read `src/adapters/eagle-club.ts` and verify the adapter *correctly classifies* 9 vs 18 holes from the API response (not misclassifying). Then fix the assertion to validate the real contract: `holes` must be one of `9 | 18` (a valid classification with no nulls/NaN), rather than hard-coded `18`. Mirror however the other adapters' smoke tests assert holes (check `src/adapters/*.smoke.test.ts` for the canonical pattern — e.g., the holes-classification helper in `src/lib/parse-holes.ts`).
