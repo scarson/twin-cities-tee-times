@@ -76,7 +76,7 @@ export async function pollCourse(
     const contentChanged = await upsertTeeTimes(db, course.id, date, teeTimes, now);
 
     const status = teeTimes.length === 0 ? "no_data" : "success";
-    await logPoll(db, course.id, date, status, teeTimes.length, undefined);
+    await logPoll(db, course.id, date, status, teeTimes.length, undefined, contentChanged);
     return status;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

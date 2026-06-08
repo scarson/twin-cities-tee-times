@@ -109,14 +109,15 @@ export async function logPoll(
   date: string,
   status: "success" | "error" | "no_data",
   teeTimeCount: number,
-  errorMessage?: string
+  errorMessage?: string,
+  contentChanged: boolean = false
 ): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count, error_message)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count, error_message, content_changed)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(courseId, date, new Date().toISOString(), status, teeTimeCount, errorMessage ?? null)
+    .bind(courseId, date, new Date().toISOString(), status, teeTimeCount, errorMessage ?? null, contentChanged ? 1 : 0)
     .run();
 }
 

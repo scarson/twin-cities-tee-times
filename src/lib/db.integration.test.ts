@@ -377,6 +377,39 @@ describe("logPoll", () => {
     expect(rows.results[1]).toMatchObject({ status: "no_data", tee_time_count: 0, error_message: null });
     expect(rows.results[2]).toMatchObject({ status: "error", tee_time_count: 0, error_message: "API timeout" });
   });
+
+  it("records content_changed = 1 when contentChanged is true", async () => {
+    await logPoll(db, "test-course", "2026-03-16", "success", 5, undefined, true);
+
+    const row = await db
+      .prepare("SELECT content_changed FROM poll_log WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ content_changed: number }>();
+
+    expect(row!.content_changed).toBe(1);
+  });
+
+  it("records content_changed = 0 when contentChanged is false", async () => {
+    await logPoll(db, "test-course", "2026-03-16", "success", 5, undefined, false);
+
+    const row = await db
+      .prepare("SELECT content_changed FROM poll_log WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ content_changed: number }>();
+
+    expect(row!.content_changed).toBe(0);
+  });
+
+  it("defaults content_changed to 0 when the arg is omitted (error-path callers)", async () => {
+    await logPoll(db, "test-course", "2026-03-16", "error", 0, "API timeout");
+
+    const row = await db
+      .prepare("SELECT content_changed FROM poll_log WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ content_changed: number }>();
+
+    expect(row!.content_changed).toBe(0);
+  });
 });
 
 describe("sqliteIsoNow boundary", () => {

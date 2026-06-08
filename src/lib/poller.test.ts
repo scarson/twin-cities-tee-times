@@ -133,6 +133,7 @@ describe("pollCourse", () => {
       ]),
     };
     vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(true);
 
     await pollCourse(mockDb as any, mockCourse, "2026-04-15");
 
@@ -144,7 +145,68 @@ describe("pollCourse", () => {
       "2026-04-15",
       "success",
       1,
-      undefined
+      undefined,
+      true
+    );
+  });
+
+  it("logs content_changed = true when the upsert wrote a changed set", async () => {
+    const mockAdapter = {
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn().mockResolvedValue([
+        {
+          courseId: "braemar",
+          time: "2026-04-15T07:00:00",
+          price: 45,
+          holes: 18,
+          openSlots: 4,
+          bookingUrl: "https://foreupsoftware.com/index.php/booking/21445/7829",
+        },
+      ]),
+    };
+    vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(true);
+
+    await pollCourse(mockDb as any, mockCourse, "2026-04-15");
+
+    expect(logPoll).toHaveBeenCalledWith(
+      mockDb,
+      "braemar",
+      "2026-04-15",
+      "success",
+      1,
+      undefined,
+      true
+    );
+  });
+
+  it("logs content_changed = false when the upsert skipped an unchanged set", async () => {
+    const mockAdapter = {
+      platformId: "foreup",
+      fetchTeeTimes: vi.fn().mockResolvedValue([
+        {
+          courseId: "braemar",
+          time: "2026-04-15T07:00:00",
+          price: 45,
+          holes: 18,
+          openSlots: 4,
+          bookingUrl: "https://foreupsoftware.com/index.php/booking/21445/7829",
+        },
+      ]),
+    };
+    vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(false);
+
+    await pollCourse(mockDb as any, mockCourse, "2026-04-15");
+
+    expect(logPoll).toHaveBeenCalledWith(
+      mockDb,
+      "braemar",
+      "2026-04-15",
+      "success",
+      1,
+      undefined,
+      false
     );
   });
 
@@ -169,6 +231,7 @@ describe("pollCourse", () => {
       fetchTeeTimes: vi.fn().mockResolvedValue([]),
     };
     vi.mocked(getAdapter).mockReturnValue(mockAdapter);
+    vi.mocked(upsertTeeTimes).mockResolvedValue(true);
 
     await pollCourse(mockDb as any, mockCourse, "2026-04-15");
 
@@ -176,7 +239,7 @@ describe("pollCourse", () => {
     expect(upsertTeeTimes).toHaveBeenCalledWith(
       mockDb, "braemar", "2026-04-15", [], expect.any(String)
     );
-    expect(logPoll).toHaveBeenCalledWith(mockDb, "braemar", "2026-04-15", "no_data", 0, undefined);
+    expect(logPoll).toHaveBeenCalledWith(mockDb, "braemar", "2026-04-15", "no_data", 0, undefined, true);
   });
 
   it("returns error even when logPoll throws in catch block", async () => {
