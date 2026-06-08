@@ -1,0 +1,6 @@
+# Pinned for reproducible Lambda builds. curl_cffi ships cp39-abi3 manylinux
+# x86_64 wheels (run on the Lambda python3.14 / Amazon Linux 2023 runtime) and
+# bundles the curl-impersonate native library that supplies browser TLS
+# fingerprints. Bump deliberately when CPS starts returning Cloudflare
+# challenges again (the "chrome" profile aged out) and redeploy.
+curl_cffi==0.15.0
