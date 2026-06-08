@@ -151,6 +151,20 @@ export async function cleanupOldPolls(db: D1Database): Promise<number> {
 }
 
 /**
+ * Delete tee_times rows for dates before today (Central Time).
+ * Caller passes todayStr (YYYY-MM-DD, CT-derived); date is a YYYY-MM-DD
+ * string, so lexicographic `<` is the correct comparison (no datetime()).
+ * Returns the number of deleted rows.
+ */
+export async function cleanupPastTeeTimes(db: D1Database, todayStr: string): Promise<number> {
+  const result = await db
+    .prepare("DELETE FROM tee_times WHERE date < ?")
+    .bind(todayStr)
+    .run();
+  return result.meta.changes;
+}
+
+/**
  * Deactivate courses that haven't had tee times for 30+ days.
  * Courses with NULL last_had_tee_times are NOT deactivated (never checked yet).
  * Returns the number of deactivated courses.

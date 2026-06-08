@@ -2,7 +2,7 @@
 // ABOUTME: Covers upsertTeeTimes compare-then-replace, logPoll, batch atomicity, FK enforcement, and time parsing.
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestDb, seedCourse, makeTeeTime } from "@/test/d1-test-helper";
-import { upsertTeeTimes, logPoll } from "./db";
+import { upsertTeeTimes, logPoll, cleanupPastTeeTimes } from "./db";
 
 describe("upsertTeeTimes", () => {
   let db: D1Database;
@@ -409,6 +409,70 @@ describe("logPoll", () => {
       .first<{ content_changed: number }>();
 
     expect(row!.content_changed).toBe(0);
+  });
+});
+
+describe("cleanupPastTeeTimes", () => {
+  let db: D1Database;
+
+  beforeEach(async () => {
+    db = createTestDb();
+    await seedCourse(db);
+  });
+
+  it("deletes rows for dates before todayStr and returns the deleted count", async () => {
+    // Seed three dates: yesterday (past), today, and tomorrow (future).
+    await upsertTeeTimes(db, "test-course", "2026-06-06", [makeTeeTime({ time: "07:00" })], new Date().toISOString());
+    await upsertTeeTimes(db, "test-course", "2026-06-07", [makeTeeTime({ time: "08:00" })], new Date().toISOString());
+    await upsertTeeTimes(db, "test-course", "2026-06-08", [makeTeeTime({ time: "09:00" })], new Date().toISOString());
+
+    const deleted = await cleanupPastTeeTimes(db, "2026-06-07");
+
+    expect(deleted).toBe(1);
+
+    const remaining = await db
+      .prepare("SELECT date FROM tee_times WHERE course_id = ? ORDER BY date")
+      .bind("test-course")
+      .all<{ date: string }>();
+
+    // Today and future kept; yesterday removed.
+    expect(remaining.results.map((r) => r.date)).toEqual(["2026-06-07", "2026-06-08"]);
+  });
+
+  it("keeps today and future rows when there is nothing past to delete", async () => {
+    await upsertTeeTimes(db, "test-course", "2026-06-07", [makeTeeTime({ time: "08:00" })], new Date().toISOString());
+    await upsertTeeTimes(db, "test-course", "2026-06-08", [makeTeeTime({ time: "09:00" })], new Date().toISOString());
+
+    const deleted = await cleanupPastTeeTimes(db, "2026-06-07");
+
+    expect(deleted).toBe(0);
+
+    const remaining = await db
+      .prepare("SELECT COUNT(*) as n FROM tee_times WHERE course_id = ?")
+      .bind("test-course")
+      .first<{ n: number }>();
+    expect(remaining!.n).toBe(2);
+  });
+
+  it("counts every past row deleted across multiple past dates", async () => {
+    // Two rows on one past date, one on another past date, one today.
+    await upsertTeeTimes(
+      db, "test-course", "2026-06-05",
+      [makeTeeTime({ time: "07:00" }), makeTeeTime({ time: "07:30" })],
+      new Date().toISOString()
+    );
+    await upsertTeeTimes(db, "test-course", "2026-06-06", [makeTeeTime({ time: "08:00" })], new Date().toISOString());
+    await upsertTeeTimes(db, "test-course", "2026-06-07", [makeTeeTime({ time: "09:00" })], new Date().toISOString());
+
+    const deleted = await cleanupPastTeeTimes(db, "2026-06-07");
+
+    expect(deleted).toBe(3);
+
+    const remaining = await db
+      .prepare("SELECT date FROM tee_times WHERE course_id = ? ORDER BY date")
+      .bind("test-course")
+      .all<{ date: string }>();
+    expect(remaining.results.map((r) => r.date)).toEqual(["2026-06-07"]);
   });
 });
 
