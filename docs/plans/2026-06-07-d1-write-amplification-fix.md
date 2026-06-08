@@ -61,16 +61,19 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Not started.
+**Overall:** Phases 1–3 shipped to branch `fix/d1-write-amplification`. Phases 4–5 + Finalization remain.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands after Phases 2–5). |
 | 2 — Measurability: `poll_log.content_changed` | ✅ Shipped (branch) | c7f3784, 5aaca02 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 3–5. |
-| 3 — Freshness migration to `poll_log.polled_at` | ⬜ Not started | — | — |
+| 3 — Freshness migration to `poll_log.polled_at` | ✅ Shipped (branch) | 979b22e, b8fd064 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 4–5. Deviation: 3.2+3.3 merged into one commit (type coupling — see Deviations). |
 | 4 — Past-date `tee_times` prune | ⬜ Not started | — | — |
 | 5 — Pitfalls + verification docs | ⬜ Not started | — | — |
 | Finalization — verify + open PR | ⬜ Not started | — | Review-class; Sam merges |
+
+### Deviations
+- **Phase 3 (3.2 + 3.3) shipped as one commit `b8fd064`, not two.** The plan named two commit subjects (`refactor(ui): base tee-time staleness on last poll time…` and `refactor(ui): source course-detail freshness from poll log`). In practice the `TeeTimeItem.fetched_at → polled_at` change (3.2) and the course-header `teeTimes`-prop removal (3.3) are coupled through the shared `src/app/courses/[id]/page.tsx` tee-time state type: changing `TeeTimeItem` forces the detail-page state type to `polled_at`, which is incompatible with the original course-header `teeTimes: { fetched_at }[]` prop — so no file-level split produces two independently CI-green commits. Combined into one green commit rather than landing an intermediate red commit. No scope change; all 3.2 and 3.3 work is present.
 
 ---
 
@@ -311,7 +314,7 @@ Minimum 3 rounds (default-param back-compat for existing callers; that error pol
 
 ## Phase 3 — Freshness migration to `poll_log.polled_at`
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED to branch `fix/d1-write-amplification` (2026-06-08). Commits: `979b22e` (3.1 per-date poll freshness on `/api/tee-times` + integration tests), `b8fd064` (3.2 + 3.3 combined — stale badge on `polled_at`, course-header on `last_polled`, detail/main page types). Full suite (733 tests) + `tsc --noEmit` + lint all green (only the 3 pre-existing warnings: course-header.tsx exhaustive-deps, poller.integration.test.ts, d1-test-helper.ts — none worsened). Review gate run (≥3 perspectives: every `fetched_at` display reader migrated — re-grep leaves only `TeeTimeRow.fetched_at` type + the `db.ts` INSERT column; null-freshness handled via `isStale(null)===true` + non-null-guarded age suffix; the join is a `LEFT JOIN` so rows with no recent poll still return with `polled_at = null`). **Deviation:** Tasks 3.2 and 3.3 were committed as ONE commit (`b8fd064`), not two. The `TeeTimeItem` field change (3.2) and the course-header `teeTimes`-prop removal (3.3) are coupled through the shared `courses/[id]/page.tsx` tee-time state type, so no file-level split yields two independently CI-green commits.
 
 **Why (REQUIRED, not cosmetic):** Skipping writes makes per-row `tee_times.fetched_at` mean "last *changed*", so a stable date polled every 5 min would show "Last updated 6h ago" and a false `* stale` badge on valid rows. Two consumers read per-row `fetched_at` for freshness and MUST move to `poll_log.polled_at` ("last *checked*"): `src/components/course-header.tsx:88-95` ("Last updated") and `src/components/tee-time-list.tsx:150-188` (`* stale` badge). The courses-LIST routes (`/api/courses`, `/api/courses/[id]`) already use `poll_log.polled_at` and are unaffected.
 
