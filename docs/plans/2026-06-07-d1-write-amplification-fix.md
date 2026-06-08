@@ -66,7 +66,7 @@ notes and commit messages.
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Compare-then-replace in `upsertTeeTimes` | ✅ Shipped (branch) | e4ba40b, f7c2424, 4725bb6 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR not yet opened (lands after Phases 2–5). |
-| 2 — Measurability: `poll_log.content_changed` | ⬜ Not started | — | — |
+| 2 — Measurability: `poll_log.content_changed` | ✅ Shipped (branch) | de7b2b8, 5aaca02 | On `fix/d1-write-amplification`; full suite + tsc + lint green. PR opens after Phases 3–5. |
 | 3 — Freshness migration to `poll_log.polled_at` | ⬜ Not started | — | — |
 | 4 — Past-date `tee_times` prune | ⬜ Not started | — | — |
 | 5 — Pitfalls + verification docs | ⬜ Not started | — | — |
@@ -275,7 +275,7 @@ After 1.1–1.3: review the batch from multiple perspectives, minimum 3 rounds (
 
 ## Phase 2 — Measurability: `poll_log.content_changed`
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED to branch `fix/d1-write-amplification` (2026-06-08). Commits: `de7b2b8` (2.1 additive migration `0010_add_poll_content_changed.sql`), `5aaca02` (2.2 thread `contentChanged` through `logPoll`/`pollCourse` + `PollLogRow` type + tests). Full suite (724 tests) + `tsc --noEmit` + lint all green (only the 3 pre-existing lint warnings remain). Review gate run (4 perspectives: default-param back-compat for the 3 error-path callers; error/no-adapter polls log `0` not a misleading `1`; no PII added; measurement integrity + telemetry-only — `content_changed` is never selected into any API response). PR opens after Phases 3–5 per the single-PR sequencing note.
 
 **Why:** The true set-change rate (including `open_slots`/`price` churn at constant count) is currently unmeasurable — `poll_log` stores only counts. We need it to confirm post-deploy that writes land < 50M/mo. The `poll_log` row is already inserted every poll, so widening it is near-free (no extra write, just a wider one).
 
