@@ -59,15 +59,15 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** 4/5 phases shipped (on branch `fix/chronogolf-429-pacing`). Code group (1–3) complete; adversarial code review done (3 rounds, all SHIP — fixes `f3130c1`/`8ad4f24`/`2e9159d`). PR next.
+**Overall:** Complete — PR **[#126](https://github.com/scarson/twin-cities-tee-times/pull/126)** open to `dev` (Review-class; Sam merges). Code group (1–3) shipped, docs (4) shipped, 3-round code review all SHIP, full local gate green (745 tests, `tsc` clean, lint 0 errors). Awaiting CI + Sam's merge.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Single Chronogolf lane (`batch.ts`) | ✅ Shipped | `7362bac` | full suite green (740), `tsc` clean |
 | 2 — Per-request throttle (`chronogolf.ts`) | ✅ Shipped | `a8c2d7e` | throttle + sleep removal; suite 743 green, `tsc` clean |
 | 3 — Lane deadline + fair ordering (`cron-handler.ts`) | ✅ Shipped | `251fb07` | deadline + oldest-first; suite 745 green, `tsc` clean |
-| 4 — Docs, pitfalls, memory | ✅ Shipped | (this commit) | CF-4 pitfall; 2026-04-20 follow-up; Prompt 3 status; memory |
-| 5 — Verification + PR | 🚧 In progress | — | branch `fix/chronogolf-429-pacing` |
+| 4 — Docs, pitfalls, memory | ✅ Shipped | `4c0dc57` | CF-4 pitfall; 2026-04-20 follow-up; Prompt 3 status; memory |
+| 5 — Verification + PR | ✅ PR open | — | PR [#126](https://github.com/scarson/twin-cities-tee-times/pull/126) → `dev`; 745 tests green, `tsc`/lint clean; awaiting CI + Sam merge |
 
 ### Code review trail (mandatory ≥3 rounds — all SHIP)
 - **Round 1** (`feature-dev:code-reviewer` + `superpowers:code-reviewer`, parallel): SHIP. Found the inactive-probe inner loop lacked a deadline guard and the housekeeping gate used a bare `0`; both fixed in `f3130c1`. Also surfaced the pre-existing refresh-route residual (Discoveries).
@@ -527,7 +527,7 @@ git add docs/ && git commit -m "docs(chronogolf): record per-IP-vs-per-invocatio
 
 ## Phase 5 — Verification + PR
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ PR OPEN — [#126](https://github.com/scarson/twin-cities-tee-times/pull/126) to `dev` on 2026-06-08. Local gate: 745 tests green, `tsc --noEmit` clean, lint 0 errors (3 pre-existing warnings in untouched files). OpenNext build deferred to CI (Linux, authoritative). Review-class → Sam merges.
 
 **BEFORE claiming done:** invoke `superpowers:verification-before-completion`.
 
