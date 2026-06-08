@@ -24,7 +24,7 @@ export default function CoursePage() {
     disabled: number;
   } | null>(null);
   const [teeTimes, setTeeTimes] = useState<
-    { course_id: string; date: string; time: string; price: number | null; holes: number; open_slots: number; course_name: string; course_city: string; booking_url: string; fetched_at: string }[]
+    { course_id: string; date: string; time: string; price: number | null; holes: number; open_slots: number; course_name: string; course_city: string; booking_url: string; polled_at: string | null }[]
   >([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,7 +78,6 @@ export default function CoursePage() {
           address={catalogEntry?.address}
           mapsUrl={catalogEntry?.address ? mapsUrl(course.name, course.city, catalogEntry.state ?? "MN", catalogEntry.googlePlaceId) : undefined}
           dates={dates}
-          teeTimes={teeTimes}
           onRefreshed={() => fetchData(false)}
         />
       )}
