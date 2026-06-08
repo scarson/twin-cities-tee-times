@@ -3,6 +3,7 @@
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { proxyFetch, type ProxyConfig } from "@/lib/proxy-fetch";
 import { classifyHoles } from "@/lib/parse-holes";
+import { parsePositiveFee } from "@/lib/parse-fee";
 
 interface TeensnapBooking {
   bookingId: number;
@@ -120,10 +121,7 @@ export class TeensnapAdapter implements PlatformAdapter {
           continue;
         }
 
-        // A non-positive price means the rate is not published, not a free round.
-        const parsedPrice = parseFloat(priceEntry.price);
-        const priceNum =
-          !Number.isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
+        const priceNum = parsePositiveFee(priceEntry.price);
 
         results.push({
           courseId: config.id,
