@@ -51,6 +51,12 @@ class Decide(unittest.TestCase):
         d = decide(CHALLENGED, None, None, "0.15.0", None)
         self.assertEqual(d.action, Action.FAIL)
 
+    def test_challenged_then_cleared_but_empty_version_does_not_open_pr(self):
+        # An empty/unknown latest version must never produce an open_pr decision.
+        d = decide(CHALLENGED, CLEARED, "chrome", "0.15.0", "")
+        self.assertNotEqual(d.action, Action.OPEN_PR)
+        self.assertEqual(d.action, Action.FAIL)
+
     def test_force_check_on_healthy_with_newer_cleared_opens_pr(self):
         d = decide(CLEARED, CLEARED, "chrome", "0.15.0", "0.16.0", force_check=True)
         self.assertEqual(d.action, Action.OPEN_PR)

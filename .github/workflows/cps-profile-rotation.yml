@@ -77,6 +77,10 @@ jobs:
           # plain shell could branch on it — but here the verdict is read from the JSON
           # file, so under `set -e` we MUST NOT let a CHALLENGED exit kill the step.
           python probe.py --subdomain jcgsc5 --profiles chrome --out pinned.json || true
+          # Fail loud at the source if the probe produced no verdict file (e.g. a
+          # module-load crash) rather than emitting an empty verdict that masks a
+          # real outage downstream.
+          [ -f pinned.json ] || { echo "::error::pinned probe produced no output"; exit 1; }
           echo "verdict=$(python -c 'import json;print(json.load(open("pinned.json"))["verdict"])')" >> "$GITHUB_OUTPUT"
 
       - name: Probe latest curl_cffi (full cascade)
@@ -99,9 +103,14 @@ jobs:
         run: |
           set -euo pipefail
           ARGS=(--pinned-json pinned.json --pinned-version "${{ steps.pinned.outputs.version }}" --body-out pr_body.md)
-          if [ -f latest.json ]; then
+          # Require BOTH the verdict file and a non-empty version; a latest.json
+          # with no captured version means the latest probe was inconclusive, so
+          # decide() treats latest as not-evaluated (→ FAIL when pinned is broken)
+          # rather than proposing an empty-version bump.
+          if [ -f latest.json ] && [ -n "${{ steps.probe_latest.outputs.version }}" ]; then
             ARGS+=(--latest-json latest.json --latest-version "${{ steps.probe_latest.outputs.version }}")
           fi
+          # On a `schedule` trigger `inputs.*` is unset and expands to "" (falsy).
           if [ "${{ inputs.force_check }}" = "true" ]; then ARGS+=(--force-check); fi
           python rotate.py "${ARGS[@]}" | tee decision.json
           echo "action=$(python -c 'import json;print(json.load(open("decision.json"))["action"])')" >> "$GITHUB_OUTPUT"

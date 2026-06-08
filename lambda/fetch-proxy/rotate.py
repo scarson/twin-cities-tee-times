@@ -45,7 +45,7 @@ def decide(pinned_verdict, latest_verdict, cleared_profile,
     if latest_verdict is None:
         return Decision(Action.FAIL, "Latest curl_cffi was required but not evaluated.")
 
-    if latest_verdict == Outcome.CLEARED and latest_version != pinned_version:
+    if latest_verdict == Outcome.CLEARED and latest_version and latest_version != pinned_version:
         return Decision(
             Action.OPEN_PR,
             f"curl_cffi {latest_version} clears the CPS challenge (profile {cleared_profile}).",
