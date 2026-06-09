@@ -37,7 +37,9 @@ jobs:
   probe-and-rotate:
     name: Probe CPS challenge & auto-rotate curl_cffi
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Generous: a real rotation watches the dispatched deploy run to completion so a
+    # deploy failure reds this job (the healthy no-op path finishes in ~2 min).
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -112,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           # Validate the version (passed via env, not interpolated) before it reaches pip.
-          [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
+          [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
           python3 -m pip install \
             --target /tmp/vendor-check \
             --platform manylinux2014_x86_64 \
@@ -130,10 +132,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
+          [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          bumped_main=0
           # Bump both release-tracking branches off their OWN tips so neither drags
           # the other's unmerged work across; idempotently skip a branch already at
           # the target. The byte-identical change keeps dev/main conflict-free at the
@@ -153,8 +154,7 @@ jobs:
             gh pr create --base "$base" --head "$branch" \
               --title "chore(proxy): rotate CPS curl_cffi to ${LATEST} (${base})" \
               --body-file lambda/fetch-proxy/pr_body.md
-            # Synchronous --merge (NOT --auto: the deploy below must not fire until
-            # main actually carries the bump). Retry the transient window where
+            # Synchronous --merge (NOT --auto). Retry the transient window where
             # GitHub hasn't computed mergeability yet.
             merged=0
             for attempt in 1 2 3 4; do
@@ -162,13 +162,33 @@ jobs:
               echo "merge attempt ${attempt} failed; retrying in 5s…"; sleep 5
             done
             [ "$merged" = "1" ] || { echo "::error::failed to merge ${branch} into ${base}"; exit 1; }
-            [ "$base" = "main" ] && bumped_main=1 || true
           done
-          if [ "$bumped_main" = "1" ]; then
-            echo "main bumped → triggering deploy.yml on main."
-            gh workflow run deploy.yml --ref main
+          # `gh pr merge` returns on API-accept, not ref-propagation: poll origin/main
+          # until it actually carries the bump before deploying, so deploy.yml can't
+          # check out a stale pre-bump main. ALWAYS deploy when a rotation was warranted
+          # — this also recovers a prior run that merged main but died before deploying.
+          main_ver=""
+          for attempt in 1 2 3 4 5 6; do
+            git fetch -q origin main
+            main_ver=$(git show origin/main:lambda/fetch-proxy/requirements.txt | sed -n 's/^curl_cffi==//p')
+            [ "$main_ver" = "$LATEST" ] && break
+            echo "waiting for origin/main to reflect curl_cffi==${LATEST} (saw '${main_ver}')…"; sleep 5
+          done
+          [ "$main_ver" = "$LATEST" ] || { echo "::error::origin/main not at curl_cffi==${LATEST} after merge"; exit 1; }
+          echo "origin/main at curl_cffi==${LATEST} → dispatching deploy of main."
+          gh workflow run deploy.yml --ref main
+          # Watch the dispatched deploy so a deploy failure reds THIS job (no silent-green).
+          run_id=""
+          for attempt in 1 2 3 4 5; do
+            sleep 6
+            run_id=$(gh run list --workflow=deploy.yml --branch=main --event=workflow_dispatch --limit=1 --json databaseId --jq '.[0].databaseId' || true)
+            [ -n "$run_id" ] && break
+          done
+          if [ -n "$run_id" ]; then
+            echo "Watching deploy run ${run_id}…"
+            gh run watch "$run_id" --exit-status || { echo "::error::deploy run ${run_id} failed"; exit 1; }
           else
-            echo "main already at curl_cffi==${LATEST}; no deploy triggered."
+            echo "::warning::could not identify the dispatched deploy run; verify Actions → Deploy manually."
           fi
 
       - name: Dry run — print intended rotation

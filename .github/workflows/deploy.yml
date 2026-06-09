@@ -12,6 +12,12 @@ permissions:
   contents: read
   id-token: write
 
+# Never run two production deploys at once (the rotation workflow can dispatch one
+# while a push-triggered one is in flight). Queue, don't cancel — a deploy should finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy to Cloudflare
