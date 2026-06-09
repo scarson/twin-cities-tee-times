@@ -76,3 +76,18 @@ jobs:
           restore-keys: |
             nextjs-${{ hashFiles('package-lock.json') }}-
       - run: npx @opennextjs/cloudflare build
+
+  proxy-tests:
+    name: Proxy Python Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14" # match the Lambda runtime
+      # Pure-logic tests for the fetch-proxy's challenge classifier and the CPS
+      # curl_cffi rotation decision. No pip deps — challenge.py/rotate.py do not
+      # import curl_cffi (the live probe does, and runs in the rotation workflow).
+      - run: python -m unittest test_challenge test_rotate -v
+        working-directory: lambda/fetch-proxy

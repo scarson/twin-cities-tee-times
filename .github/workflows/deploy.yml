@@ -3,10 +3,20 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # Lets the CPS rotation workflow trigger a deploy of main after auto-merging a
+  # curl_cffi bump: a GITHUB_TOKEN push to main does NOT fire the push trigger
+  # above (GitHub's recursion guard), but workflow_dispatch is exempt.
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
+
+# Never run two production deploys at once (the rotation workflow can dispatch one
+# while a push-triggered one is in flight). Queue, don't cancel — a deploy should finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
