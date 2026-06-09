@@ -4,6 +4,27 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-06-09 — CPS rotation: post-merge live verification (found + fixed a DOA blocker)
+
+**Context:** Two post-merge confirmations were owed for the CPS rotation feature (PR #129): (1) the `workflow_dispatch` trigger fires on the default branch; (2) a `GITHUB_TOKEN`-initiated `gh workflow run deploy.yml` actually starts the deploy (the documented recursion-guard exception). Done after the `dev`→`main` publication (PR #131) landed `deploy.yml`'s `workflow_dispatch` trigger on `main`.
+
+### Confirmation 1 — dispatch fires on `dev` (green)
+
+- **Default inputs** (run 27176677676): healthy no-op. Pinned `chrome` probe CLEARED → `probe_latest`/`Deployability gate`/`Rotate` correctly **skipped**, decision `none`, exit 0.
+- **`force_check=true, dry_run=true`** (run 27176589967): full latest-cascade probe ran — `chrome`/`safari`/`firefox` all CLEARED — decided `none` ("Already on the latest curl_cffi release", since pinned `0.15.0` == latest). The `open_pr`→dry-run-print branch was **not** live-exercised here (no version gap); it's covered by the 15 `rotate.py` unit tests and was driven live by Confirmation 2's forced rotation.
+
+### Confirmation 2 — GITHUB_TOKEN → deploy dispatch (forced rotation)
+
+Forced the `open_pr` path: temporarily pinned `curl_cffi==0.14.0` on `dev` (PR #132), then dispatched `force_check=true` (`dry_run=false`). Pre-flight: both branches unprotected (synchronous `gh pr merge` will land), `0.14.0` installs on the runner's py3.14 (cp39-abi3/manylinux_2_28 wheel), and `0.15.0` ships a `manylinux2014` abi3 wheel so the deployability gate (which mirrors `deploy.yml`'s vendoring command byte-for-byte) passes.
+
+- **First forced run FAILED at `gh pr create`** with `GraphQL: GitHub Actions is not permitted to create or approve pull requests`. **Root cause — a real DOA blocker in the shipped feature:** the repo governor `can_approve_pull_request_reviews` was `false`, which vetoes Actions-authored PR creation regardless of the workflow's `pull-requests: write`. The unattended self-heal could never have opened its bump PR. Captured as **DEPLOY-3**.
+- **Fix:** `gh api -X PUT repos/scarson/twin-cities-tee-times/actions/permissions/workflow -F can_approve_pull_request_reviews=true -f default_workflow_permissions=read`. Negligible security delta here (no branch protection; Actions already merges to `main` and deploys via `GITHUB_TOKEN`).
+- **Retry (run 27180662423): green end to end.** It opened + merged bump PR #133 (`dev` `0.14.0`→`0.15.0`), skipped `main` (already `0.15.0`), then `gh workflow run deploy.yml --ref main` started **deploy run 27180673683** (`event: workflow_dispatch`, **success**) — confirming the recursion-guard exception live. `origin/dev` self-reverted to `0.15.0`; `main` unchanged. The forced `0.14.0`→`0.15.0` round-trip is visible in `dev` history (PR #132 then #133), netting zero change to `requirements.txt`.
+
+### Result
+
+Both confirmations satisfied; the rotation now works unattended end to end. Branch/worktree hygiene restored to `dev` + `main` (+ the two intentionally-kept dependabot branches). Pitfall **DEPLOY-3** added (TOC, §6.C checklist, Appendix A/B updated).
+
 ## 2026-06-08 — CPS `curl_cffi` impersonation-profile rotation (self-healing)
 
 **Branch:** `feat/cps-profile-rotation` → PR targets `dev` (Review-class — CI/infra + the proxy critical path; Sam merges). Design + reasoning: `docs/plans/2026-06-08-cps-profile-rotation-design.md`. Plan: `docs/plans/2026-06-08-cps-profile-rotation-plan.md`. Follow-up to the CPS Cloudflare-challenge fix (DEPLOY-2).
