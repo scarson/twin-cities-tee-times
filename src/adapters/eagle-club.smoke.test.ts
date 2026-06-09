@@ -133,7 +133,7 @@ describe("Eagle Club - parsed output validation", () => {
           expect(Number.isNaN(tt.price)).toBe(false);
         }
 
-        expect(tt.holes).toBe(18);
+        expect([9, 18]).toContain(tt.holes);
         expect(Number.isInteger(tt.openSlots)).toBe(true);
         expect(tt.openSlots).toBeGreaterThanOrEqual(0);
         expect(tt.bookingUrl).toBeTruthy();

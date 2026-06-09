@@ -1,6 +1,7 @@
 // ABOUTME: Eagle Club Systems platform adapter for fetching tee times.
 // ABOUTME: Uses POST requests with a BCC wrapper object containing the dbname identifier.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
+import { parsePositiveFee } from "@/lib/parse-fee";
 
 const API_URL =
   "https://api.eagleclubsystems.online/api/online/OnlineAppointmentRetrieve";
@@ -89,13 +90,9 @@ export class EagleClubAdapter implements PlatformAdapter {
 
     // Each appointment can carry both NineFee and EighteenFee. Emit one
     // record per populated fee so the app surfaces every bookable variant
-    // (mirrors CPS Golf multi-hole expansion).
-    const parseFee = (fee: string | undefined | null): number | null => {
-      if (!fee) return null;
-      const n = parseFloat(fee);
-      return Number.isNaN(n) ? null : n;
-    };
-
+    // (mirrors CPS Golf multi-hole expansion). A "0" fee means Valleywood has
+    // not assigned a priced rate class to the slot (Master_TeePriceClassID: 0),
+    // which parsePositiveFee maps to null (price unknown, not free).
     const results: TeeTime[] = [];
     for (const appt of data.LstAppointment) {
       const time = this.toIso(date, appt.Time);
@@ -103,7 +100,7 @@ export class EagleClubAdapter implements PlatformAdapter {
         results.push({
           courseId: config.id,
           time,
-          price: parseFee(appt.EighteenFee),
+          price: parsePositiveFee(appt.EighteenFee),
           holes: 18,
           openSlots: appt.Slots,
           bookingUrl: config.bookingUrl,
@@ -113,7 +110,7 @@ export class EagleClubAdapter implements PlatformAdapter {
         results.push({
           courseId: config.id,
           time,
-          price: parseFee(appt.NineFee),
+          price: parsePositiveFee(appt.NineFee),
           holes: 9,
           openSlots: appt.Slots,
           bookingUrl: config.bookingUrl,

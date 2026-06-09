@@ -217,3 +217,15 @@ Other platforms didn't happen to have polls land in the 15-minute window, which 
 - [docs/plans/2026-04-20-overnight-decisions.md D-11](./2026-04-20-overnight-decisions.md#d-11) — the catalog expansion that triggered this.
 - `src/lib/cron-handler.ts:275` — the sleep call to be modified.
 - `src/lib/batch.ts` — existing per-platform pattern (`platformWeight`) to follow for naming.
+
+---
+
+## 2026-06-08 — Structural follow-up (sleep-tuning superseded)
+
+The Option A `sleepAfterPoll` tuning documented above did **not** durably resolve the Chronogolf 429s. A 2026-06-07 `/check-logs` diagnostic found all ~35 Chronogolf courses still intermittently 429-ing (~20k errors/week), in synchronized bursts at cron ticks — confirming the 25% steady-state regression this doc already noted never recovered.
+
+**Why sleep-tuning structurally couldn't work:** `sleepAfterPoll` paces each cron invocation *locally*, but Chronogolf's ~1 req/sec limit is enforced **per egress IP**, shared across the 5 staggered cron batches that fire 1 minute apart and overlap. Each batch paced itself; their request rates summed at the shared Cloudflare IP. The adapter's pagination (up to 10 requests per poll, un-spaced) compounded it. The limiter and the throttle were scoped to different things — see `docs/pitfalls/implementation-pitfalls.md` **CF-4** (per-invocation pacing cannot bound a per-IP rate limit).
+
+**The structural fix (shipped 2026-06-08):** (1) pin all Chronogolf to a single cron lane so only one invocation polls it at a time; (2) a per-*request* min-interval throttle in the adapter (covers pagination); (3) a wall-clock deadline so the lane never self-overlaps. The `sleepAfterPoll` Chronogolf special-case (2500 ms) was removed — spacing now lives in the adapter. Full design, volume math, and 3-round review trail: **`docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`**.
+
+The Option B/D Lambda-proxy ideas above remain the documented fallback if a polite ~1 req/sec lane still 429s post-deploy (verify via `/check-logs`).

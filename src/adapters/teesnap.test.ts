@@ -165,6 +165,33 @@ describe("TeensnapAdapter", () => {
     expect(at0800.map((r) => r.holes).sort((a, b) => a - b)).toEqual([9, 18]);
   });
 
+  it("returns null price for a non-positive price string", async () => {
+    // A "0" price means the rate is not published, not a free round. The slot
+    // is still bookable, so the record is emitted with price null.
+    const zeroPriceFixture = {
+      teeTimes: {
+        bookings: [],
+        teeTimes: [
+          {
+            teeTime: "2026-04-15T10:00:00",
+            prices: [
+              { roundType: "EIGHTEEN_HOLE", rackRatePrice: "0.00", price: "0" },
+            ],
+            teeOffSections: [{ teeOff: "FRONT_NINE", bookings: [], isHeld: false }],
+          },
+        ],
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(zeroPriceFixture), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-04-15");
+    expect(results).toHaveLength(1);
+    expect(results[0].holes).toBe(18);
+    expect(results[0].price).toBeNull();
+  });
+
   it("skips slots with empty prices array (per decision D-1)", async () => {
     const emptyPricesFixture = {
       teeTimes: {

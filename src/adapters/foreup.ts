@@ -2,6 +2,7 @@
 // ABOUTME: Handles API requests, time format conversion, and price parsing.
 import type { CourseConfig, PlatformAdapter, TeeTime } from "@/types";
 import { parseHoleVariants } from "@/lib/parse-holes";
+import { parsePositiveFee } from "@/lib/parse-fee";
 
 interface ForeUpTeeTime {
   time: string; // "YYYY-MM-DD HH:MM"
@@ -72,9 +73,7 @@ export class ForeUpAdapter implements PlatformAdapter {
         ? `${tt.teesheet_side_name}/${tt.reround_teesheet_side_name}`
         : undefined;
 
-      const priceNum = tt.green_fee !== null && !Number.isNaN(parseFloat(tt.green_fee))
-        ? parseFloat(tt.green_fee)
-        : null;
+      const priceNum = parsePositiveFee(tt.green_fee);
 
       const holeVariants = parseHolesField(tt.holes);
 

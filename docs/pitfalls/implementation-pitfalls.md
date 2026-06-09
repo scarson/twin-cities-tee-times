@@ -4,7 +4,7 @@
 >
 > **Relationship to testing-pitfalls.md:** This document specifies *what* to implement and *why*. `docs/pitfalls/testing-pitfalls.md` specifies *how to verify* those implementations work correctly. They are complementary — cross-references are noted inline.
 >
-> **Last validated against codebase:** 2026-06-07
+> **Last validated against codebase:** 2026-06-08
 
 ---
 
@@ -25,11 +25,11 @@ This document serves three audiences. Start here, then go directly to the sectio
 | § | Section | You're working on... | Entries | Checklist |
 |---|---------|---------------------|---------|-----------|
 | 1 | [Time & Timezones](#section-1-time--timezones) | Any date/time logic, "today", date strings | TIME-1 | §1.C |
-| 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-3 | §2.C |
+| 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-4 | §2.C |
 | 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
 | 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
-| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 | §6.C |
+| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 – DEPLOY-2 | §6.C |
 | — | [Orchestration](#orchestration) | Parallel subagent dispatch and output persistence | ORCH-1 | §Orchestration.C |
 | A | [Historical Changelog](#appendix-a-historical-changelog) | Provenance, validation dates | — | — |
 | B | [Unified Summary Table](#appendix-b-unified-summary-table) | All pitfalls at a glance, with severity and status | — | — |
@@ -96,11 +96,24 @@ Do not assume Workers, D1, Cron Trigger, or Wrangler semantics from memory. Use 
 
 ---
 
+### CF-4: Per-Invocation Pacing Cannot Bound a Per-IP Rate Limit
+
+**The Flaw:** Throttling an external API with an *in-process* delay (a `sleep()` between calls, a per-invocation counter) when that API enforces its limit **per egress IP** — a resource shared across *every concurrent Worker invocation*. This project's cron uses 5 staggered Cron Trigger schedules (`wrangler.jsonc`) that fire 1 minute apart and each run longer than a minute, so 2–5 invocations overlap. Their request streams **sum at the shared Cloudflare egress IP**, so each invocation's local pacing is multiplied by the number of overlapping invocations. An adapter that paginates (N HTTP requests per logical "poll") compounds it: a per-poll sleep does not space the within-poll burst at all.
+
+**Why It Matters:** The limiter (per-IP, global) and the throttle (per-invocation, local) are scoped to **different things**, so the throttle silently fails to bound the real rate. It is invisible in any single-invocation test and in `next dev` (one invocation). Chronogolf 429s persisted through two rounds of `sleepAfterPoll` tuning (1500ms → 2500ms) for exactly this reason — ~35 courses spread across 5 overlapping batches, each pacing itself but collectively far over Chronogolf's ~1 req/sec per-IP ceiling.
+
+**The Fix:** Bound the rate at the scope the limit is enforced. Two levers, used together: (1) **serialize to one lane** — pin all of the rate-limited platform's work to a single cron batch so only one invocation polls it at a time (`CHRONOGOLF_LANE` in `src/lib/batch.ts`); (2) **space per-request, not per-poll** — enforce the minimum interval before *every* HTTP request including pagination, in the adapter (`CHRONOGOLF_MIN_REQUEST_INTERVAL_MS` + the `throttle()` reservation gate in `src/adapters/chronogolf.ts`). Add a wall-clock deadline (`CHRONOGOLF_LANE_BUDGET_MS` in `src/lib/cron-handler.ts`) so the single lane never runs past its own next cron firing, which would re-introduce the concurrency. Note the corollary: the subrequest-budget weight (`platformWeight`) intentionally under-counts paginated requests — the **wall-clock deadline**, not the subrequest budget, is the binding guard on the lane. If one polite lane genuinely can't keep up, escalate to a shared cross-invocation coordinator (Durable Object) or a second egress IP (the documented Lambda-proxy fallback) — but confirm one lane is insufficient first; IP-rotation is circumvention, not a fix.
+
+**The Lesson:** Match the throttle's scope to the limit's scope. A local delay cannot enforce a global limit; a per-poll sleep cannot enforce a per-request rate. When "we added a sleep and it still rate-limits under load," suspect a scope mismatch — not an insufficient delay. (Full design + volume math: `docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`.)
+
+---
+
 ### Review Checklist {#section-2c}
 
 - [ ] **No `process.env` for bindings/secrets** — uses `getCloudflareContext()` (or `scheduled()`'s `env`) (CF-1)
 - [ ] **Local secrets present in `.dev.vars`** for any new secret binding added to `env.d.ts` (CF-2)
 - [ ] **Platform-behavior claims verified** against Cloudflare docs / `docs/research/cloudflare-limits.md`, not assumed (CF-3)
+- [ ] **Rate-limited external APIs are throttled at the limit's scope** — per-IP limits need single-lane serialization + per-request (not per-poll) spacing across overlapping cron invocations, not an in-process `sleep()` (CF-4)
 
 ---
 
@@ -245,15 +258,30 @@ Every app cookie is namespaced with `tct-`: `tct-session`, `tct-refresh`, `tct-o
 
 **Why It Matters:** The deploy workflow (`.github/workflows/deploy.yml`) redeploys the Lambda from `lambda/fetch-proxy/` on every merge to `main`. Any live hotfix is silently overwritten on the next deploy — the fix appears to work, then "regresses" mysteriously.
 
-**The Fix:** Always update `lambda/fetch-proxy/index.mjs` in the repo and let CI deploy it.
+**The Fix:** Always update `lambda/fetch-proxy/index.py` in the repo and let CI deploy it.
 
 **The Lesson:** When CI deploys an artifact from source on every merge, the repo is the only durable place to change it. No out-of-band edits.
 
 ---
 
+### DEPLOY-2: CPS Golf's v5 Reservation API Is Behind a Cloudflare Challenge — the Proxy Must Impersonate a Browser
+
+**The Flaw:** Calling CPS Golf's v5 reservation API (`/onlineres/onlineapi/*`) with a plain HTTP client (Node `fetch`/undici, Python `requests`). Every call returns a 403 "Just a moment..." Cloudflare managed-challenge interstitial (header `cf-mitigated: challenge`), which the adapter would otherwise surface as the misleading `CPS Golf transaction registration failed`.
+
+**Why It Matters:** CPS migrated its v5 facilities (all Minneapolis Parks, St. Paul, Chaska, Highland, Pioneer Creek, Victory Links, and the SD JC Golf test courses) behind Cloudflare Bot Management. The challenge is **fingerprint-gated, not JS-gated**: it inspects the TLS handshake (JA3/JA4) and HTTP/2 frame ordering, not just headers — so spoofing User-Agent/headers does nothing, and the AWS proxy IP is challenged just like a residential one. A real browser TLS fingerprint passes silently. The token endpoint (`/identityapi/*`) is NOT behind the challenge, which is why the break manifests only at the first reservation call (registration). v4 facilities (Edinburgh, Brookview, Gem, Oak Glen) are on a legacy origin (`server: hide`) and are unaffected.
+
+**The Fix:** The fetch proxy (`lambda/fetch-proxy/index.py`) supplies a browser TLS fingerprint via `curl_cffi`, cascading over versionless vendor-diverse aliases (`challenge.py::PROFILES` = `chrome`, `safari`, `firefox`) until one clears, time-bounded by the proxy budget. The CPS adapter classifies the challenge (`cf-mitigated: challenge` or the body signature) and throws a distinct `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)` error so it is recognizable in `poll_log`/`check-logs` instead of masquerading as an auth failure.
+
+**Rotation (recurring maintenance):** Cloudflare allowlists *current* browser fingerprints, so a pinned profile ages out — pinned `chrome124`/`chrome131` already get challenged while the versionless `chrome` alias passes. Use versionless aliases; do NOT pin a `chromeNNN`/`safariNN` profile. Two layers handle rotation: (1) the proxy cascades over `chrome`/`safari`/`firefox` so a single de-allowlisted vendor self-heals with no redeploy; (2) the **`CPS profile rotation` workflow** (`.github/workflows/cps-profile-rotation.yml`) live-probes `jcgsc5.cps.golf` daily and, when the pinned `curl_cffi` is challenged and a newer version both live-clears the real challenge **and** cross-vendors for the Lambda, **auto-merges** a bump to `main` + `dev` and triggers a deploy — unattended (Sam's call, 2026-06-08). It leaves an auto-merged PR + a deploy run as the audit record. **Break-glass / fast-track (still valid):** bump `curl_cffi` in `lambda/fetch-proxy/requirements.txt` and redeploy by hand. Full design: `docs/plans/2026-06-08-cps-profile-rotation-design.md`.
+
+**The Lesson:** A 403 carrying `cf-mitigated: challenge` is an anti-bot *fingerprint* block, not an auth or API-contract bug. Header spoofing won't clear it; only a real TLS fingerprint (`curl_cffi impersonate=`) or a solved JS challenge will. Verify with impersonation before concluding a CPS endpoint is unreachable.
+
+---
+
 ### Review Checklist {#section-6c}
 
-- [ ] **Lambda changes made in `lambda/fetch-proxy/index.mjs`**, not via the AWS console/CLI on the live function (DEPLOY-1)
+- [ ] **Lambda changes made in `lambda/fetch-proxy/index.py`**, not via the AWS console/CLI on the live function (DEPLOY-1)
+- [ ] **CPS v5 reservation calls go through the impersonating fetch proxy**; a 403 with `cf-mitigated: challenge` means the impersonation profile needs rotation (bump `curl_cffi`, redeploy), not an auth fix (DEPLOY-2)
 
 ---
 
@@ -281,6 +309,14 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 
 # Appendix A: Historical Changelog
 
+## 2026-06-08 — CF-4 added
+
+- Added **CF-4** (per-invocation pacing cannot bound a per-IP rate limit) to the Cloudflare Workers Runtime section, from the Chronogolf HTTP 429 pacing fix (`docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`). Root cause: `sleepAfterPoll` paced each cron invocation locally, but Chronogolf's ~1 req/sec limit is per egress IP, summed across 5 overlapping staggered batches; the adapter's pagination compounded it. Status VALIDATED — the single-lane + per-request-throttle + wall-clock-deadline fix shipped and is tested in the same PR. TOC range, §2.C checklist, and Appendix B updated alongside.
+
+## 2026-06-08 — DEPLOY-2 added (CPS Cloudflare challenge)
+
+- Added **DEPLOY-2** (CPS's v5 reservation API is behind a fingerprint-gated Cloudflare challenge; the fetch proxy must supply a browser TLS fingerprint via `curl_cffi`) to Deploy & Infrastructure, from the CPS polling-failure fix. Root cause: CPS moved its v5 facilities behind Cloudflare Bot Management, so all ~13 v5 courses failed every poll with the misleading "transaction registration failed". The Lambda proxy was rewritten Node→Python+`curl_cffi` (`impersonate="chrome"`), and the adapter now throws a distinct "blocked by Cloudflare challenge" error as the rotation canary. Also corrected DEPLOY-1's stale `index.mjs` reference to `index.py`. TOC range, §6.C checklist, and Appendix B updated alongside. Status VALIDATED — live-verified (16+ real tee times returned through the proxy).
+
 ## 2026-06-08 — DB-4 added
 
 - Added **DB-4** (never rewrite cached rows unconditionally — compare-then-replace) to the Database & D1 section, from the D1 write-amplification fix (`docs/plans/2026-06-07-d1-write-amplification-fix.md`). Root cause: `upsertTeeTimes` ran an unconditional `DELETE + N×INSERT` every poll, driving ~175M D1 rows written/month (~$125 overage). Status VALIDATED — the compare-then-replace fix shipped and is tested in the same PR. TOC range, §3.C checklist, and Appendix B updated alongside.
@@ -301,6 +337,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | CF-1 | Read bindings via `getCloudflareContext()`, not `process.env` | HIGH | VALIDATED | CF Runtime |
 | CF-2 | Local secrets in `.dev.vars` | MEDIUM | VALIDATED | CF Runtime |
 | CF-3 | Verify CF platform behavior, never guess | MEDIUM | VALIDATED | CF Runtime |
+| CF-4 | Per-invocation pacing can't bound a per-IP rate limit | HIGH | VALIDATED | CF Runtime |
 | DB-1 | Never `datetime()` in comparisons — use `sqliteIsoNow()` | HIGH | VALIDATED | Database & D1 |
 | DB-2 | Never hard-delete courses (`CASCADE` data loss) | CRITICAL | VALIDATED | Database & D1 |
 | DB-3 | Seed script overwrites D1 on every deploy | MEDIUM | VALIDATED | Database & D1 |
@@ -310,6 +347,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | AUTH-1 | Authenticate via `authenticateRequest()`, not middleware | HIGH | VALIDATED | Auth & Sessions |
 | AUTH-2 | App cookies use `tct-` prefix | LOW | VALIDATED | Auth & Sessions |
 | DEPLOY-1 | Lambda proxy deployed from source by CI | MEDIUM | VALIDATED | Deploy & Infra |
+| DEPLOY-2 | CPS v5 API behind Cloudflare challenge — proxy must impersonate a browser | HIGH | VALIDATED | Deploy & Infra |
 | ORCH-1 | Analysis dispatches must persist findings | HIGH | VALIDATED | Orchestration |
 
 Severity levels: `CRITICAL` (production data loss / security), `HIGH` (correctness bug under predictable conditions), `MEDIUM` (correctness bug under edge cases), `LOW` (cleanliness / clarity).

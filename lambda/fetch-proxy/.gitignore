@@ -1,0 +1,12 @@
+# Dependencies are vendored at deploy time (see .github/workflows/deploy.yml),
+# not committed. Track only first-party source (the handler, its shared modules,
+# the rotation probe/decision tools, their tests) plus requirements and this file.
+*
+!index.py
+!challenge.py
+!probe.py
+!rotate.py
+!test_challenge.py
+!test_rotate.py
+!requirements.txt
+!.gitignore
