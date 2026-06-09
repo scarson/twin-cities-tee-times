@@ -1,7 +1,7 @@
 # Automating the CPS `curl_cffi` impersonation-profile rotation — design
 
 **Date:** 2026-06-08
-**Status:** Implemented on `feat/cps-profile-rotation` (PR to `dev`) — proxy cascade + live probe + pure decision + scheduled workflow shipped and locally live-verified. The full `workflow_dispatch` end-to-end run is deferred to post-merge-to-`main` (GitHub only dispatches workflows present on the default branch). See `docs/implementation-log.md` (2026-06-08 rotation entry) and `docs/plans/2026-06-08-cps-profile-rotation-plan.md`.
+**Status:** Implemented on `feat/cps-profile-rotation` (PR #129 to `dev`) — proxy cascade + live probe + pure decision + **auto-deploy** workflow shipped and locally live-verified. Sam chose unattended auto-deploy over a human-gated PR (see Decision). The rotation workflow becomes dispatchable once this merges to `dev` (the default branch); the deploy-trigger leg of the chain works once the feature is published `dev`→`main` (so `deploy.yml`'s `workflow_dispatch` exists on `main`). See `docs/implementation-log.md` (2026-06-08 rotation entry) and `docs/plans/2026-06-08-cps-profile-rotation-plan.md`.
 **Follow-up to:** `docs/research/2026-06-08-cps-cloudflare-challenge.md` (the CPS Cloudflare-challenge fix, PR #125) and `docs/pitfalls/implementation-pitfalls.md` DEPLOY-2.
 
 ---
@@ -35,13 +35,16 @@ Reasoning, since it determines auto-deploy-vs-human-gate:
 
 **Estimate:** a frozen `curl_cffi` pin likely survives **~3–9 months** before its newest fingerprint ages out (absent proactive bumps). Forced rotations are **infrequent**. That favors a **monitored auto-PR with a human merge** over unattended auto-deploy of prod infrastructure — the MTTR saved by going unattended is small relative to the risk of auto-mutating the production Lambda without eyes on it.
 
-## Decision: human-gated, not unattended auto-deploy
+## Decision: unattended auto-deploy (Sam, 2026-06-08)
 
-The originating prompt says to surface this as an explicit decision and not assume. **Chosen: human-gated PR.** The automation *detects + verifies + proposes*; a human *merges*. Rationale: (a) fires only every few months, (b) auto-deploying prod Lambda infra unattended is materially riskier than the low MTTR it buys, (c) the PR is gated on a **live smoke test that already proved the candidate clears the real CPS challenge**, so the merge is one click on a known-good change, and (d) it composes with the project's existing deliberate `dev` → `main` publication gate rather than bypassing it.
+The originating prompt said to surface this as an explicit decision. It was surfaced as a human-gated PR initially; **Sam chose unattended auto-deploy**: "I would merge those PRs basically 100% of the time… I don't want to babysit and have [it] fail until I intervene to click Merge." The downside of human-gating is exactly the failure it exists to fix staying broken until a human acts. So the rotation now **auto-merges** the bump and **deploys** with no human in the loop. The safety it keeps: a PR is opened **only** after the candidate both live-clears the real CPS challenge **and** is proven vendor-deployable to the Lambda — **we never ship a version not live-verified** — and every rotation still leaves an auto-merged PR + a deploy run as the audit record (so Sam is *informed* without having to *act*).
 
-> If Sam prefers unattended auto-deploy (lower MTTR at the cost of an unattended prod-infra change), the same pipeline flips by replacing the "open PR" terminal step with a "commit to `main` + the existing deploy" step. The live-smoke gate stays either way — **we never ship a profile/version not live-verified against the real CPS challenge.**
+**Mechanism (constrained by this repo's two-branch gitflow):**
+- Deploys fire on push to `main`, so the bump must reach `main`. The rotation opens an **auto-merging PR to `main`** and a parallel one to **`dev`** (each based off its own branch tip so neither drags the other's unmerged work across), keeping the two branches in lockstep. The byte-identical one-line change makes the next routine `dev`→`main` publication conflict-free.
+- A `GITHUB_TOKEN` push/merge to `main` does **not** fire `deploy.yml`'s `push` trigger (GitHub's recursion guard), so `deploy.yml` gained a `workflow_dispatch` trigger and the rotation calls `gh workflow run deploy.yml --ref main` (`workflow_dispatch`/`repository_dispatch` are the documented exceptions to the recursion guard — **no PAT required**).
+- The triggered deploy is a **full `main` deploy** (Worker + idempotent D1 migrations + seed + Lambda re-vendor), i.e. a safe re-release of the current release state plus the dep bump — no unreleased `dev` work ships. `workflow_dispatch`-via-`GITHUB_TOKEN`-triggers-the-deploy is the one load-bearing platform assumption, confirmed on the first live run.
 
-## Recommended approach — a human-gated hybrid (axis 1 + axis 2)
+## Recommended approach — an auto-deploying hybrid (axis 1 + axis 2)
 
 ### Component A — extend the proxy fallback into a short, time-bounded multi-vendor cascade (axis 1)
 
@@ -54,7 +57,7 @@ Today `lambda/fetch-proxy/index.py` tries `PRIMARY_PROFILE = "chrome"`, then one
 
 ### Component B — scheduled rotation workflow with a live smoke gate (axis 2, the centerpiece)
 
-A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation.yml`) that runs a **self-contained live probe** and opens a ready-to-merge PR when (and only when) rotation is both needed and verified to work.
+A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation.yml`) that runs a **self-contained live probe** and, when (and only when) rotation is both needed and verified to work, **auto-merges** a `curl_cffi` bump to `main` + `dev` and triggers a deploy (see the Decision section above for the mechanism).
 
 **The probe** (`lambda/fetch-proxy/probe.py`, Python + `curl_cffi`, sharing `challenge.py` with the proxy): given a profile, **POST `RegisterTransactionId`** (the exact first reservation call the adapter makes, and the call the root-cause doc proved clears with `200 body=true` under `impersonate=chrome`) for the SD test facility `jcgsc5.cps.golf`, using the **same `requests.request(method, headers, data, impersonate=…)` call shape and a browser-like header set the proxy sends**, then classify into three buckets that mirror `index.py::is_cf_challenge` and `src/adapters/cps-golf.ts::isCloudflareChallenge`:
 
@@ -70,20 +73,20 @@ A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation
 
 **The workflow logic** (cron, plus `workflow_dispatch` with a `dry_run` input and a `force_check` input for manual verification):
 
-1. **Idempotency guard (first):** if an open `chore/cps-curl-cffi-bump-*` PR already exists, **exit 0** ("rotation already proposed: #N") — no daily duplicate-PR churn while a bump awaits merge.
-2. Read the pinned version; install **pinned** `curl_cffi`; probe `chrome` → `PINNED_VERDICT`.
+1. **Concurrency guard (`concurrency:` group):** two rotation runs can't overlap (each merges to `main`/`dev` and deploys). Replaces the earlier open-PR idempotency check, which is moot now that PRs auto-merge.
+2. Read the pinned version from the checked-out (default-branch = `dev`) `requirements.txt` — `dev`/`main` are kept in lockstep, so it is the deployed pin. Install **pinned** `curl_cffi`; probe `chrome` → `PINNED_VERDICT`.
 3. `decide()` matrix:
    - `PINNED == CLEARED` (and not `force_check`) → **healthy, exit 0** (common case).
    - `PINNED == ERROR` → **inconclusive, exit 0 + warning** (transient CPS downtime must not spawn a spurious PR).
    - `PINNED == CHALLENGED` (or `force_check`) → install **latest** `curl_cffi`; probe the cascade → `LATEST_VERDICT` + `cleared_profile`:
-     - `LATEST == CLEARED` **and** latest ≠ pinned → **deployability gate, then open PR** (below). If `cleared_profile != chrome`, the PR body carries a prominent **degraded-rotation** warning (chrome still challenged even on latest; only a fallback clears).
+     - `LATEST == CLEARED` **and** latest ≠ pinned → **deployability gate, then auto-rotate** (below). If `cleared_profile != chrome`, the PR body carries a prominent **degraded-rotation** warning (chrome still challenged even on latest; only a fallback clears).
      - `LATEST == CLEARED` **and** latest == pinned → already newest; no newer fingerprint exists → **fail loud, exit 1** (the genuine manual terminal case — wait for `curl_cffi` upstream).
      - `LATEST == CHALLENGED` → newer package doesn't help → **fail loud, exit 1**.
      - `LATEST == ERROR` → couldn't evaluate the fix while the primary is challenged → **fail loud, exit 1** (re-runs next cron; never silently green).
-4. **Deployability gate (before any PR):** reproduce the deploy's exact vendoring command (`pip install --target … --platform manylinux2014_x86_64 --implementation cp --python-version 3.14 --only-binary=:all: curl_cffi==<latest>`). If the candidate can't be cross-vendored for the Lambda runtime, **fail the gate** — "clears the challenge on the runner" is not "deployable to the Lambda" (review finding #11).
-5. **Open PR:** bump `requirements.txt`, branch `chore/cps-curl-cffi-bump-<version>`, body built into a **file** and passed via `--body-file` (never a shell heredoc that command-substitutes probe output — review finding #1/#9). Evidence = version, cleared profile, verdicts, subdomain — **IDs only, no secrets/PII**. `dry_run` prints the body + intended bump instead of creating the PR (so the PR path is verifiable without a spurious bump — review finding #5).
+4. **Deployability gate (before any merge):** reproduce the deploy's exact vendoring command (`pip install --target … --platform manylinux2014_x86_64 --implementation cp --python-version 3.14 --only-binary=:all: curl_cffi==<latest>`). If the candidate can't be cross-vendored for the Lambda runtime, **fail the gate** — "clears the challenge on the runner" is not "deployable to the Lambda" (review finding #11).
+5. **Auto-rotate:** for each of `main` and `dev` (off their own tips, idempotently skipping a branch already at the target), bump `requirements.txt`, open a PR (body via **`--body-file`** — never a heredoc that command-substitutes probe output — evidence = version/profile/verdicts/subdomain, **IDs only, no secrets/PII**), and **auto-merge** it (synchronous `--merge` with a retry, never `--auto`, so the deploy can't fire before `main` carries the bump). Then `gh workflow run deploy.yml --ref main`. `dry_run` prints the body + intended action instead, exercising the path without merging/deploying.
 
-**Fail-closed invariants:** a PR is opened **only** on positive confirmation — pinned-`chrome` `CHALLENGED` **and** latest `CLEARED` **and** the candidate version is **deployable**. Every other pinned-`CHALLENGED` outcome exits non-zero (loud), never silently green. We never propose a version not live-verified against the real CPS challenge **and** not vendor-deployable.
+**Fail-closed invariants:** a rotation merges+deploys **only** on positive confirmation — pinned-`chrome` `CHALLENGED` **and** latest `CLEARED` **and** the candidate version is **deployable**. Every other pinned-`CHALLENGED` outcome exits non-zero (loud), never silently green. We never ship a version not live-verified against the real CPS challenge **and** not vendor-deployable.
 
 ### Component C — keep the canary, update the runbook docs
 
@@ -92,7 +95,7 @@ A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation
 ## What this does NOT do (YAGNI / out of scope)
 
 - **A D1-backed "rolling profile pin" (option B from the prompt).** The in-proxy cascade already auto-selects among installed profiles, so a manually-set DB pin adds Worker + D1 plumbing without covering a case the cascade doesn't. *Flagged, not built.* (If we later measure that re-trying an aged-out primary on every poll wastes meaningful upstream budget, a "remember last-known-good profile" optimization — warm-container global, or D1 — becomes worth it. Not now.)
-- **Unattended auto-deploy of the Lambda.** Decided against (above); trivially reachable later by swapping the terminal step.
+- **A Lambda-only deploy path.** The rotation reuses the existing `deploy.yml` (full `main` deploy — idempotent re-release + the dep bump) rather than carving out a Lambda-only deploy, keeping one deploy source of truth (DEPLOY-1). Could be narrowed later if a full deploy per rotation proves undesirable.
 - **Re-solving the root cause** (done in PR #125) or a **headless browser** (the challenge is fingerprint-gated; impersonation suffices).
 
 ## Considered and ruled out
@@ -101,10 +104,11 @@ A new scheduled GitHub Actions workflow (`.github/workflows/cps-profile-rotation
 - **Pinning a specific `chromeNNN` profile** — violates DEPLOY-2; pinned profiles are exactly what ages out. Use the versionless `chrome`.
 - **A managed unblocker API (ScraperAPI/ZenRows)** — already rejected in the root-cause fix (ongoing per-request cost, third party sees our traffic). Out of scope here.
 
-## Open considerations to flag in the PR (not blockers)
+## Open considerations (not blockers)
 
-- **PR target & MTTR.** Per `CLAUDE.md` the rotation PR targets **`dev`** (never `main`). Deploy happens on push to `main`, so recovery = merge the bump to `dev` → the normal `dev` → `main` publication PR → deploy. For an active outage that is two human steps; the doc will recommend Sam fast-track a rotation PR. (Targeting `main` directly would cut MTTR but needs an explicit exception to the branch rule — not taken.)
-- **CI on a bot-opened PR.** PRs opened with the built-in `GITHUB_TOKEN` do not trigger downstream workflow runs (GitHub's recursion guard). The bump is a Python-deps-only change already validated by the live gate, so app CI re-run is low-value; if we want it, store a PAT secret. Documented, MVP uses `GITHUB_TOKEN`.
+- **Branch rule exception.** `CLAUDE.md` says PRs target `dev`, never `main`. The auto-deploy path opens an auto-merging PR to `main` directly (plus one to `dev`). Sam explicitly authorized auto-deploy (2026-06-08), which makes this a sanctioned, scoped exception for the rotation bump only — a single-line, live- and deploy-gated change.
+- **Bootstrap window.** `gh workflow run deploy.yml --ref main` requires `deploy.yml`'s `workflow_dispatch` trigger to exist **on `main`**, which only happens once this feature is published `dev`→`main` (the normal release). Until then, a rotation would bump `main` but the deploy dispatch would fail **loudly** (red run) → manual deploy. This is a one-time transient during this feature's own rollout. (The rotation *workflow itself* becomes dispatchable as soon as this merges to `dev`, the default branch.)
+- **Full vs Lambda-only deploy.** The triggered `deploy.yml` redeploys all of `main` (Worker + idempotent migrations + seed + Lambda). Since it deploys the released state + the dep bump, it's a safe re-release; flagged in case a Lambda-only path is later preferred.
 
 ## Testing & verification
 

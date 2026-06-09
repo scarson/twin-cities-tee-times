@@ -67,9 +67,10 @@ notes and commit messages.
 | 4 — Docs (runbook, log, statuses) | ✅ Shipped | _this commit_ | DEPLOY-2 runbook, implementation-log, design/Prompt-5 statuses |
 
 ### Deviations
+- **Human-gate → unattended auto-deploy (Sam, 2026-06-08, post-plan).** The plan/Phase-3 built a human-gated PR to `dev`. Sam then chose unattended auto-deploy. The rotation now **auto-merges** the bump to `main` + `dev` (each off its own tip, idempotent, lockstep) and triggers `deploy.yml` on `main` via `workflow_dispatch` (added to `deploy.yml`; exempt from GitHub's `GITHUB_TOKEN` recursion guard, so no PAT). `concurrency:` replaces the open-PR idempotency guard. Fail-closed gates unchanged. See the design doc's "Decision" section.
 - **Task 2.3 — `PROFILES` finalized to `("chrome", "safari", "firefox")`** (plan seed was `("chrome", "safari17_0")`). Planned refinement: Task 2.3 anticipated preferring versionless aliases; live-verified all three clear on `curl_cffi==0.15.0`, `edge`/`chrome_android` were challenged and excluded.
-- **Added a `proxy-tests` job to `.github/workflows/ci.yml`** (the plan said "don't touch main CI"). Justified: the pure-logic tests would otherwise be ungated at PR time (the rotation workflow only runs post-merge from the default branch). Small, fast, no pip deps.
-- **Task 3.3 (full `workflow_dispatch` end-to-end run) deferred to post-merge-to-`main`** — GitHub only dispatches a `workflow_dispatch` workflow present on the default branch. All non-GitHub pieces (probe live, deployability gate, healthy-path decide, unit tests, YAML parse) verified locally.
+- **Added a `proxy-tests` job to `.github/workflows/ci.yml`** (the plan said "don't touch main CI"). Justified: the pure-logic tests would otherwise be ungated at PR time (the rotation workflow only runs from the default branch). Small, fast, no pip deps.
+- **Live `workflow_dispatch` runs deferred to post-merge** — the default branch is `dev`, so the rotation workflow is dispatchable after merge to `dev`; the deploy-trigger leg additionally needs `deploy.yml`'s `workflow_dispatch` on `main` (lands at publication). All non-GitHub pieces (probe live, deployability gate, healthy-path decide, unit tests, YAML parse) verified locally.
 
 ### Discoveries
 - **`lambda/fetch-proxy/.gitignore` allowlists only `index.py`/`requirements.txt`** (deps are vendored at deploy time). Added the first-party source modules (`challenge.py`, `probe.py`, `rotate.py`, `test_*.py`) to the allowlist so they're tracked and ship with the bundle. (commit `6c92bf9`)
