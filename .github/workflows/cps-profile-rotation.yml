@@ -1,8 +1,8 @@
 # Detects whether CPS's Cloudflare challenge has aged out the pinned curl_cffi
 # fingerprint and, only when a newer curl_cffi LIVE-clears the real challenge AND
-# is vendor-deployable to the Lambda, opens a human-gated PR bumping
-# requirements.txt. Fail-closed: never proposes an unverified or undeployable
-# version. See docs/plans/2026-06-08-cps-profile-rotation-design.md.
+# is vendor-deployable to the Lambda, auto-merges a requirements.txt bump to both
+# `main` and `dev` and triggers a deploy of `main`. Fail-closed: never ships an
+# unverified or undeployable version. See docs/plans/2026-06-08-cps-profile-rotation-design.md.
 name: CPS profile rotation
 
 on:
@@ -15,13 +15,19 @@ on:
         type: boolean
         default: false
       dry_run:
-        description: "Build & print the PR body instead of opening a PR"
+        description: "Print the intended rotation without merging or deploying"
         type: boolean
         default: false
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write # push the bump branches
+  pull-requests: write # open + auto-merge the bump PRs
+  actions: write # dispatch deploy.yml
+
+# Never let two rotation runs race (each one merges to main/dev and deploys).
+concurrency:
+  group: cps-profile-rotation
+  cancel-in-progress: false
 
 defaults:
   run:
@@ -29,7 +35,7 @@ defaults:
 
 jobs:
   probe-and-rotate:
-    name: Probe CPS challenge & propose curl_cffi bump
+    name: Probe CPS challenge & auto-rotate curl_cffi
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -42,24 +48,10 @@ jobs:
         working-directory: lambda/fetch-proxy
         run: python -m unittest test_challenge test_rotate -v
 
-      - name: Idempotency guard — skip if a rotation PR is already open
-        id: guard
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          OPEN=$(gh pr list --state open --limit 100 --json number,headRefName \
-            --jq '[.[] | select(.headRefName | startswith("chore/cps-curl-cffi-bump-"))] | length')
-          if [ "$OPEN" != "0" ]; then
-            echo "A rotation PR is already open; skipping."
-            echo "pending=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "pending=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Read pinned curl_cffi version
         id: pinned
-        if: steps.guard.outputs.pending != 'true'
+        # `dev` and `main` are kept in lockstep by this workflow, so the checked-out
+        # (default-branch = dev) requirements.txt is the deployed pin.
         run: |
           set -euo pipefail
           PINNED=$(sed -n 's/^curl_cffi==//p' lambda/fetch-proxy/requirements.txt)
@@ -68,7 +60,6 @@ jobs:
 
       - name: Probe pinned curl_cffi (chrome only — detect primary aging)
         id: probe_pinned
-        if: steps.guard.outputs.pending != 'true'
         working-directory: lambda/fetch-proxy
         run: |
           set -euo pipefail
@@ -85,9 +76,7 @@ jobs:
 
       - name: Probe latest curl_cffi (full cascade)
         id: probe_latest
-        if: >-
-          steps.guard.outputs.pending != 'true' &&
-          (steps.probe_pinned.outputs.verdict == 'CHALLENGED' || inputs.force_check)
+        if: steps.probe_pinned.outputs.verdict == 'CHALLENGED' || inputs.force_check
         working-directory: lambda/fetch-proxy
         run: |
           set -euo pipefail
@@ -99,7 +88,7 @@ jobs:
 
       - name: Decide
         id: decide
-        if: steps.guard.outputs.pending != 'true' && steps.probe_pinned.outcome == 'success'
+        if: steps.probe_pinned.outcome == 'success'
         working-directory: lambda/fetch-proxy
         run: |
           set -euo pipefail
@@ -131,40 +120,66 @@ jobs:
             --python-version 3.14 \
             --only-binary=:all: \
             "curl_cffi==$LATEST" \
-            || { echo "::error::curl_cffi $LATEST cleared the challenge but is NOT vendor-deployable to the Lambda (manylinux2014/cp314). Not proposing it."; exit 1; }
+            || { echo "::error::curl_cffi $LATEST cleared the challenge but is NOT vendor-deployable to the Lambda (manylinux2014/cp314). Not rotating."; exit 1; }
 
-      - name: Open bump PR (live- and deploy-gated, fail-closed)
+      - name: Rotate — bump main & dev, auto-merge, deploy (live- and deploy-gated)
         if: steps.decide.outputs.action == 'open_pr' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
           LATEST: ${{ steps.probe_latest.outputs.version }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           [[ "$LATEST" =~ ^[0-9][0-9A-Za-z.+-]*$ ]] || { echo "::error::refusing unsafe version string: $LATEST"; exit 1; }
-          BRANCH="chore/cps-curl-cffi-bump-${LATEST}"
-          # Scheduled runs check out the DEFAULT branch (main); base the bump branch
-          # explicitly on origin/dev so the PR diff is exactly the requirements bump.
-          git fetch origin dev
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH" origin/dev
-          sed -i "s|^curl_cffi==.*|curl_cffi==${LATEST}|" lambda/fetch-proxy/requirements.txt
-          git add lambda/fetch-proxy/requirements.txt
-          git commit -m "chore(proxy): bump curl_cffi to ${LATEST} (CPS fingerprint rotation)"
-          git push -u origin "$BRANCH"
-          gh pr create --base dev --head "$BRANCH" \
-            --title "chore(proxy): rotate CPS curl_cffi to ${LATEST}" \
-            --body-file lambda/fetch-proxy/pr_body.md
+          bumped_main=0
+          # Bump both release-tracking branches off their OWN tips so neither drags
+          # the other's unmerged work across; idempotently skip a branch already at
+          # the target. The byte-identical change keeps dev/main conflict-free at the
+          # next publication merge.
+          for base in main dev; do
+            git fetch origin "$base"
+            branch="chore/cps-curl-cffi-bump-${LATEST}-${base}-${RUN_ID}"
+            git checkout -B "$branch" "origin/$base"
+            sed -i "s|^curl_cffi==.*|curl_cffi==${LATEST}|" lambda/fetch-proxy/requirements.txt
+            if git diff --quiet -- lambda/fetch-proxy/requirements.txt; then
+              echo "origin/$base already at curl_cffi==${LATEST}; skipping."
+              continue
+            fi
+            git add lambda/fetch-proxy/requirements.txt
+            git commit -m "chore(proxy): bump curl_cffi to ${LATEST} (CPS fingerprint rotation)"
+            git push -u origin "$branch"
+            gh pr create --base "$base" --head "$branch" \
+              --title "chore(proxy): rotate CPS curl_cffi to ${LATEST} (${base})" \
+              --body-file lambda/fetch-proxy/pr_body.md
+            # Synchronous --merge (NOT --auto: the deploy below must not fire until
+            # main actually carries the bump). Retry the transient window where
+            # GitHub hasn't computed mergeability yet.
+            merged=0
+            for attempt in 1 2 3 4; do
+              if gh pr merge "$branch" --merge --delete-branch; then merged=1; break; fi
+              echo "merge attempt ${attempt} failed; retrying in 5s…"; sleep 5
+            done
+            [ "$merged" = "1" ] || { echo "::error::failed to merge ${branch} into ${base}"; exit 1; }
+            [ "$base" = "main" ] && bumped_main=1 || true
+          done
+          if [ "$bumped_main" = "1" ]; then
+            echo "main bumped → triggering deploy.yml on main."
+            gh workflow run deploy.yml --ref main
+          else
+            echo "main already at curl_cffi==${LATEST}; no deploy triggered."
+          fi
 
-      - name: Dry run — print intended PR body
+      - name: Dry run — print intended rotation
         if: steps.decide.outputs.action == 'open_pr' && inputs.dry_run == true
         working-directory: lambda/fetch-proxy
         run: |
-          echo "DRY RUN — would bump curl_cffi to ${{ steps.probe_latest.outputs.version }} and open a PR with body:"
+          echo "DRY RUN — would bump curl_cffi to ${{ steps.probe_latest.outputs.version }} on main+dev, auto-merge both, and trigger deploy.yml on main. PR body:"
           cat pr_body.md
 
       - name: Surface the decision exit code (loud on terminal cases)
-        if: steps.guard.outputs.pending != 'true' && steps.decide.outcome == 'success'
+        if: steps.decide.outcome == 'success'
         run: |
           set -euo pipefail
           REASON=$(python -c 'import json;print(json.load(open("lambda/fetch-proxy/decision.json"))["reason"])')

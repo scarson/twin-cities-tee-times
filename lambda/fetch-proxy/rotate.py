@@ -92,7 +92,7 @@ The pinned `curl_cffi=={pinned_version}` is **challenged** by CPS's Cloudflare b
 {json.dumps(latest_data, indent=2)}
 ```
 
-Merge to `dev`, then publish `dev` → `main` to deploy (deploy re-vendors curl_cffi). Fast-track if CPS polling is actively down. See `docs/pitfalls/implementation-pitfalls.md` DEPLOY-2 and `docs/plans/2026-06-08-cps-profile-rotation-design.md`.
+This PR is opened and **auto-merged** by the rotation workflow (one to `main`, one to `dev`, kept in lockstep); merging `main` triggers a deploy that re-vendors curl_cffi. It is an audit record, not an action request — no review needed. See `docs/pitfalls/implementation-pitfalls.md` DEPLOY-2 and `docs/plans/2026-06-08-cps-profile-rotation-design.md`.
 """
 
 
