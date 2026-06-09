@@ -59,7 +59,7 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5",
     "vitest-axe": "^0.1.0",
-    "wrangler": "^4.84.1"
+    "wrangler": "^4.98.0"
   },
   "overrides": {
     "postcss": "^8.5.12",
