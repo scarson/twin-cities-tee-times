@@ -29,7 +29,7 @@ This document serves three audiences. Start here, then go directly to the sectio
 | 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
 | 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
-| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 – DEPLOY-2 | §6.C |
+| 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 – DEPLOY-3 | §6.C |
 | — | [Orchestration](#orchestration) | Parallel subagent dispatch and output persistence | ORCH-1 | §Orchestration.C |
 | A | [Historical Changelog](#appendix-a-historical-changelog) | Provenance, validation dates | — | — |
 | B | [Unified Summary Table](#appendix-b-unified-summary-table) | All pitfalls at a glance, with severity and status | — | — |
@@ -278,10 +278,23 @@ Every app cookie is namespaced with `tct-`: `tct-session`, `tct-refresh`, `tct-o
 
 ---
 
+### DEPLOY-3: A Workflow's `permissions:` Block Doesn't Grant PR Creation — the Repo Governor Must Allow It Too
+
+**The Flaw:** Shipping a workflow that opens a PR via `gh pr create` (or `peter-evans/create-pull-request`, or the GraphQL `createPullRequest`) authenticated with the default `GITHUB_TOKEN`, while the repository setting **"Allow GitHub Actions to create and approve pull requests"** is off.
+
+**Why It Matters:** `GITHUB_TOKEN`'s effective capability is the **intersection** of the workflow's `permissions:` block and the repo/org governor settings — declaring `pull-requests: write` is necessary but not sufficient. With the governor off (API field `can_approve_pull_request_reviews: false`, under Settings → Actions → General → Workflow permissions), the step fails *at runtime* with `GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)` even though the YAML looks complete and CI is green. The CPS rotation (DEPLOY-2) hit exactly this on its first forced run: probe → decide → deployability-gate all passed, then the rotate step died at `gh pr create`, so the unattended self-heal could never open its bump PR. The failure is **silent until a rotation is actually warranted** — the first real Cloudflare fingerprint-aging event, months out — with CPS broken in the interim.
+
+**The Fix:** Enable the governor — `gh api -X PUT repos/<owner>/<repo>/actions/permissions/workflow -F can_approve_pull_request_reviews=true -f default_workflow_permissions=read` (or the UI toggle), or switch the step to a PAT. On this repo the security delta is negligible: there is no branch protection and Actions already merges to `main` and deploys via `GITHUB_TOKEN`, so "create a PR" is strictly less powerful than what it already does. Live-verified after the flip: the rotation opened + merged its bump PR and dispatched a successful `workflow_dispatch` deploy end to end.
+
+**The Lesson:** `GITHUB_TOKEN` capability = intersection(workflow `permissions:`, repo/org governor). Any Actions step that creates or approves a PR needs the repo "Allow GitHub Actions to create and approve pull requests" governor on (or a PAT) — the `permissions:` block alone won't do it. And prove unattended-automation paths by *forcing the path end to end*; a green YAML and green CI don't exercise the create-PR/dispatch legs.
+
+---
+
 ### Review Checklist {#section-6c}
 
 - [ ] **Lambda changes made in `lambda/fetch-proxy/index.py`**, not via the AWS console/CLI on the live function (DEPLOY-1)
 - [ ] **CPS v5 reservation calls go through the impersonating fetch proxy**; a 403 with `cf-mitigated: challenge` means the impersonation profile needs rotation (bump `curl_cffi`, redeploy), not an auth fix (DEPLOY-2)
+- [ ] **Workflows that open a PR via `gh pr create`/`GITHUB_TOKEN` require the repo "Allow GitHub Actions to create and approve pull requests" governor** (`can_approve_pull_request_reviews=true`) — the workflow `permissions:` block alone is insufficient (DEPLOY-3)
 
 ---
 
@@ -308,6 +321,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 ---
 
 # Appendix A: Historical Changelog
+
+## 2026-06-09 — DEPLOY-3 added (Actions PR-create governor)
+
+- Added **DEPLOY-3** (a workflow's `permissions:` block doesn't grant PR creation — the repo governor `can_approve_pull_request_reviews` must also be on) to Deploy & Infrastructure, surfaced by the post-merge live verification of the CPS rotation (DEPLOY-2). Forcing a real rotation exposed that the rotate step's `gh pr create` failed with "GitHub Actions is not permitted to create or approve pull requests"; enabling the repo governor fixed it, and the rotation then opened + merged its bump PR and dispatched a successful `workflow_dispatch` deploy end to end (also confirming the recursion-guard exception the deploy-trigger leg relies on). TOC range, §6.C checklist, and Appendix B updated alongside. Status VALIDATED.
 
 ## 2026-06-08 — CF-4 added
 
@@ -348,6 +365,7 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | AUTH-2 | App cookies use `tct-` prefix | LOW | VALIDATED | Auth & Sessions |
 | DEPLOY-1 | Lambda proxy deployed from source by CI | MEDIUM | VALIDATED | Deploy & Infra |
 | DEPLOY-2 | CPS v5 API behind Cloudflare challenge — proxy must impersonate a browser | HIGH | VALIDATED | Deploy & Infra |
+| DEPLOY-3 | Actions can't create PRs unless the repo governor (`can_approve_pull_request_reviews`) allows it | HIGH | VALIDATED | Deploy & Infra |
 | ORCH-1 | Analysis dispatches must persist findings | HIGH | VALIDATED | Orchestration |
 
 Severity levels: `CRITICAL` (production data loss / security), `HIGH` (correctness bug under predictable conditions), `MEDIUM` (correctness bug under edge cases), `LOW` (cleanliness / clarity).
