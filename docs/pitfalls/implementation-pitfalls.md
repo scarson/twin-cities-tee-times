@@ -27,7 +27,7 @@ This document serves three audiences. Start here, then go directly to the sectio
 | 1 | [Time & Timezones](#section-1-time--timezones) | Any date/time logic, "today", date strings | TIME-1 | §1.C |
 | 2 | [Cloudflare Workers Runtime](#section-2-cloudflare-workers-runtime) | Bindings, secrets, env access, runtime APIs | CF-1 – CF-4 | §2.C |
 | 3 | [Database & D1](#section-3-database--d1) | SQL queries, schema, seeding | DB-1 – DB-4 | §3.C |
-| 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-2 | §4.C |
+| 4 | [Course Catalog & Lifecycle](#section-4-course-catalog--lifecycle) | courses.json, polling flags, onboarding | COURSE-1 – COURSE-4 | §4.C |
 | 5 | [Auth & Sessions](#section-5-auth--sessions) | Authentication, cookies, OAuth | AUTH-1 – AUTH-2 | §5.C |
 | 6 | [Deploy & Infrastructure](#section-6-deploy--infrastructure) | CI/CD, the Lambda fetch proxy | DEPLOY-1 – DEPLOY-3 | §6.C |
 | — | [Orchestration](#orchestration) | Parallel subagent dispatch and output persistence | ORCH-1 | §Orchestration.C |
@@ -207,11 +207,48 @@ A new course in `courses.json` needs `latitude`/`longitude` (geocode from the ad
 
 ---
 
+### COURSE-3: A Misconfigured Course Fails as Silent `no_data`, Not `error` — Verify Platform Against the Live Site
+
+**The Flaw:** Reading a course that polls `no_data` (poll succeeded, zero tee times parsed) as "empty inventory," when it's actually pointed at the wrong booking platform or a stale endpoint.
+
+**Why It Matters:** A wrong-platform course fails **silently as `no_data`, never as `error`** — so it never trips error monitoring or the `/check-logs` error queries. The stale endpoint (e.g. a CPS `*.cps.golf` v4 subdomain after the course migrated to ForeUp) still answers `200` with an empty teesheet. The course shows "no tee times" to users indefinitely: `last_had_tee_times` stays `null`, zero successes across the entire retention window, and nothing *looks* broken. Real example (2026-06-09): all Oak Glen + Gem Lake entries were tagged `cps_golf` but actually book on ForeUp — 0 successes ever, ~2,800 `no_data` rows each. Same class as `831d66e` (Greenhaven was tagged Chronogolf, actually ForeUp).
+
+**The Fix:** When adding **or** auditing a course, verify `platform` + `platformConfig` against the **live booking site** — don't trust the catalog. Detect existing cases with the never-succeeded audit:
+
+```sql
+SELECT id, platform FROM courses
+WHERE last_had_tee_times IS NULL AND is_active = 1 AND disabled = 0;
+```
+
+Any row active for more than a few days with zero successes is a misconfiguration suspect, not a quiet course. Reproduce the adapter's exact API call to confirm the correct endpoint before editing config (ForeUp is fetched directly — no proxy — so it reproduces from any host). The platform flip then propagates to prod through the seed UPSERT, which updates `platform`/`platform_config` (DB-3) — no migration needed for the flip itself.
+
+**The Lesson:** `no_data` that never flips to `success` is a bug signal, not a quiet course. Silence is the most dangerous failure shape — a misconfig that errored would have been caught weeks earlier.
+
+*See Also:* COURSE-4 (orphan rows from splits), DB-3 (seed UPSERT propagates `platform`).
+
+---
+
+### COURSE-4: Splitting or Removing a Course Orphans Its D1 Row — Retire It With a Migration, Never DELETE
+
+**The Flaw:** Splitting a multi-course facility into separate catalog entries (or removing any course from `courses.json`) and assuming the old row disappears from prod D1.
+
+**Why It Matters:** The seed UPSERT (`scripts/seed.ts`) only INSERTs/UPDATEs ids **present in `courses.json`** — it never deactivates or deletes ids that were removed. The pre-split combined row keeps `is_active = 1, disabled = 0` and gets polled forever, usually as silent `no_data` (COURSE-3). Real example: splitting Oak Glen → `oak-glen-championship` + `oak-glen-executive` (commit `6ae31fe`) left an orphan `oak-glen` row (`courseIds "6,7"`); likewise `gem-lake-hills` (`"8,9"`). Both kept polling dead endpoints, invisible to the seed.
+
+**The Fix:** When removing, renaming, or splitting a course, add a migration to retire the old row: `UPDATE courses SET disabled = 1 WHERE id IN (...)`. **Never `DELETE`** — `ON DELETE CASCADE` on `user_favorites`/`booking_clicks` destroys user data (DB-2). The seed cannot do this for you, because the id is already gone from the JSON.
+
+**The Lesson:** Removing a course from `courses.json` is only half the job; the orphaned D1 row needs its own retire migration.
+
+*See Also:* DB-2 (never hard-delete), DB-3 (seed overwrites), COURSE-3 (silent `no_data`).
+
+---
+
 ### Review Checklist {#section-4c}
 
 - [ ] **`is_active` not set by hand** in seed/migration/manual edits — cron owns it (COURSE-1)
 - [ ] **Permanent exclusion uses `disabled = 1` in `courses.json`** (COURSE-1)
 - [ ] **New course has `latitude`, `longitude`, and `googlePlaceId`** populated (COURSE-2)
+- [ ] **`platform`/`platformConfig` verified against the live booking site** (not just the catalog); never-succeeded audit clean (COURSE-3)
+- [ ] **Removed/renamed/split courses retired via `UPDATE … SET disabled = 1` migration** — never DELETE; the seed won't do it (COURSE-4)
 
 ---
 
@@ -322,6 +359,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 
 # Appendix A: Historical Changelog
 
+## 2026-06-09 — COURSE-3 & COURSE-4 added (silent `no_data` misconfig + orphan rows)
+
+- Added **COURSE-3** (a misconfigured course fails as silent `no_data`, never `error`; verify `platform`/`platformConfig` against the live booking site and audit with the never-succeeded query) and **COURSE-4** (splitting/removing a course orphans its pre-split D1 row because the seed UPSERT only touches ids present in `courses.json`; retire via `UPDATE … SET disabled=1`, never DELETE) to Course Catalog & Lifecycle. Surfaced during a `/check-logs` deep-dive: Oak Glen + Gem Lake (4 schedules) were tagged `cps_golf` but actually book on ForeUp (live-reproduced: `22986/12514`, `22986/12527`, `22985/12529`, `22985/12528`), and the facility split left orphan `oak-glen` + `gem-lake-hills` rows still polling. TOC range, §4.C checklist, and Appendix B updated alongside. Status VALIDATED (mechanism reproduced live; detection query proven). The Oak Glen + Gem Lake catalog remediation itself is tracked separately and in progress at the time of writing.
+
 ## 2026-06-09 — DEPLOY-3 added (Actions PR-create governor)
 
 - Added **DEPLOY-3** (a workflow's `permissions:` block doesn't grant PR creation — the repo governor `can_approve_pull_request_reviews` must also be on) to Deploy & Infrastructure, surfaced by the post-merge live verification of the CPS rotation (DEPLOY-2). Forcing a real rotation exposed that the rotate step's `gh pr create` failed with "GitHub Actions is not permitted to create or approve pull requests"; enabling the repo governor fixed it, and the rotation then opened + merged its bump PR and dispatched a successful `workflow_dispatch` deploy end to end (also confirming the recursion-guard exception the deploy-trigger leg relies on). TOC range, §6.C checklist, and Appendix B updated alongside. Status VALIDATED.
@@ -361,6 +402,8 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 | DB-4 | Never rewrite cached rows unconditionally — compare-then-replace | MEDIUM | VALIDATED | Database & D1 |
 | COURSE-1 | `disabled` vs `is_active` are independent | MEDIUM | VALIDATED | Course Lifecycle |
 | COURSE-2 | New courses need lat/lng + `googlePlaceId` | MEDIUM | VALIDATED | Course Lifecycle |
+| COURSE-3 | Misconfigured course fails as silent `no_data`, not error — verify platform vs live site | HIGH | VALIDATED | Course Lifecycle |
+| COURSE-4 | Splitting/removing a course orphans its D1 row — retire via migration, never DELETE | MEDIUM | VALIDATED | Course Lifecycle |
 | AUTH-1 | Authenticate via `authenticateRequest()`, not middleware | HIGH | VALIDATED | Auth & Sessions |
 | AUTH-2 | App cookies use `tct-` prefix | LOW | VALIDATED | Auth & Sessions |
 | DEPLOY-1 | Lambda proxy deployed from source by CI | MEDIUM | VALIDATED | Deploy & Infra |
