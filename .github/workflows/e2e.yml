@@ -62,7 +62,7 @@ jobs:
           GOOGLE_CLIENT_SECRET=ci-dummy
           JWT_SECRET=ci-dummy-jwt-secret-at-least-32-bytes-long
           EOF
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .next/cache
           key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
