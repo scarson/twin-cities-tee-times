@@ -41,7 +41,7 @@ jobs:
     # deploy failure reds this job (the healthy no-op path finishes in ~2 min).
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14" # match the Lambda runtime

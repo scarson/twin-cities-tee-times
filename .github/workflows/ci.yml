@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -63,13 +63,13 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: npm
       - run: npm ci
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .next/cache
           key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14" # match the Lambda runtime
