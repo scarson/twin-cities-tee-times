@@ -75,11 +75,12 @@ export class TeeWireAdapter implements PlatformAdapter {
     return body.data.tee_times
       .filter((slot) => slot.availability.available_spots > 0)
       .flatMap((slot) => {
-        // Group rates by hole count; within each group, prefer Walking rate.
-        // If no Walking rate in a group, emit the group with price=null
-        // (Riding rates include cart costs — not comparable to green fees).
-        // Unknown rate.holes values (e.g. 27) are skipped rather than
-        // silently collapsed to 18.
+        // Group rates by hole count; within each group, resolve the walking
+        // (green-fee) rate: an explicit "Walking" title first, otherwise the
+        // non-cart/non-riding title. If a group has neither, emit it with
+        // price=null (cart/riding rates bundle cart cost — not comparable to
+        // green fees). Unknown rate.holes values (e.g. 27) are skipped rather
+        // than silently collapsed to 18.
         const ratesByHoles = new Map<9 | 18, TeeWireRate[]>();
         for (const rate of slot.pricing.rates) {
           const holes = classifyHoles(rate.holes);
@@ -92,7 +93,12 @@ export class TeeWireAdapter implements PlatformAdapter {
 
         const records: TeeTime[] = [];
         for (const [holes, rates] of ratesByHoles) {
-          const walkingRate = rates.find((r) => r.rate_title.includes("Walking"));
+          // Prefer an explicit "Walking" rate; otherwise the non-cart title is
+          // the walking (green-fee) rate. Cart/riding titles bundle cart cost
+          // and aren't comparable to a green fee.
+          const walkingRate =
+            rates.find((r) => /walking/i.test(r.rate_title)) ??
+            rates.find((r) => !/cart|riding/i.test(r.rate_title));
           const price = walkingRate
             ? parseFloat(walkingRate.price.replace(/[^0-9.]/g, ""))
             : null;
