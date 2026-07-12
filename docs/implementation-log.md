@@ -4,6 +4,54 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-07-12 — Dark-courses catalog remediation (branch `fix/dark-courses-catalog`)
+
+**Context:** Executed `docs/plans/2026-06-09-dark-courses-catalog-fix-plan.md` — the 17-course dark-course remediation the prior 429 investigation flagged as never-executed. Every "dark" course (zero `success` rows ever, silent `no_data` per COURSE-3) had migrated booking providers; the old platform keeps answering 200 with an empty teesheet. Fix repoints the migrated courses at their current platform, disables the ones with no adapter, and retires two orphan D1 rows.
+
+### What shipped
+
+- **TeeWire matcher (`src/adapters/teewire.ts`, TDD):** old `rate_title.includes("Walking")` resolved price to `null` for Le Sueur, whose titles are plain `"9 Holes"`/`"18 Holes"` (walking) and `"… w/ Cart"` (riding) — none say "Walking". Two-tier matcher: explicit "Walking" title first (preserves existing tenants), else the non-cart/non-riding title as the green fee. 1 new failing→green test; existing fixtures unchanged (51/28), Riding-only null case preserved.
+- **Catalog (`src/config/courses.json` + regenerated `scripts/seed.sql`):** 14 platform flips — foreup ×7 (crystal-lake, deer-run, the-meadows-at-mystic-lake, oak-glen-championship, oak-glen-executive, gem-lake-executive, gem-lake-par3), teeitup ×4 (elk-river, oak-marsh, rum-river-hills, the-refuge), membersports ×1 (eagle-valley), teewire ×1 (le-sueur), cps_golf ×1 (legends-club). 6 disables (no adapter / private): fox-hollow, riverwood-national, stonebrooke (Club Caddie), hastings-golf-club (EZLinks), links-at-northfork (TenFore), royal-golf-club (public→private). the-wilds was already disabled on origin/dev.
+- **Migration `0011_retire_oak_glen_gem_lake_orphans.sql`:** `UPDATE courses SET disabled=1 WHERE id IN ('oak-glen','gem-lake-hills')` — pre-split orphans absent from courses.json, so the seed can't retire them (COURSE-4). `disabled=1` not DELETE (DB-2).
+
+### Key decisions / verification
+
+- **Live spot-checked all 9 non-pre-verified public flip targets today** (foreup ×6, teeitup ×3) via curl — all returned real times. crystal-lake/elk-river/eagle-valley were re-verified earlier today. le-sueur (teewire) + legends-club (cps_golf) are Cloudflare-gated locally, so trusted per the 06-09/06-13 verification through the prod proxy (COURSE-3 discipline; no blind flips).
+- **Disabled rows keep their old `platform`/`platformConfig`** (smallest change; cron filters `WHERE disabled=0` so nothing polls them). NOT set to clubcaddie/ezlinks/tenfore — those have no adapter, so a future `disabled=0` would fail every poll.
+
+### Discovery
+
+`scripts/seed.sql` was pre-existingly stale — 49 `INSERT` rows vs 93 courses in courses.json (~44 courses added since `e434043` without regenerating). Harmless in prod (deploy.yml regenerates seed.sql before applying), but regenerating here resyncs it, so the seed diff includes the 44 previously-unseeded courses plus the intended flips/disables. Recorded in the plan's Discoveries + Deviations.
+
+### Quality checks
+
+769 tests green, `tsc --noEmit` clean, lint 0 errors (3 pre-existing warnings in untouched files: course-header.tsx, poller.integration.test.ts, d1-test-helper.ts). Post-deploy verification (Phase 5, owed after merge→deploy): `/check-logs` + the `poll_log`/`courses` remote queries in the plan — each flipped course should show `status=success` with non-zero counts and non-null `last_had_tee_times`; le-sueur should carry non-null prices; disables + orphans should show `disabled=1` with no new poll_log rows.
+
+## 2026-07-12 — Chronogolf 429: measured rate ceiling + backoff (branch `fix/chronogolf-429-backoff`)
+
+**Context:** `/check-logs` showed ~42 Chronogolf courses at 75–93% HTTP 429 despite the June single-lane + 1.1s-throttle fix being live (spacing visible in error timestamps). Investigation (full trail: `docs/plans/2026-07-12-chronogolf-429-backoff.md`): the "started July 5" signal was a poll_log 7-day-retention artifact — the failure was steady-state; within-cycle traces show ~20 requests accepted, then ~60s of blocks, then ~13 more, at a constant ~78% error ratio at every hour. Chronogolf (Cloudflare-fronted) enforces ~20 req/min per IP with ~60s mitigation — a third of the June plan's assumed ~1 req/sec ceiling.
+
+### What shipped
+
+- **Adapter (`src/adapters/chronogolf.ts`, TDD):** `CHRONOGOLF_MIN_REQUEST_INTERVAL_MS` 1100 → 4000 (~15 req/min under the measured ceiling); `CHRONOGOLF_429_BACKOFF_MS = 61_000` pushes the throttle's `nextAllowedAt` reservation past the block window after any 429 (closed-loop: re-arms if the block persists); `Retry-After` header surfaced in the 429 error message for telemetry. 4 new tests.
+- **`deactivateStaleCourses` (`src/lib/db.ts`, TDD):** NULL `last_had_tee_times` courses (never one success) were never deactivated — now deactivated once poll_log shows 3+ days of polling; reversible via the hourly inactive probe. 2 new integration tests + 1 renamed.
+- **Catalog:** `the-wilds` disabled (Chronogolf club record: `active: false`, `online_booking_enabled: false`; 2,590 polls, 0 successes).
+- **Docs:** CF-4 corollary (measure the ceiling; back off on 429; verify post-deploy) + changelog; post-deploy-outcome note in the 2026-06-08 pacing plan; investigation report.
+
+### Key decisions
+
+- **Fixed 4s pacing + 61s backoff over adaptive AIMD** — self-corrects in the direction that matters with no new state; see "Considered and ruled out" in the report doc.
+- **`Retry-After` logged, not obeyed** — a large header value inside a poll would overrun the lane's wall-clock margin and re-introduce lane self-overlap; revisit if telemetry shows blocks ≫ 60s.
+- **Lambda-proxy IP rotation rejected again** (circumvention; sub-threshold pacing meets freshness needs).
+
+### Discovery (major, spun off)
+
+The dark-courses catalog remediation plan (`docs/plans/2026-06-09-dark-courses-catalog-fix-plan.md`) was **never executed** — all 17 diagnosed courses still carry their dead configs, including ~15 dead Chronogolf entries consuming ~⅓ of the lane's scarce rate allowance. Executing it is tracked as its own branch/PR.
+
+### Quality checks
+
+768 tests green, `tsc --noEmit` clean, lint 0 errors (3 pre-existing warnings in untouched files). Post-deploy: verify via `/check-logs` that Chronogolf 429s drop to ~0 and successful polls/cycle hold ≥ ~29 (steps in the report doc).
+
 ## 2026-06-09 — CPS rotation: post-merge live verification (found + fixed a DOA blocker)
 
 **Context:** Two post-merge confirmations were owed for the CPS rotation feature (PR #129): (1) the `workflow_dispatch` trigger fires on the default branch; (2) a `GITHUB_TOKEN`-initiated `gh workflow run deploy.yml` actually starts the deploy (the documented recursion-guard exception). Done after the `dev`→`main` publication (PR #131) landed `deploy.yml`'s `workflow_dispatch` trigger on `main`.

@@ -64,7 +64,7 @@ describe("deactivateStaleCourses", () => {
     expect(course!.is_active).toBe(0);
   });
 
-  it("does NOT deactivate course with last_had_tee_times IS NULL", async () => {
+  it("does NOT deactivate a never-polled course with last_had_tee_times IS NULL", async () => {
     await seedCourse(db, { id: "new-course", last_had_tee_times: null });
 
     const count = await deactivateStaleCourses(db);
@@ -73,6 +73,46 @@ describe("deactivateStaleCourses", () => {
     const course = await db
       .prepare("SELECT is_active FROM courses WHERE id = ?")
       .bind("new-course")
+      .first<{ is_active: number }>();
+    expect(course!.is_active).toBe(1);
+  });
+
+  it("deactivates a never-successful course whose polling started over 3 days ago", async () => {
+    await seedCourse(db, { id: "never-had-data", last_had_tee_times: null });
+    const oldPoll = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString();
+    await db
+      .prepare(
+        "INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count) VALUES (?, ?, ?, ?, ?)"
+      )
+      .bind("never-had-data", "2026-07-08", oldPoll, "no_data", 0)
+      .run();
+
+    const count = await deactivateStaleCourses(db);
+    expect(count).toBe(1);
+
+    const course = await db
+      .prepare("SELECT is_active FROM courses WHERE id = ?")
+      .bind("never-had-data")
+      .first<{ is_active: number }>();
+    expect(course!.is_active).toBe(0);
+  });
+
+  it("does NOT deactivate a never-successful course polled only within the last 3 days", async () => {
+    await seedCourse(db, { id: "recently-added", last_had_tee_times: null });
+    const recentPoll = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
+    await db
+      .prepare(
+        "INSERT INTO poll_log (course_id, date, polled_at, status, tee_time_count) VALUES (?, ?, ?, ?, ?)"
+      )
+      .bind("recently-added", "2026-07-11", recentPoll, "no_data", 0)
+      .run();
+
+    const count = await deactivateStaleCourses(db);
+    expect(count).toBe(0);
+
+    const course = await db
+      .prepare("SELECT is_active FROM courses WHERE id = ?")
+      .bind("recently-added")
       .first<{ is_active: number }>();
     expect(course!.is_active).toBe(1);
   });

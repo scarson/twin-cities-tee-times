@@ -51,3 +51,8 @@ scripts/.*.json
 scripts/.*.log
 scripts/.*.html
 scripts/.*.mjs
+
+# Gas City
+.beads/*
+.beads/config.yaml
+.beads/metadata.json

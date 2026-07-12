@@ -12,8 +12,10 @@ export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~
  * inactive probes, and the horizon probe combined). 3.5 min leaves margin under
  * the 5-min peak cron period for housekeeping, so the lane never runs past its
  * own next firing (which would re-introduce the cross-invocation concurrency this
- * fix removes). At the adapter's ~1.1s/request spacing that's ≤ ~190 requests/cycle;
- * see docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md (Volume Math).
+ * fix removes). At the adapter's ~4s/request spacing that's ≤ ~52 requests/cycle;
+ * oldest-first ordering rotates which course/date pairs get covered each cycle.
+ * See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md (Volume Math)
+ * and docs/plans/2026-07-12-chronogolf-429-backoff.md (measured rate ceiling).
  */
 export const CHRONOGOLF_LANE_BUDGET_MS = 210_000;
 
