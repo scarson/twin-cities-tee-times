@@ -59,7 +59,7 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** 🚧 IN PROGRESS — claimed 2026-07-12T05:25:44Z on branch `fix/dark-courses-catalog`.
+**Overall:** 🚧 AWAITING REVIEW/MERGE — Phases 1–4 shipped on branch `fix/dark-courses-catalog`; **PR [#156](https://github.com/scarson/twin-cities-tee-times/pull/156)** open against `dev` (Review-class — Sam merges). Phase 5 post-deploy verification owed after merge→deploy.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
@@ -67,7 +67,7 @@ notes and commit messages.
 | 2 — legends-club CPS ids | ✅ Done | — | discovered + live-verified 2026-06-09 (courseIds `1`, websiteId `30bb60d4…`) |
 | 3 — Catalog edits (all flips + disables) + seed regen | ✅ Shipped | `a195b3d` | 14 flips + 6 disables (the-wilds already disabled on origin/dev); seed resynced (was stale) |
 | 4 — Retire 2 orphan rows (migration `0011`) | ✅ Shipped | `296cc6e` | Oak Glen / Gem Lake orphans |
-| 5 — PR + post-deploy verification | ⬜ Not started | — | `/check-logs`; depends on merge→deploy |
+| 5 — PR + post-deploy verification | 🚧 PR open ([#156](https://github.com/scarson/twin-cities-tee-times/pull/156)) | — | Review-class, awaiting Sam's merge; post-deploy `/check-logs` owed |
 
 ### Deviations
 - **Task 3.3 seed diff is larger than "only touched rows".** `scripts/seed.sql` was pre-existingly stale (49 rows vs 93 courses — see Discoveries), so its regeneration also adds the 44 previously-unseeded courses alongside the intended flips/disables. Accepted as-is: the deploy regenerates `seed.sql` from `courses.json` anyway, and committing the resynced artifact is more correct than committing a knowingly-stale one. All my catalog edits were verified field-by-field against the target table before regenerating.
@@ -345,7 +345,7 @@ Body: reference COURSE-4 + DB-2 (why disable, not delete).
 
 ## Phase 5 — PR + post-deploy verification
 
-**Execution Status:** ⬜ NOT STARTED — depends on Phases 1–4 committed; verification depends on merge→`main`→deploy (deploy runs migrations + seed).
+**Execution Status:** 🚧 PR OPEN 2026-07-12 — **[PR #156](https://github.com/scarson/twin-cities-tee-times/pull/156)** against `dev`, Review-class (NOT auto-merged — Sam merges). CI pending; Tasks 5.2–5.4 (post-deploy `/check-logs` + remote `poll_log`/`courses` queries, and updating the superseded Oak Glen plan's banner) are owed after merge→`main`→deploy.
 
 ### Task 5.1: Open the PR (Review-class)
 
