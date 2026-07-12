@@ -61,6 +61,8 @@ notes and commit messages.
 
 **Overall:** Complete — PR **[#126](https://github.com/scarson/twin-cities-tee-times/pull/126)** open to `dev` (Review-class; Sam merges). Code group (1–3) shipped, docs (4) shipped, 3-round code review all SHIP, full local gate green (745 tests, `tsc` clean, lint 0 errors). Awaiting CI + Sam's merge.
 
+**Post-deploy verification outcome (2026-07-12):** the lane + throttle + deadline shipped and operate as designed (production error rows show the 1.1s spacing), but the fix did NOT eliminate the 429s — `poll_log` telemetry shows Chronogolf's real limiter admits only ~20 requests/min per IP then blocks ~60s, far under this plan's ~1 req/sec design assumption, so the lane drew 75–93% 429s continuously. This is the Fallback section's "polite ~1 req/sec still 429s" branch; resolved per its tune-first rubric (interval → 4s) plus a 61s post-429 backoff, in `docs/plans/2026-07-12-chronogolf-429-backoff.md`.
+
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
 | 1 — Single Chronogolf lane (`batch.ts`) | ✅ Shipped | `7362bac` | full suite green (740), `tsc` clean |

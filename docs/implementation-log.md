@@ -4,6 +4,31 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-07-12 — Chronogolf 429: measured rate ceiling + backoff (branch `fix/chronogolf-429-backoff`)
+
+**Context:** `/check-logs` showed ~42 Chronogolf courses at 75–93% HTTP 429 despite the June single-lane + 1.1s-throttle fix being live (spacing visible in error timestamps). Investigation (full trail: `docs/plans/2026-07-12-chronogolf-429-backoff.md`): the "started July 5" signal was a poll_log 7-day-retention artifact — the failure was steady-state; within-cycle traces show ~20 requests accepted, then ~60s of blocks, then ~13 more, at a constant ~78% error ratio at every hour. Chronogolf (Cloudflare-fronted) enforces ~20 req/min per IP with ~60s mitigation — a third of the June plan's assumed ~1 req/sec ceiling.
+
+### What shipped
+
+- **Adapter (`src/adapters/chronogolf.ts`, TDD):** `CHRONOGOLF_MIN_REQUEST_INTERVAL_MS` 1100 → 4000 (~15 req/min under the measured ceiling); `CHRONOGOLF_429_BACKOFF_MS = 61_000` pushes the throttle's `nextAllowedAt` reservation past the block window after any 429 (closed-loop: re-arms if the block persists); `Retry-After` header surfaced in the 429 error message for telemetry. 4 new tests.
+- **`deactivateStaleCourses` (`src/lib/db.ts`, TDD):** NULL `last_had_tee_times` courses (never one success) were never deactivated — now deactivated once poll_log shows 3+ days of polling; reversible via the hourly inactive probe. 2 new integration tests + 1 renamed.
+- **Catalog:** `the-wilds` disabled (Chronogolf club record: `active: false`, `online_booking_enabled: false`; 2,590 polls, 0 successes).
+- **Docs:** CF-4 corollary (measure the ceiling; back off on 429; verify post-deploy) + changelog; post-deploy-outcome note in the 2026-06-08 pacing plan; investigation report.
+
+### Key decisions
+
+- **Fixed 4s pacing + 61s backoff over adaptive AIMD** — self-corrects in the direction that matters with no new state; see "Considered and ruled out" in the report doc.
+- **`Retry-After` logged, not obeyed** — a large header value inside a poll would overrun the lane's wall-clock margin and re-introduce lane self-overlap; revisit if telemetry shows blocks ≫ 60s.
+- **Lambda-proxy IP rotation rejected again** (circumvention; sub-threshold pacing meets freshness needs).
+
+### Discovery (major, spun off)
+
+The dark-courses catalog remediation plan (`docs/plans/2026-06-09-dark-courses-catalog-fix-plan.md`) was **never executed** — all 17 diagnosed courses still carry their dead configs, including ~15 dead Chronogolf entries consuming ~⅓ of the lane's scarce rate allowance. Executing it is tracked as its own branch/PR.
+
+### Quality checks
+
+768 tests green, `tsc --noEmit` clean, lint 0 errors (3 pre-existing warnings in untouched files). Post-deploy: verify via `/check-logs` that Chronogolf 429s drop to ~0 and successful polls/cycle hold ≥ ~29 (steps in the report doc).
+
 ## 2026-06-09 — CPS rotation: post-merge live verification (found + fixed a DOA blocker)
 
 **Context:** Two post-merge confirmations were owed for the CPS rotation feature (PR #129): (1) the `workflow_dispatch` trigger fires on the default branch; (2) a `GITHUB_TOKEN`-initiated `gh workflow run deploy.yml` actually starts the deploy (the documented recursion-guard exception). Done after the `dev`→`main` publication (PR #131) landed `deploy.yml`'s `workflow_dispatch` trigger on `main`.

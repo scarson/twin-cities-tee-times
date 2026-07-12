@@ -1,7 +1,11 @@
 // ABOUTME: Tests for the Chronogolf adapter.
 // ABOUTME: Covers API URL construction, response parsing, error handling, and missing config.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ChronogolfAdapter } from "./chronogolf";
+import {
+  ChronogolfAdapter,
+  CHRONOGOLF_MIN_REQUEST_INTERVAL_MS,
+  CHRONOGOLF_429_BACKOFF_MS,
+} from "./chronogolf";
 import type { CourseConfig } from "@/types";
 import fixture from "@/test/fixtures/chronogolf-tee-times.json";
 
@@ -435,5 +439,111 @@ describe("ChronogolfAdapter request throttle", () => {
     const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 0 });
     // Under real timers this resolves immediately — proves no throttle wait at interval 0.
     await expect(adapter.fetchTeeTimes(mockConfig, "2026-06-09")).resolves.toBeInstanceOf(Array);
+  });
+
+  it("paces at 4s/request and backs off 61s after a 429 (pinned to measured Chronogolf limits)", () => {
+    // Chronogolf's rate rule admits ~20 requests/min per IP with a ~60s block
+    // (measured from poll_log 2026-07); these constants keep the lane under it.
+    expect(CHRONOGOLF_MIN_REQUEST_INTERVAL_MS).toBe(4000);
+    expect(CHRONOGOLF_429_BACKOFF_MS).toBe(61_000);
+  });
+
+  it("waits out the backoff before the request that follows a 429", async () => {
+    vi.useFakeTimers();
+    try {
+      const callTimes: number[] = [];
+      let rateLimited = true;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        callTimes.push(Date.now());
+        if (rateLimited) {
+          rateLimited = false;
+          return new Response("Too Many Requests", { status: 429 });
+        }
+        return new Response(
+          JSON.stringify({ status: "open", teetimes: [] }),
+          { status: 200 }
+        );
+      });
+      const adapter = new ChronogolfAdapter({
+        minRequestIntervalMs: 1000,
+        rateLimitBackoffMs: 60_000,
+      });
+
+      let settled = false;
+      const run = (async () => {
+        await expect(
+          adapter.fetchTeeTimes(mockConfig, "2026-07-14")
+        ).rejects.toThrow("HTTP 429");
+        await adapter.fetchTeeTimes(mockConfig, "2026-07-15");
+      })().finally(() => {
+        settled = true;
+      });
+      while (!settled) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await run;
+
+      expect(callTimes).toHaveLength(2);
+      expect(callTimes[1] - callTimes[0]).toBeGreaterThanOrEqual(60_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not apply the backoff after non-429 errors", async () => {
+    vi.useFakeTimers();
+    try {
+      const callTimes: number[] = [];
+      let failing = true;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        callTimes.push(Date.now());
+        if (failing) {
+          failing = false;
+          return new Response("Internal Server Error", { status: 500 });
+        }
+        return new Response(
+          JSON.stringify({ status: "open", teetimes: [] }),
+          { status: 200 }
+        );
+      });
+      const adapter = new ChronogolfAdapter({
+        minRequestIntervalMs: 1000,
+        rateLimitBackoffMs: 60_000,
+      });
+
+      let settled = false;
+      const run = (async () => {
+        await expect(
+          adapter.fetchTeeTimes(mockConfig, "2026-07-14")
+        ).rejects.toThrow("HTTP 500");
+        await adapter.fetchTeeTimes(mockConfig, "2026-07-15");
+      })().finally(() => {
+        settled = true;
+      });
+      while (!settled) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await run;
+
+      expect(callTimes).toHaveLength(2);
+      const gap = callTimes[1] - callTimes[0];
+      expect(gap).toBeGreaterThanOrEqual(1000); // normal pacing still applies
+      expect(gap).toBeLessThan(60_000); // but no rate-limit backoff
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("includes the Retry-After header value in the 429 error message", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("Too Many Requests", {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      })
+    );
+    const adapter = new ChronogolfAdapter({ minRequestIntervalMs: 0 });
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-07-14")).rejects.toThrow(
+      "Chronogolf API returned HTTP 429 (Retry-After: 60)"
+    );
   });
 });
