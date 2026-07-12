@@ -22,13 +22,24 @@ interface ChronogolfResponse {
 }
 
 /**
- * Minimum delay between consecutive Chronogolf HTTP requests (~0.9 req/sec).
- * Chronogolf enforces a per-IP rate limit (~1 req/sec) shared across all
- * concurrent Worker invocations; this spacing — combined with the single batch
- * lane (CHRONOGOLF_LANE in src/lib/batch.ts) — keeps the global request rate
- * under that ceiling. See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md.
+ * Minimum delay between consecutive Chronogolf HTTP requests (~15 req/min).
+ * Chronogolf's Cloudflare rate rule admits roughly 20 requests/min per IP
+ * before serving HTTP 429 for ~60s (measured from poll_log telemetry,
+ * 2026-07); this spacing — combined with the single batch lane
+ * (CHRONOGOLF_LANE in src/lib/batch.ts) — keeps the global request rate
+ * under that ceiling. See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md
+ * and docs/plans/2026-07-12-chronogolf-429-backoff.md.
  */
-export const CHRONOGOLF_MIN_REQUEST_INTERVAL_MS = 1100;
+export const CHRONOGOLF_MIN_REQUEST_INTERVAL_MS = 4000;
+
+/**
+ * Delay applied before the next Chronogolf request after an HTTP 429.
+ * Sized to outlast the observed ~60s block window so the lane stops sending
+ * into a mitigation period where every request is wasted. If the block is
+ * longer, the next request draws another 429 and re-arms the backoff, so the
+ * effective rate self-corrects at one probe per backoff window.
+ */
+export const CHRONOGOLF_429_BACKOFF_MS = 61_000;
 
 export class ChronogolfAdapter implements PlatformAdapter {
   readonly platformId = "chronogolf";
@@ -37,11 +48,14 @@ export class ChronogolfAdapter implements PlatformAdapter {
   private static readonly MAX_PAGES = 10;
 
   private readonly minRequestIntervalMs: number;
+  private readonly rateLimitBackoffMs: number;
   private nextAllowedAt = 0;
 
-  constructor(opts?: { minRequestIntervalMs?: number }) {
+  constructor(opts?: { minRequestIntervalMs?: number; rateLimitBackoffMs?: number }) {
     this.minRequestIntervalMs =
       opts?.minRequestIntervalMs ?? CHRONOGOLF_MIN_REQUEST_INTERVAL_MS;
+    this.rateLimitBackoffMs =
+      opts?.rateLimitBackoffMs ?? CHRONOGOLF_429_BACKOFF_MS;
   }
 
   /**
@@ -50,8 +64,9 @@ export class ChronogolfAdapter implements PlatformAdapter {
    * request in one invocation — across pages AND across courses, since the
    * registry reuses one adapter instance. The single-lane invariant means only
    * one invocation polls Chronogolf at a time, so nextAllowedAt is never
-   * contended across invocations; a value left over in a warm isolate is always
-   * in the past and causes no wait.
+   * contended across invocations; a value left over in a warm isolate is
+   * either in the past (no wait) or a 429 backoff that is still correct to
+   * honor.
    */
   private async throttle(): Promise<void> {
     const now = Date.now();
@@ -93,6 +108,18 @@ export class ChronogolfAdapter implements PlatformAdapter {
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          // Push the next request past the block window instead of sending
+          // into it; requests during mitigation are rejected anyway.
+          this.nextAllowedAt = Math.max(
+            this.nextAllowedAt,
+            Date.now() + this.rateLimitBackoffMs
+          );
+          const retryAfter = response.headers.get("Retry-After");
+          throw new Error(
+            `Chronogolf API returned HTTP 429${retryAfter ? ` (Retry-After: ${retryAfter})` : ""}`
+          );
+        }
         throw new Error(`Chronogolf API returned HTTP ${response.status}`);
       }
 
