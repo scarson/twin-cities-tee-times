@@ -276,6 +276,36 @@ describe("TeeWireAdapter", () => {
     expect(results.every((r) => r.price === null)).toBe(true);
   });
 
+  it("parses the plain (non-cart) title as the walking rate when no title says 'Walking'", async () => {
+    // Le Sueur's TeeWire titles are plain "9 Holes" / "18 Holes" (walking) and
+    // "… w/ Cart" (riding); none contain the word "Walking".
+    const payload = {
+      success: true,
+      data: { tee_times: [{
+        slot_id: 1,
+        time: "07:00:00",
+        date: "2026-06-13",
+        availability: { available_spots: 4, max_spots: 4 },
+        pricing: { rates: [
+          { rate_id: 1, rate_title: "18 Holes",         holes: 18, price: "$54.00", description: "" },
+          { rate_id: 2, rate_title: "18 Holes w/ Cart", holes: 18, price: "$79.00", description: "" },
+          { rate_id: 3, rate_title: "9 Holes",          holes: 9,  price: "$33.00", description: "" },
+          { rate_id: 4, rate_title: "9 Holes w/ Cart",  holes: 9,  price: "$46.00", description: "" },
+        ] },
+      }] },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify(payload), { status: 200 })
+    );
+
+    const results = await adapter.fetchTeeTimes(mockConfig, "2026-06-13");
+
+    const h18 = results.find((r) => r.holes === 18)!;
+    const h9 = results.find((r) => r.holes === 9)!;
+    expect(h18.price).toBe(54); // walking 18, NOT 79 (cart)
+    expect(h9.price).toBe(33);  // walking 9,  NOT 46 (cart)
+  });
+
   it("passes AbortSignal.timeout to fetch", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify({ success: true, data: { tee_times: [] } }), { status: 200 })
