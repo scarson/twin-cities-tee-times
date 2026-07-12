@@ -106,6 +106,8 @@ Do not assume Workers, D1, Cron Trigger, or Wrangler semantics from memory. Use 
 
 **The Lesson:** Match the throttle's scope to the limit's scope. A local delay cannot enforce a global limit; a per-poll sleep cannot enforce a per-request rate. When "we added a sleep and it still rate-limits under load," suspect a scope mismatch — not an insufficient delay. (Full design + volume math: `docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md`.)
 
+**Corollary (2026-07-12): the ceiling is empirical — pace open-loop, recover closed-loop.** Correct scoping is necessary but not sufficient: the ~1 req/sec ceiling this fix was tuned to was an *assumption*, and the real limiter measured out at **~20 requests/min per IP with a ~60s block** — so a perfectly-scoped 0.9 req/sec lane still burned its allowance ~22s into every cycle and hammered ~13k rejected requests/day for weeks. Two rules: (1) a paced client MUST also **back off on 429** (`CHRONOGOLF_429_BACKOFF_MS` pushes the adapter's next-request reservation past the block window) — backoff self-corrects when the ceiling moves, pacing alone cannot; (2) a rate-limit fix is unverified until post-deploy `poll_log` telemetry confirms the 429s actually stopped — schedule the check, don't assume it. Measured limiter shape + fix: `docs/plans/2026-07-12-chronogolf-429-backoff.md`.
+
 ---
 
 ### Review Checklist {#section-2c}
@@ -358,6 +360,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 ---
 
 # Appendix A: Historical Changelog
+
+## 2026-07-12 — CF-4 corollary added (measured ceiling + 429 backoff)
+
+- Amended **CF-4** with the closed-loop corollary: Chronogolf's real limiter measured out at ~20 requests/min per IP with a ~60s block (from `poll_log` telemetry) versus the ~1 req/sec design assumption, so the correctly-scoped lane still drew 75–93% 429s for weeks. Fix shipped: adapter pacing 1.1s → 4s per request plus a 61s reservation backoff after any HTTP 429 (`CHRONOGOLF_429_BACKOFF_MS`), with `Retry-After` surfaced in error messages. Also fixed `deactivateStaleCourses` skipping NULL `last_had_tee_times` courses (never-successful courses polled forever). Investigation + volume math: `docs/plans/2026-07-12-chronogolf-429-backoff.md`. Status VALIDATED pending post-deploy `poll_log` confirmation.
 
 ## 2026-06-09 — COURSE-3 & COURSE-4 added (silent `no_data` misconfig + orphan rows)
 
