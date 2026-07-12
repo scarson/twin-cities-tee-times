@@ -153,14 +153,12 @@
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
     "latitude": 45.0671,
     "longitude": -92.8305,
-    "platform": "cps_golf",
+    "platform": "foreup",
     "platformConfig": {
-      "subdomain": "oakglen",
-      "websiteId": "9f317850-4f93-426f-7b46-08d8e820791e",
-      "courseIds": "6",
-      "authType": "v4"
+      "facilityId": "22986",
+      "scheduleId": "12514"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22986/12514",
     "googlePlaceId": "ChIJi9NmGwfJslIR35kfvEKgzrQ"
   },
   {
@@ -172,14 +170,12 @@
     "address": "1599 McKusick Rd N, Stillwater, MN 55082",
     "latitude": 45.0671,
     "longitude": -92.8305,
-    "platform": "cps_golf",
+    "platform": "foreup",
     "platformConfig": {
-      "subdomain": "oakglen",
-      "websiteId": "9f317850-4f93-426f-7b46-08d8e820791e",
-      "courseIds": "7",
-      "authType": "v4"
+      "facilityId": "22986",
+      "scheduleId": "12527"
     },
-    "bookingUrl": "https://oakglen.cps.golf/onlineresweb",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22986/12527",
     "googlePlaceId": "ChIJi9NmGwfJslIR35kfvEKgzrQ"
   },
   {
@@ -264,14 +260,12 @@
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
     "latitude": 45.0635,
     "longitude": -93.0313,
-    "platform": "cps_golf",
+    "platform": "foreup",
     "platformConfig": {
-      "subdomain": "gem",
-      "websiteId": "678ba294-347e-4beb-0048-08d8e81dbf0f",
-      "courseIds": "9",
-      "authType": "v4"
+      "facilityId": "22985",
+      "scheduleId": "12529"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22985/12529",
     "googlePlaceId": "ChIJD4mnsdHWslIR3vYA8VGpgGE"
   },
   {
@@ -283,14 +277,12 @@
     "address": "4039 Scheuneman Rd, White Bear Lake, MN 55110",
     "latitude": 45.0635,
     "longitude": -93.0313,
-    "platform": "cps_golf",
+    "platform": "foreup",
     "platformConfig": {
-      "subdomain": "gem",
-      "websiteId": "678ba294-347e-4beb-0048-08d8e81dbf0f",
-      "courseIds": "8",
-      "authType": "v4"
+      "facilityId": "22985",
+      "scheduleId": "12528"
     },
-    "bookingUrl": "https://gem.cps.golf/onlineresweb",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22985/12528",
     "googlePlaceId": "ChIJD4mnsdHWslIR3vYA8VGpgGE"
   },
   {
@@ -896,12 +888,12 @@
     "address": "16725 Innsbrook Dr, Lakeville, MN 55044",
     "latitude": 44.7048,
     "longitude": -93.2529,
-    "platform": "chronogolf",
+    "platform": "foreup",
     "platformConfig": {
-      "clubSlug": "crystal-lake-golf-club-minnesota",
-      "courseId": "351035bc-0c73-40bd-b966-b2b97286971e"
+      "facilityId": "22877",
+      "scheduleId": "12220"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/crystal-lake-golf-club-minnesota#teetimes",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22877/12220",
     "googlePlaceId": "ChIJH4ce_mM39ocRXWzs16eL9Ks"
   },
   {
@@ -930,12 +922,12 @@
     "address": "2600 Double Eagle Ln, Woodbury, MN 55129",
     "latitude": 44.9113,
     "longitude": -92.8986,
-    "platform": "chronogolf",
+    "platform": "membersports",
     "platformConfig": {
-      "clubSlug": "eagle-valley-golf-course-minnesota",
-      "courseId": "bd6ac210-5314-42ec-b259-c6f374d01c0c"
+      "golfClubId": "9133",
+      "golfCourseId": "11343"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/eagle-valley-golf-course-minnesota#teetimes",
+    "bookingUrl": "https://app.membersports.com/tee-times/9133/11343/0",
     "googlePlaceId": "ChIJYylRIqfZ94cRmGDSxfBvsTc"
   },
   {
@@ -947,12 +939,13 @@
     "address": "20015 Elk Lake Rd NW, Elk River, MN 55330",
     "latitude": 45.3343,
     "longitude": -93.6018,
-    "platform": "chronogolf",
+    "platform": "teeitup",
     "platformConfig": {
-      "clubSlug": "elk-river-country-club",
-      "courseId": "50a3cbff-8b13-476d-bf39-d7e982ea6ed3"
+      "alias": "elk-river-golf-club",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "3885"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/elk-river-country-club#teetimes",
+    "bookingUrl": "https://elk-river-golf-club.book.teeitup.golf/",
     "googlePlaceId": "ChIJcfoTnyRvs1IRHcp5K6TICvY"
   },
   {
@@ -964,6 +957,7 @@
     "address": "4780 Palmgren Ln NE, St Michael, MN 55376",
     "latitude": 45.2218,
     "longitude": -93.578,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "fox-hollow-golf-club-minnesota",
@@ -981,6 +975,7 @@
     "address": "2015 Westview Dr, Hastings, MN 55033",
     "latitude": 44.726,
     "longitude": -92.8753,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "hastings-country-club-minnesota",
@@ -998,12 +993,13 @@
     "address": "8670 Credit River Blvd, Prior Lake, MN 55372",
     "latitude": 44.67,
     "longitude": -93.344,
-    "platform": "chronogolf",
+    "platform": "cps_golf",
     "platformConfig": {
-      "clubSlug": "legends-golf-club",
-      "courseId": "bcc1d8e7-28fe-49d9-8ee3-88a90eb95748"
+      "subdomain": "legendsmn",
+      "courseIds": "1",
+      "websiteId": "30bb60d4-447d-4f71-6792-08db3854da2c"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/legends-golf-club#teetimes",
+    "bookingUrl": "https://legendsmn.cps.golf/onlineresweb",
     "googlePlaceId": "ChIJE-MPnDc_9ocRBPhuynvDdVY"
   },
   {
@@ -1015,6 +1011,7 @@
     "address": "9333 Alpine Dr, Ramsey, MN 55303",
     "latitude": 45.2528,
     "longitude": -93.5042,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "the-links-at-northfork",
@@ -1032,12 +1029,13 @@
     "address": "526 Inwood Ave N, Oakdale, MN 55128",
     "latitude": 44.9553,
     "longitude": -92.9371,
-    "platform": "chronogolf",
+    "platform": "teeitup",
     "platformConfig": {
-      "clubSlug": "oak-marsh-golf-course",
-      "courseId": "a7e0c4ab-a96d-4880-8016-33d5de49edb1"
+      "alias": "oak-marsh-golf-course",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "4585"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/oak-marsh-golf-course#teetimes",
+    "bookingUrl": "https://oak-marsh-golf-course.book.teeitup.golf/",
     "googlePlaceId": "ChIJtzqC7_vX94cR-OBMf8gKoS8"
   },
   {
@@ -1083,12 +1081,13 @@
     "address": "21250 Yellow Pine St NW, Oak Grove, MN 55011",
     "latitude": 45.3549,
     "longitude": -93.2991,
-    "platform": "chronogolf",
+    "platform": "teeitup",
     "platformConfig": {
-      "clubSlug": "the-refuge-golf-club-minnesota",
-      "courseId": "cc7814f0-d317-4e6c-b64b-c57d0a521781"
+      "alias": "the-refuge-golf-club",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "3921"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/the-refuge-golf-club-minnesota#teetimes",
+    "bookingUrl": "https://refuge-golf-club.book.teeitup.com/",
     "googlePlaceId": "ChIJAaPgq3Aas1IRxN4ljTMtgaw"
   },
   {
@@ -1100,6 +1099,7 @@
     "address": "10247 95th St NE, Otsego, MN 55362",
     "latitude": 45.2894,
     "longitude": -93.6796,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "riverwood-national-golf-club",
@@ -1117,6 +1117,7 @@
     "address": "11455 20th St N, Lake Elmo, MN 55042",
     "latitude": 44.9749,
     "longitude": -92.8692,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "the-royal-club-minnesota",
@@ -1134,12 +1135,13 @@
     "address": "16659 St Francis Blvd NW, Ramsey, MN 55303",
     "latitude": 45.2733,
     "longitude": -93.4147,
-    "platform": "chronogolf",
+    "platform": "teeitup",
     "platformConfig": {
-      "clubSlug": "rum-river-hills-golf-club",
-      "courseId": "60f06328-2ba0-4870-a5b3-fc50c3d8ca5e"
+      "alias": "rum-river-hills-golf-club",
+      "apiBase": "https://phx-api-be-east-1b.kenna.io",
+      "facilityId": "8793"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/rum-river-hills-golf-club#teetimes",
+    "bookingUrl": "https://rum-river-hills-golf-club.book.teeitup.golf/",
     "googlePlaceId": "ChIJY0jIF6cVs1IRfe60sbzmaFo"
   },
   {
@@ -1151,6 +1153,7 @@
     "address": "2693 Townline Ave, Co Rd 79, Shakopee, MN 55379",
     "latitude": 44.7506,
     "longitude": -93.5198,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "stonebrooke-golf-club",
@@ -1168,12 +1171,12 @@
     "address": "2400 Mystic Lk Blvd, Prior Lake, MN 55372",
     "latitude": 44.7292,
     "longitude": -93.4805,
-    "platform": "chronogolf",
+    "platform": "foreup",
     "platformConfig": {
-      "clubSlug": "the-meadows-at-mystic-lake",
-      "courseId": "7676fb71-7e2d-4e99-922d-02425379fe88"
+      "facilityId": "22252",
+      "scheduleId": "10233"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/the-meadows-at-mystic-lake#teetimes",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/22252/10233",
     "googlePlaceId": "ChIJJcGqDKIW9ocR9T0UUisuGX8"
   },
   {
@@ -1376,13 +1379,12 @@
     "address": "8661 Deer Run Dr, Victoria, MN 55386",
     "latitude": 44.8474,
     "longitude": -93.6571,
-    "platform": "teeitup",
+    "platform": "foreup",
     "platformConfig": {
-      "alias": "deer-run-golf-course",
-      "apiBase": "https://phx-api-be-east-1b.kenna.io",
-      "facilityId": "3910"
+      "facilityId": "21800",
+      "scheduleId": "8918"
     },
-    "bookingUrl": "https://deer-run-golf-course.book.teeitup.com",
+    "bookingUrl": "https://foreupsoftware.com/index.php/booking/21800/8918",
     "googlePlaceId": "ChIJr_ENwJ8G9ocRCkFL4wTPo98"
   },
   {
@@ -1581,12 +1583,12 @@
     "address": "36195 311th Ave, Le Sueur, MN 56058",
     "latitude": 44.4249,
     "longitude": -93.889,
-    "platform": "chronogolf",
+    "platform": "teewire",
     "platformConfig": {
-      "clubSlug": "le-sueur-country-club",
-      "courseId": "139c6707-5b62-479b-a34e-77aec223a319"
+      "tenant": "le-sueur",
+      "calendarId": "1"
     },
-    "bookingUrl": "https://www.chronogolf.com/club/le-sueur-country-club#teetimes",
+    "bookingUrl": "https://teewire.app/le-sueur/",
     "googlePlaceId": "ChIJG5mQ9ZTR9YcRyNcpblmHl5U"
   },
   {
