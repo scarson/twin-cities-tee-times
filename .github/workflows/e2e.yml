@@ -35,11 +35,11 @@ jobs:
     # "version match" step below fails loudly if they drift (e.g. after a
     # dependabot bump). Bump both together.
     container:
-      image: mcr.microsoft.com/playwright:v1.59.1-jammy
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -47,7 +47,7 @@ jobs:
       - run: npm ci
       - name: Playwright version must match the container image tag
         run: |
-          EXPECTED=1.59.1
+          EXPECTED=1.61.1
           ACTUAL=$(node -p "require('@playwright/test/package.json').version")
           echo "container image:            mcr.microsoft.com/playwright:v${EXPECTED}-jammy"
           echo "installed @playwright/test: ${ACTUAL}"
@@ -62,7 +62,7 @@ jobs:
           GOOGLE_CLIENT_SECRET=ci-dummy
           JWT_SECRET=ci-dummy-jwt-secret-at-least-32-bytes-long
           EOF
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .next/cache
           key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**') }}
