@@ -165,8 +165,15 @@ export async function cleanupPastTeeTimes(db: D1Database, todayStr: string): Pro
 }
 
 /**
- * Deactivate courses that haven't had tee times for 30+ days.
- * Courses with NULL last_had_tee_times are NOT deactivated (never checked yet).
+ * Deactivate courses that stopped yielding tee times.
+ * Two independent staleness signals:
+ * - last_had_tee_times more than 30 days ago (course used to have data);
+ * - never any tee times (NULL last_had_tee_times) but polling has been running
+ *   for over 3 days, evidenced by a poll_log row older than 3 days. poll_log
+ *   retention is 7 days (cleanupOldPolls), so the evidence window stays valid.
+ * Courses with NULL last_had_tee_times and no aged polls (freshly added) are
+ * left active. Deactivation is reversible: inactive courses get hourly probes
+ * and auto-reactivate when tee times appear (see runCronPoll).
  * Returns the number of deactivated courses.
  */
 export async function deactivateStaleCourses(db: D1Database): Promise<number> {
@@ -174,8 +181,17 @@ export async function deactivateStaleCourses(db: D1Database): Promise<number> {
     .prepare(
       `UPDATE courses SET is_active = 0
        WHERE is_active = 1
-         AND last_had_tee_times IS NOT NULL
-         AND last_had_tee_times < ${sqliteIsoNow("-30 days")}`
+         AND (
+           (last_had_tee_times IS NOT NULL
+            AND last_had_tee_times < ${sqliteIsoNow("-30 days")})
+           OR
+           (last_had_tee_times IS NULL
+            AND EXISTS (
+              SELECT 1 FROM poll_log
+              WHERE poll_log.course_id = courses.id
+                AND poll_log.polled_at < ${sqliteIsoNow("-3 days")}
+            ))
+         )`
     )
     .run();
   return result.meta.changes;
