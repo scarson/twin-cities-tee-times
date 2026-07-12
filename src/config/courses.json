@@ -1185,6 +1185,7 @@
     "address": "3151 Wilds Ridge Ct, Prior Lake, MN 55372",
     "latitude": 44.737,
     "longitude": -93.4578,
+    "disabled": 1,
     "platform": "chronogolf",
     "platformConfig": {
       "clubSlug": "the-wilds-golf-club",
