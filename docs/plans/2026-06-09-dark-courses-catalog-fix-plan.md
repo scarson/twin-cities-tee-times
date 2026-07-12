@@ -59,21 +59,21 @@ notes and commit messages.
 
 ## Execution Status
 
-**Overall:** Not started.
+**Overall:** 🚧 IN PROGRESS — claimed 2026-07-12T05:25:44Z on branch `fix/dark-courses-catalog`.
 
 | Phase | Status | Ship SHA(s) | Notes |
 |---|---|---|---|
-| 1 — TeeWire walking-rate matcher fix (TDD) | ⬜ Not started | — | production code; le-sueur pricing depends on it |
+| 1 — TeeWire walking-rate matcher fix (TDD) | ✅ Shipped | `c8d4f1b` | production code; le-sueur pricing depends on it |
 | 2 — legends-club CPS ids | ✅ Done | — | discovered + live-verified 2026-06-09 (courseIds `1`, websiteId `30bb60d4…`) |
-| 3 — Catalog edits (all flips + disables) + seed regen | ⬜ Not started | — | single `courses.json` pass; le-sueur prices need Phase 1 in-branch (same PR) |
-| 4 — Retire 2 orphan rows (migration `0011`) | ⬜ Not started | — | Oak Glen / Gem Lake orphans |
+| 3 — Catalog edits (all flips + disables) + seed regen | ✅ Shipped | `a195b3d` | 14 flips + 6 disables (the-wilds already disabled on origin/dev); seed resynced (was stale) |
+| 4 — Retire 2 orphan rows (migration `0011`) | ✅ Shipped | `296cc6e` | Oak Glen / Gem Lake orphans |
 | 5 — PR + post-deploy verification | ⬜ Not started | — | `/check-logs`; depends on merge→deploy |
 
 ### Deviations
-- _(none yet)_
+- **Task 3.3 seed diff is larger than "only touched rows".** `scripts/seed.sql` was pre-existingly stale (49 rows vs 93 courses — see Discoveries), so its regeneration also adds the 44 previously-unseeded courses alongside the intended flips/disables. Accepted as-is: the deploy regenerates `seed.sql` from `courses.json` anyway, and committing the resynced artifact is more correct than committing a knowingly-stale one. All my catalog edits were verified field-by-field against the target table before regenerating.
 
 ### Discoveries
-- _(none yet)_
+- **`scripts/seed.sql` was stale (pre-existing drift).** The committed `scripts/seed.sql` carried only **49** `INSERT` rows while `src/config/courses.json` has **93** courses — ~44 courses were added to the catalog since the last commit that touched `seed.sql` (`e434043`) without regenerating it. This is harmless in prod because `deploy.yml:55` runs `npx tsx scripts/seed.ts` to regenerate `seed.sql` *before* applying it, so the committed file is only an informational artifact. Regenerating it here (Task 3.3) resyncs it to all 93 courses, so the `seed.sql` diff in this PR shows the 14 flips + 6 disables **plus** the 44 previously-unseeded courses being added — not the "only touched rows" the plan anticipated. The extra rows are a correctness improvement (the committed artifact now matches reality), not scope creep.
 
 ---
 
@@ -134,7 +134,7 @@ notes and commit messages.
 
 ## Phase 1 — TeeWire walking-rate matcher fix (production code, TDD)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED 2026-07-12 — commit `c8d4f1b`. TDD: new failing test → matcher fix → all 769 tests green, tsc clean. Existing Walking-fixture prices unchanged (51/28); Riding-only null case preserved.
 
 **Why:** `le-sueur` books on TeeWire with rate titles `"9 Holes"` / `"18 Holes"` (walking) and `"9 Holes w/ Cart"` / `"18 Holes w/ Cart"` (riding). The current matcher at `src/adapters/teewire.ts:95` selects the walking rate via `rate_title.includes("Walking")` — none of Le Sueur's titles contain "Walking", so price resolves to `null` for every slot. Generalize the matcher so a non-cart title counts as the walking rate, **without breaking the existing TeeWire fixtures**.
 
@@ -256,7 +256,7 @@ These values are already in the Phase 3 verified-target table. No discovery work
 
 ## Phase 3 — Catalog edits: all flips + disables + seed regen
 
-**Execution Status:** ⬜ NOT STARTED. Phase 2 (legends ids) is already done — its values are in the target table.
+**Execution Status:** ✅ SHIPPED 2026-07-12. 14 flips + 6 disables applied to `courses.json`; `seed.sql` regenerated. `the-wilds` was already `disabled=1` on origin/dev (PR #155) — verified, not duplicated. All 9 non-verified public flip targets (foreup ×6, teeitup ×3) live-spot-checked 2026-07-12 with curl and returned real times; crystal-lake/elk-river/eagle-valley re-verified same day; le-sueur (teewire) + legends-club (cps_golf) are Cloudflare-gated locally so trusted per the 06-09/06-13 verification. tsc clean, 769 tests green.
 
 **Ordering note:** the `le-sueur` catalog edit is itself independent of Phase 1 — the flip to `teewire` works on its own; it just returns **null prices** until Phase 1's matcher fix is also in the branch. Since both ship in the **same PR** (single branch `fix/dark-courses-catalog`), order within the branch doesn't matter — just ensure Phase 1 is committed before the PR opens (Phase 5) so le-sueur ships with correct prices.
 
@@ -311,7 +311,7 @@ Body: list the platform flips (foreup/teeitup/membersports/teewire/cps) and the 
 
 ## Phase 4 — Retire the two orphan rows (migration)
 
-**Execution Status:** ⬜ NOT STARTED
+**Execution Status:** ✅ SHIPPED 2026-07-12 — commit `296cc6e`, `migrations/0011_retire_oak_glen_gem_lake_orphans.sql`. `0011` confirmed next free (highest existing `0010`). ids verified against COURSE-4 (`oak-glen` "6,7", `gem-lake-hills` "8,9"). Local dry-run confirmed SQL parses (0 rows locally — orphans absent from local DB, as the plan predicted); takes effect against prod on deploy.
 
 **Why:** prod D1 has stale combined rows `oak-glen` (`courseIds "6,7"`) and `gem-lake-hills` (`"8,9"`) left by the facility split (commit `6ae31fe`). They are NOT in `courses.json`, so the seed UPSERT never deactivates them (COURSE-4) — they poll dead CPS endpoints as silent `no_data` forever.
 
