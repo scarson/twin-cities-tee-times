@@ -64,11 +64,12 @@ async function fetchWithFallback(
   let challenged = false;
   for (const config of courses) {
     captured = [];
-    // No env arg — direct fetch (no proxy) in Node.js. From a client without a
-    // browser TLS fingerprint, CPS's reservation API answers with a Cloudflare
-    // managed challenge, which the adapter surfaces as its distinct error. Real
-    // tee-time data only comes back through the impersonating fetch proxy, so
-    // here we accept either outcome but reject any *other* error.
+    // No env arg — direct fetch, no proxy. CPS's reservation API answers any
+    // client without a browser TLS fingerprint with a Cloudflare managed
+    // challenge, and the Workers runtime these suites execute in does not carry
+    // one, so the adapter surfaces its distinct challenge error. Real tee-time
+    // data only comes back through the impersonating fetch proxy, so here we
+    // accept either outcome but reject any *other* error.
     //
     // Re-enable condition for Levels 2 and 3: they assert against a real payload
     // only when the smoke job supplies proxy credentials via `env`, which is the
@@ -114,11 +115,13 @@ describe("CPS Golf - API contract validation", () => {
   it(
     "Level 2: raw tee times response matches expected contract",
     async (ctx) => {
-      const { results } = await fetchWithFallback(adapter);
+      const { results, challenged } = await fetchWithFallback(adapter);
 
       if (results.length === 0) {
         console.warn(
-          "CPS Golf Level 2: no tee times (course empty or behind a Cloudflare challenge without browser TLS impersonation) — skipping contract validation"
+          challenged
+            ? "CPS Golf Level 2: reservation API is behind a Cloudflare challenge from this client — skipping contract validation (data flows only via the fetch proxy)"
+            : "CPS Golf Level 2: every test course returned zero tee times with no challenge — skipping contract validation"
         );
         ctx.skip();
         return;
@@ -173,11 +176,13 @@ describe("CPS Golf - parsed output validation", () => {
   it(
     "Level 3: parsed TeeTime objects have valid fields",
     async (ctx) => {
-      const { results, config } = await fetchWithFallback(adapter);
+      const { results, config, challenged } = await fetchWithFallback(adapter);
 
       if (results.length === 0) {
         console.warn(
-          "CPS Golf Level 3: no tee times (course empty or behind a Cloudflare challenge without browser TLS impersonation) — skipping output validation"
+          challenged
+            ? "CPS Golf Level 3: reservation API is behind a Cloudflare challenge from this client — skipping output validation (data flows only via the fetch proxy)"
+            : "CPS Golf Level 3: every test course returned zero tee times with no challenge — skipping output validation"
         );
         ctx.skip();
         return;

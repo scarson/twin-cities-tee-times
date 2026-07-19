@@ -9,7 +9,7 @@ on:
       - 'src/types/**'
       - 'package.json'
       - 'package-lock.json'
-      - 'vitest.smoke.config.ts'
+      - 'vitest.smoke.config.mts'
       - '.github/workflows/smoke-tests.yml'
 
 permissions:
