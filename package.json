@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run --pass-with-no-tests",
-    "test:smoke": "vitest run --config vitest.smoke.config.ts --pass-with-no-tests",
+    "test:smoke": "vitest run --config vitest.smoke.config.mts --pass-with-no-tests",
     "test:a11y": "npx playwright test",
     "test:watch": "vitest",
     "preview": "opennextjs-cloudflare build && wrangler dev",
@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@cloudflare/vitest-pool-workers": "^0.18.6",
     "@cloudflare/workers-types": "^4.20260701.1",
     "@eslint/eslintrc": "^3.3.5",
     "@opennextjs/cloudflare": "^1.18.0",

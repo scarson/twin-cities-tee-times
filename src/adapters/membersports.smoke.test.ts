@@ -51,7 +51,7 @@ async function fetchTeeTimes(
   return adapter.fetchTeeTimes(config, testDate);
 }
 
-describe.skip("MemberSports - live API smoke tests", () => {
+describe("MemberSports - live API smoke tests", () => {
   const adapter = new MemberSportsAdapter();
 
   it(
@@ -64,7 +64,7 @@ describe.skip("MemberSports - live API smoke tests", () => {
   );
 });
 
-describe.skip("MemberSports - API contract validation", () => {
+describe("MemberSports - API contract validation", () => {
   const adapter = new MemberSportsAdapter();
 
   it(
@@ -107,7 +107,7 @@ describe.skip("MemberSports - API contract validation", () => {
   );
 });
 
-describe.skip("MemberSports - parsed output validation", () => {
+describe("MemberSports - parsed output validation", () => {
   const adapter = new MemberSportsAdapter();
 
   it(
