@@ -51,7 +51,19 @@ async function fetchSafely(
   }
 }
 
-describe("TeeWire - live API smoke tests", () => {
+// teewire.app answers every non-browser client with a Cloudflare bot-management
+// challenge (HTTP 403, `cf-mitigated: challenge`), and its robots.txt disallows
+// this endpoint: the single `User-agent: *` group carries `Disallow: /*?action=`,
+// whose wildcard matches the `?action=tee-times` query this adapter sends, with
+// no competing Allow rule. Every TeeWire course is `disabled` in
+// src/config/courses.json for the same reason, so these suites have no live
+// course to exercise.
+//
+// Re-enable only if TeeWire grants documented API access. These suites MUST NOT
+// be un-skipped by defeating the challenge (spoofed browser fingerprints,
+// challenge solvers, residential proxies) — that overrides an access decision
+// the site operator stated in machine-readable form.
+describe.skip("TeeWire - live API smoke tests", () => {
   const adapter = new TeeWireAdapter();
 
   it(
@@ -64,7 +76,7 @@ describe("TeeWire - live API smoke tests", () => {
   );
 });
 
-describe("TeeWire - API contract validation", () => {
+describe.skip("TeeWire - API contract validation", () => {
   const adapter = new TeeWireAdapter();
 
   it(
@@ -113,7 +125,7 @@ describe("TeeWire - API contract validation", () => {
   );
 });
 
-describe("TeeWire - parsed output validation", () => {
+describe.skip("TeeWire - parsed output validation", () => {
   const adapter = new TeeWireAdapter();
 
   it(
