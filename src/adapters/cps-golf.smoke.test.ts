@@ -69,6 +69,11 @@ async function fetchWithFallback(
     // managed challenge, which the adapter surfaces as its distinct error. Real
     // tee-time data only comes back through the impersonating fetch proxy, so
     // here we accept either outcome but reject any *other* error.
+    //
+    // Re-enable condition for Levels 2 and 3: they assert against a real payload
+    // only when the smoke job supplies proxy credentials via `env`, which is the
+    // path production polls on. Without it they skip, so the CPS response
+    // contract is covered by fixtures in cps-golf.test.ts rather than live.
     try {
       const results = await adapter.fetchTeeTimes(config, testDate);
       if (results.length > 0) {
