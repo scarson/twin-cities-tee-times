@@ -56,19 +56,19 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-// Chronogolf's CDN blocks Node.js undici fetch (TLS fingerprinting) with 403.
-// The adapter works from Cloudflare Workers and curl. Smoke tests skip on 403.
+// Chronogolf's CDN decides by TLS fingerprint: it answers the Workers runtime
+// with 200 and Node's undici with 403, from the same IP, URL and headers. These
+// suites run in the Workers runtime (see vitest.smoke.config.mts), which is also
+// the adapter's production path — a direct fetch, not the Lambda proxy — so they
+// assert against real data.
 //
-// Re-enable condition: these levels assert for real once the smoke job reaches
-// the API from a client the CDN admits. The adapter's production path is a
-// direct fetch from the Workers runtime (it does not use the Lambda proxy), so
-// a Workers-runtime test pool reproduces production exactly. Until then
-// Chronogolf's 26 courses — the largest platform in the catalog — carry no live
-// smoke coverage, and production health for them is visible only through
-// `poll_log`. Chronogolf's robots.txt permits this path (`/marketplace/v2/`);
-// only `/private_api/`, `/reservations/`, `/users/`, `/page/`, `/password_resets/`
-// and `/logout` are disallowed, so the block is an environment mismatch rather
-// than an access restriction.
+// The 403 branch below is the safety net for a fingerprint policy change on
+// Chronogolf's side. If these suites start skipping, the runtime that production
+// polls from is no longer admitted, and the 26 Chronogolf courses are at risk
+// well before `poll_log` fills with errors. Treat a skip here as a signal, not
+// as noise. Chronogolf's robots.txt permits this path (`/marketplace/v2/`); only
+// `/private_api/`, `/reservations/`, `/users/`, `/page/`, `/password_resets/` and
+// `/logout` are disallowed.
 async function fetchWithFallback(
   adapter: ChronogolfAdapter
 ): Promise<{ results: TeeTime[]; config: CourseConfig; blocked: boolean }> {

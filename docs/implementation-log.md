@@ -212,3 +212,35 @@ The adapter itself is untouched and stays fully covered by `teewire.test.ts` (21
 
 - **TeeWire adapter now has zero live courses** (`le-sueur` disabled here; `inver-wood-18` / `inver-wood-9` already disabled). Keep the adapter and its 21 unit tests, or retire it? Sam's call — not actioned here.
 - **CPS Golf uses the same technique against the same control.** The shipped Lambda proxy defeats CPS's Cloudflare challenge via `curl_cffi` TLS impersonation (see the 2026-06-08 entry above). CPS robots.txt does *not* disallow the polled paths — the merged `User-agent: *` group resolves `Allow: /` against `Disallow: /` at equal specificity, so the least-restrictive rule governs, and the `Disallow: /` blocks apply to named AI crawlers (ClaudeBot, GPTBot, CCBot, Google-Extended) that this first-party poller is not. So CPS is "challenge only," where TeeWire is "challenge **and** robots disallow." That distinction is real but narrow, and whether the CPS impersonation should continue is a judgment call for Sam, not something this branch changes.
+
+## 2026-07-19 — Smoke suite moved to the Workers runtime
+
+**Branch:** `test/smoke-coverage-chronogolf-cps` → PR targets `dev`. Follow-up to the smoke-suite skip audit (PR #168), which found 14 of 24 smoke tests skipping and left two gaps open.
+
+### Problem
+
+Chronogolf — 26 courses, the largest platform in the catalog — had zero live smoke coverage. All three of its levels self-skipped on an HTTP 403, and the recorded reason ("blocks Node.js undici via TLS fingerprinting") was an inference nobody had tested. Separately, CPS Golf's Levels 2 and 3 printed the same "course empty or behind a Cloudflare challenge" message for two conditions its helper could already tell apart.
+
+### Root cause
+
+Measured rather than assumed: from one machine, one URL, one set of headers, `curl` and the Workers runtime get **HTTP 200** while Node's `undici` gets **403**. The block keys on the client's TLS fingerprint, not on IP reputation — which also rules out the reading that Chronogolf objects to automated access. Its robots.txt permits `/marketplace/v2/`; only `/private_api/`, `/reservations/`, `/users/`, `/page/`, `/password_resets/` and `/logout` are disallowed.
+
+The smoke suite ran under Vitest's Node pool, so every adapter took a transport no production poll uses. The cron poller runs in the Workers runtime, and Chronogolf's adapter fetches directly from it (no Lambda proxy).
+
+### What shipped
+
+- **`vitest.smoke.config.mts`** (renamed from `.ts` — `@cloudflare/vitest-pool-workers` is ESM-only and a `.ts` config gets bundled as CJS). Runs the suite through `cloudflareTest()` against `wrangler.jsonc`. `pool: "forks"` and `environment: "node"` are gone, since the Workers pool replaces both and the integration rejects custom environments. `fileParallelism: false` is kept deliberately: concurrent files multiply request rate against shared upstream limits, and Chronogolf blocks for 60s past roughly 20 req/min per IP.
+- **`package.json`, `.github/workflows/smoke-tests.yml`** — updated for the new config filename.
+- **`chronogolf.smoke.test.ts`** — comment now describes the runtime split and reframes the 403 branch as a safety net: a skip there means the runtime production polls from is no longer admitted, which is early warning for 26 courses well before `poll_log` fills with errors.
+- **`cps-golf.smoke.test.ts`** — Levels 2 and 3 consume the `challenged` flag `fetchWithFallback` already returned, so the skip names the actual condition. Its helper comment no longer claims the direct fetch happens "in Node.js", which the config change made false.
+- **`docs/pitfalls/testing-pitfalls.md`** — §16 entry: live tests must run on the runtime production uses.
+
+### Key decisions
+
+- **Converted the whole suite rather than splitting Chronogolf onto a second config.** Verified empirically first: under the Workers pool every other adapter behaves identically or better, so a split would have added a second config and CI script for no benefit. Smoke tests exist to exercise the production path; running them anywhere else is the bug.
+- **Spiked before building.** The premise — that `workerd` reproduces the fingerprint that gets production through — was unverified, and local `workerd` egresses from the developer machine rather than Cloudflare's edge, so it could plausibly have been blocked too. A throwaway fetch inside the pool settled it before any config was written.
+- **CPS Levels 2/3 still skip, correctly.** `workerd` does not carry a browser fingerprint, so CPS's managed challenge still refuses it; those levels need proxy credentials in CI. Not attempted here.
+
+### Quality checks
+
+`npm run test:smoke` **19 passed / 5 skipped** (from 16/8) — all three Chronogolf levels now assert contract and parsed output against live data. Remaining skips: CPS Levels 2/3 (need proxy `env`), TeeWire ×3 (intentional). `npm test` 769 passing / 59 files, `npx tsc --noEmit` clean, `npm run lint` 0 errors (3 pre-existing warnings).
