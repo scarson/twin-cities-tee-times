@@ -177,3 +177,38 @@ All ~13 CPS "v5" courses failed every poll with `CPS Golf transaction registrati
 
 - **IAM precondition:** the runtime flip makes `aws-lambda-deploy` call `UpdateFunctionConfiguration`. Confirm `AWS_DEPLOY_ROLE_ARN` holds `lambda:UpdateFunctionConfiguration` + `lambda:GetFunctionConfiguration`, else CI is green while the Lambda runs Python under the Node runtime.
 - **Post-deploy watch:** confirm the ~13 v5 CPS courses return to `success` in `poll_log`, and watch the D1 write rate (dedup PR #119 absorbs the resumed writes).
+
+## 2026-07-19 — TeeWire polling retired (le-sueur disabled; false-green smoke suite)
+
+**Branch:** `fix/teewire-blocked-le-sueur` → PR targets `dev`. Routine for the config/test changes; the CPS question in "Open items" is Escalate-class and is Sam's call.
+
+### Problem
+
+Production log review found `le-sueur` at **273 polls / 273 errors / 0 successes** — the only non-disabled course that had never once succeeded. Every poll returned `TeeWire API returned HTTP 403`.
+
+Root cause is external and deliberate, not a defect in the adapter or its config: `teewire.app` fronts every non-browser client with a Cloudflare bot-management challenge (403 with `cf-mitigated: challenge`, serving the "Attention Required!" interstitial), and its robots.txt independently disallows the exact request the adapter makes — the single `User-agent: *` group carries `Disallow: /*?action=`, whose wildcard matches the `?action=tee-times` query, with no competing Allow. The site-wide challenge is confirmed by the apex (`https://teewire.app/`) returning the same 403. The tenant slug and `calendarId` are correct; no client-side change makes this request legitimate.
+
+A second, in-repo defect kept it invisible: `teewire.smoke.test.ts` routed every call through a `fetchSafely` helper that caught **all** exceptions and returned `[]`. Level 1 then asserted only `Array.isArray(results)` — always true for the `[]` fallback — while Levels 2 and 3 `ctx.skip()`'d on `results.length === 0`. The suite therefore reported green through all 273 production failures.
+
+### What shipped
+
+- **`src/config/courses.json`** — `le-sueur` set to `"disabled": 1`, matching the existing convention (numeric, positioned after `longitude`). Stops ~48 futile requests/day at a host that has refused us. Per the "seed script overwrites D1 on every deploy" pitfall (DB-3), the change belongs here rather than in D1 directly.
+- **`src/adapters/teewire.smoke.test.ts`** — the three live-API suites marked `describe.skip` with a comment naming the challenge, the governing robots.txt rule, and the re-enable condition (documented TeeWire API access), per the "Skipped Tests Are Not Passing Tests" checklist (§14) requiring every skip to state its reason and re-enable condition. The comment explicitly rules out un-skipping by defeating the challenge.
+- **`docs/pitfalls/testing-pitfalls.md`** — new §1 entry: a test helper must not swallow what the code under test throws, with `chronogolf.smoke.test.ts` named as the reference pattern (catches HTTP 403 alone, documents why, returns an explicit `blocked` flag).
+
+The adapter itself is untouched and stays fully covered by `teewire.test.ts` (21 fixture-based tests over parsing, URL construction, error paths, and proxy routing).
+
+### Key decisions
+
+- **Did not build an evasion.** Making this request succeed requires defeating a bot challenge — spoofed browser fingerprint, challenge solver, or residential egress. The operator stated its access policy in machine-readable form and enforced it; overriding that is out of scope regardless of merge authority. The correct fix for a host that refuses automated clients is to stop polling it.
+- **Skipped rather than deleted the live suite.** The suite is genuinely dead (zero live TeeWire courses, and the endpoint is disallowed), but deletion is destructive and the adapter's fate is an architecture call. Skipping is reversible and preserves the work.
+- **Left `fetchSafely` in place.** It now runs only inside skipped suites; changing dead code produces an unverifiable diff. The durable fix is the pitfalls entry, which prevents the pattern recurring anywhere in the suite.
+
+### Quality checks
+
+`npm test` 769 passing / 59 files, `npx tsc --noEmit` clean, `npm run lint` 0 errors (3 warnings, all pre-existing on `dev`: `course-header.tsx` exhaustive-deps, two unused eslint-disable directives). `npm run test:smoke src/adapters/teewire.smoke.test.ts` reports **3 skipped** in 143ms with no network call — previously 3 passed against a 403.
+
+### Open items
+
+- **TeeWire adapter now has zero live courses** (`le-sueur` disabled here; `inver-wood-18` / `inver-wood-9` already disabled). Keep the adapter and its 21 unit tests, or retire it? Sam's call — not actioned here.
+- **CPS Golf uses the same technique against the same control.** The shipped Lambda proxy defeats CPS's Cloudflare challenge via `curl_cffi` TLS impersonation (see the 2026-06-08 entry above). CPS robots.txt does *not* disallow the polled paths — the merged `User-agent: *` group resolves `Allow: /` against `Disallow: /` at equal specificity, so the least-restrictive rule governs, and the `Disallow: /` blocks apply to named AI crawlers (ClaudeBot, GPTBot, CCBot, Google-Extended) that this first-party poller is not. So CPS is "challenge only," where TeeWire is "challenge **and** robots disallow." That distinction is real but narrow, and whether the CPS impersonation should continue is a judgment call for Sam, not something this branch changes.

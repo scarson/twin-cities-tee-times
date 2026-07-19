@@ -1583,6 +1583,7 @@
     "address": "36195 311th Ave, Le Sueur, MN 56058",
     "latitude": 44.4249,
     "longitude": -93.889,
+    "disabled": 1,
     "platform": "teewire",
     "platformConfig": {
       "tenant": "le-sueur",
