@@ -58,6 +58,17 @@ afterEach(() => {
 
 // Chronogolf's CDN blocks Node.js undici fetch (TLS fingerprinting) with 403.
 // The adapter works from Cloudflare Workers and curl. Smoke tests skip on 403.
+//
+// Re-enable condition: these levels assert for real once the smoke job reaches
+// the API from a client the CDN admits. The adapter's production path is a
+// direct fetch from the Workers runtime (it does not use the Lambda proxy), so
+// a Workers-runtime test pool reproduces production exactly. Until then
+// Chronogolf's 26 courses — the largest platform in the catalog — carry no live
+// smoke coverage, and production health for them is visible only through
+// `poll_log`. Chronogolf's robots.txt permits this path (`/marketplace/v2/`);
+// only `/private_api/`, `/reservations/`, `/users/`, `/page/`, `/password_resets/`
+// and `/logout` are disallowed, so the block is an environment mismatch rather
+// than an access restriction.
 async function fetchWithFallback(
   adapter: ChronogolfAdapter
 ): Promise<{ results: TeeTime[]; config: CourseConfig; blocked: boolean }> {

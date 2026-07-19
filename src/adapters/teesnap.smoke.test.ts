@@ -49,7 +49,7 @@ async function fetchTeeTimes(adapter: TeensnapAdapter): Promise<TeeTime[]> {
   return adapter.fetchTeeTimes(config, testDate);
 }
 
-describe.skip("Teesnap - live API smoke tests", () => {
+describe("Teesnap - live API smoke tests", () => {
   const adapter = new TeensnapAdapter();
 
   it(
@@ -62,7 +62,7 @@ describe.skip("Teesnap - live API smoke tests", () => {
   );
 });
 
-describe.skip("Teesnap - API contract validation", () => {
+describe("Teesnap - API contract validation", () => {
   const adapter = new TeensnapAdapter();
 
   it(
@@ -102,7 +102,7 @@ describe.skip("Teesnap - API contract validation", () => {
   );
 });
 
-describe.skip("Teesnap - parsed output validation", () => {
+describe("Teesnap - parsed output validation", () => {
   const adapter = new TeensnapAdapter();
 
   it(
