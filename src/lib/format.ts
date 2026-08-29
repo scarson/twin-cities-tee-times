@@ -32,8 +32,8 @@ export function staleAge(isoString: string): string {
  * All golf courses in the app are in the Twin Cities metro, so Central Time
  * is the canonical timezone for date logic. San Diego test courses also
  * display in CT — this is intentional. */
-export function todayCT(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+export function todayCT(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 }
 
 /** Current time as HH:MM in Central Time. */

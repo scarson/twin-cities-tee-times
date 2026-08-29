@@ -3,16 +3,16 @@
 import { pollCourse, shouldPollDate, getPollingDates, MAX_HORIZON, PROBE_INTERVAL_DAYS } from "@/lib/poller";
 import { sqliteIsoNow, logPoll, cleanupOldPolls, cleanupPastTeeTimes, deactivateStaleCourses, cleanupExpiredSessions } from "@/lib/db";
 import { assignBatches, cronToBatchIndex, platformWeight, sleepAfterPoll, CHRONOGOLF_LANE } from "@/lib/batch";
+import { todayCT } from "@/lib/format";
 import type { CourseRow } from "@/types";
 
 export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~80 courses
 
 /**
- * Wall-clock budget for all Chronogolf work in the lane batch (active polls,
- * inactive probes, and the horizon probe combined). 3.5 min leaves margin under
- * the 5-min peak cron period for housekeeping, so the lane never runs past its
- * own next firing (which would re-introduce the cross-invocation concurrency this
- * fix removes). At the adapter's ~4s/request spacing that's ≤ ~52 requests/cycle;
+ * Wall-clock budget for each Chronogolf lane invocation. 3.5 min leaves margin
+ * under the 5-min peak cron period, so active polling or horizon maintenance
+ * never runs past the lane's next firing and creates cross-invocation overlap.
+ * At the adapter's ~4s/request spacing that's ≤ ~52 requests/cycle;
  * oldest-first ordering rotates which course/date pairs get covered each cycle.
  * See docs/plans/2026-06-08-chronogolf-rate-limit-pacing-plan.md (Volume Math)
  * and docs/plans/2026-07-12-chronogolf-429-backoff.md (measured rate ceiling).
@@ -45,6 +45,22 @@ export function shouldRunThisCycle(now: Date): boolean {
   return minute < 5; // 8pm–5am: once per hour
 }
 
+export function shouldRunHorizonMaintenance(scheduledAt: Date, batchIndex: number): boolean {
+  if (batchIndex !== CHRONOGOLF_LANE || scheduledAt.getMinutes() !== 30) {
+    return false;
+  }
+
+  const centralHour = parseInt(
+    scheduledAt.toLocaleString("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric",
+      hour12: false,
+    })
+  );
+
+  return centralHour >= 20 || centralHour < 5;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -59,22 +75,31 @@ export async function runHorizonProbe(
   todayStr: string,
   budget: { remaining: number; deadlineMs?: number },
   env?: CloudflareEnv
-): Promise<{ probeCount: number; updatedCourses: string[] }> {
+): Promise<{
+  probeCount: number;
+  updatedCourses: string[];
+  completedCourses: string[];
+  partialCourses: string[];
+}> {
   let probeCount = 0;
   const updatedCourses: string[] = [];
+  const completedCourses: string[] = [];
+  const partialCourses: string[] = [];
   const deadlineMs = budget.deadlineMs ?? Infinity;
 
   for (const course of courses) {
-    if (budget.remaining <= 0 || Date.now() > deadlineMs) break;
-
     try {
       let maxFound = course.booking_horizon_days;
+      let completed = true;
 
       const weight = platformWeight(course.platform);
       const [year, month, day] = todayStr.split("-").map(Number);
 
       for (let dayOffset = course.booking_horizon_days; dayOffset < MAX_HORIZON; dayOffset++) {
-        if (budget.remaining < weight || Date.now() > deadlineMs) break;
+        if (budget.remaining < weight || Date.now() >= deadlineMs) {
+          completed = false;
+          break;
+        }
 
         const d = new Date(Date.UTC(year, month - 1, day + dayOffset));
         const dateStr = d.toISOString().split("T")[0];
@@ -105,16 +130,23 @@ export async function runHorizonProbe(
         console.log(`Horizon probe: ${course.id} extended to ${maxFound} days`);
       }
 
+      if (!completed) {
+        partialCourses.push(course.id);
+        break;
+      }
+
       await db
         .prepare("UPDATE courses SET last_horizon_probe = ? WHERE id = ?")
         .bind(new Date().toISOString(), course.id)
         .run();
+      completedCourses.push(course.id);
     } catch (err) {
       console.error(`Horizon probe error for course ${course.id}:`, err);
+      partialCourses.push(course.id);
     }
   }
 
-  return { probeCount, updatedCourses };
+  return { probeCount, updatedCourses, completedCourses, partialCourses };
 }
 
 /**
@@ -201,7 +233,7 @@ export async function checkV4Upgrades(
 export async function runCronPoll(
   env: CloudflareEnv,
   cronExpression: string,
-  opts: { chronogolfLaneBudgetMs?: number } = {}
+  opts: { chronogolfLaneBudgetMs?: number; scheduledTimeMs?: number } = {}
 ): Promise<{
   pollCount: number;
   courseCount: number;
@@ -211,9 +243,52 @@ export async function runCronPoll(
   budgetExhausted: boolean;
 }> {
   const batchIndex = cronToBatchIndex(cronExpression);
-  const now = new Date();
+  const scheduledAt = new Date(opts.scheduledTimeMs ?? Date.now());
+  const operationalNow = new Date();
 
-  if (!shouldRunThisCycle(now)) {
+  if (shouldRunHorizonMaintenance(scheduledAt, batchIndex)) {
+    try {
+      const db = env.DB;
+      const laneBudgetMs = opts.chronogolfLaneBudgetMs ?? CHRONOGOLF_LANE_BUDGET_MS;
+      const laneDeadline = Date.now() + laneBudgetMs;
+      const eligibleForProbe = await db
+        .prepare(
+          `SELECT * FROM courses
+           WHERE disabled = 0 AND is_active = 1
+             AND (last_horizon_probe IS NULL OR last_horizon_probe < ${sqliteIsoNow(`-${PROBE_INTERVAL_DAYS} days`)})
+           ORDER BY CASE WHEN last_horizon_probe IS NULL THEN 0 ELSE 1 END,
+                    last_horizon_probe ASC,
+                    id ASC`
+        )
+        .all<CourseRow>();
+
+      const probeResult = await runHorizonProbe(
+        db,
+        eligibleForProbe.results,
+        todayCT(scheduledAt),
+        { remaining: SUBREQUEST_BUDGET, deadlineMs: laneDeadline },
+        env
+      );
+
+      console.log(
+        `Horizon maintenance: eligible=${eligibleForProbe.results.length}, completed=${probeResult.completedCourses.length}, partial=${probeResult.partialCourses.length}, probes=${probeResult.probeCount}, partial_ids=${probeResult.partialCourses.join(",") || "none"}`
+      );
+
+      return {
+        pollCount: probeResult.probeCount,
+        courseCount: eligibleForProbe.results.length,
+        inactiveProbeCount: 0,
+        skipped: false,
+        batchIndex,
+        budgetExhausted: false,
+      };
+    } catch (err) {
+      console.error("Horizon maintenance fatal error:", err);
+      return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: false, batchIndex, budgetExhausted: false };
+    }
+  }
+
+  if (!shouldRunThisCycle(scheduledAt)) {
     return { pollCount: 0, courseCount: 0, inactiveProbeCount: 0, skipped: true, batchIndex, budgetExhausted: false };
   }
 
@@ -231,9 +306,7 @@ export async function runCronPoll(
     const activeCourses = batchCourses.filter((c) => c.is_active === 1);
     const inactiveCourses = batchCourses.filter((c) => c.is_active === 0);
 
-    const todayStr = now.toLocaleDateString("en-CA", {
-      timeZone: "America/Chicago",
-    }); // YYYY-MM-DD
+    const todayStr = todayCT(scheduledAt);
     const dates = getPollingDates(todayStr, MAX_HORIZON);
 
     // Batch-fetch the most recent poll time for every course+date combo
@@ -313,7 +386,7 @@ export async function runCronPoll(
           if (status === "success") {
             await db
               .prepare("UPDATE courses SET last_had_tee_times = ? WHERE id = ?")
-              .bind(now.toISOString(), course.id)
+              .bind(operationalNow.toISOString(), course.id)
               .run();
           }
         } catch (err) {
@@ -379,7 +452,7 @@ export async function runCronPoll(
         if (foundTeeTimes) {
           await db
             .prepare("UPDATE courses SET is_active = 1, last_had_tee_times = ? WHERE id = ?")
-            .bind(now.toISOString(), course.id)
+            .bind(operationalNow.toISOString(), course.id)
             .run();
           console.log(`Auto-activated course ${course.id}: tee times detected`);
         }
@@ -389,10 +462,7 @@ export async function runCronPoll(
     }
 
     // --- Housekeeping: runs only in the lane batch ---
-    // Gated to CHRONOGOLF_LANE (not a bare 0) because the horizon probe below
-    // issues Chronogolf requests; it MUST run in the same batch as the lane so
-    // the single-lane invariant holds. The other cleanup tasks are batch-agnostic
-    // and ride along here.
+    // The cleanup tasks are batch-agnostic and ride along with batch 0.
     if (batchIndex === CHRONOGOLF_LANE) {
       try {
         const deactivatedCount = await deactivateStaleCourses(db);
@@ -428,33 +498,6 @@ export async function runCronPoll(
         }
       } catch (err) {
         console.error("session cleanup error:", err);
-      }
-
-      // --- Horizon probe: weekly check for courses publishing beyond their known horizon ---
-      try {
-        const eligibleForProbe = await db
-          .prepare(
-            `SELECT * FROM courses
-             WHERE disabled = 0 AND is_active = 1
-               AND (last_horizon_probe IS NULL OR last_horizon_probe < ${sqliteIsoNow(`-${PROBE_INTERVAL_DAYS} days`)})`
-          )
-          .all<CourseRow>();
-
-        if (eligibleForProbe.results.length > 0) {
-          const probeResult = await runHorizonProbe(
-            db,
-            eligibleForProbe.results,
-            todayStr,
-            { remaining: budget, deadlineMs: laneDeadline },
-            env
-          );
-
-          if (probeResult.updatedCourses.length > 0) {
-            console.log(`Horizon probe: updated ${probeResult.updatedCourses.length} course(s)`);
-          }
-        }
-      } catch (err) {
-        console.error("Horizon probe error:", err);
       }
 
       // --- v4→v5 auto-detection: check if v4 CPS courses have upgraded ---
