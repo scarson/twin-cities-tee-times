@@ -271,3 +271,9 @@ Weekly booking-horizon discovery had not completed since July 7. The Chronogolf 
 ### Quality checks
 
 TDD regression tests failed against the prior behavior, then passed after implementation. Final checks: `npm test` **780 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, and `npx @opennextjs/cloudflare build` complete (standard Windows compatibility warnings). Claude Fable's design review required scheduled-time semantics, complete-only stamping, deterministic ordering, and isolation; the implementation review found one test-honesty gap, which was fixed and re-reviewed to **APPROVE** with no remaining findings.
+
+## 2026-08-29 — Serena project configuration removed
+
+**Branch:** `chore/remove-serena-project` → PR targets `dev` (Routine).
+
+Sam uninstalled Serena, so the tracked `.serena/project.yml` configuration was obsolete. The file was removed while retaining `.serena/.gitignore`; no runtime code, dependencies, or other agent configuration changed. Verification is the focused Git diff and whitespace check because this is a documentation/tooling-configuration deletion with no executable behavior.
