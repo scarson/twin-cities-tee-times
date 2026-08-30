@@ -244,3 +244,36 @@ The smoke suite ran under Vitest's Node pool, so every adapter took a transport 
 ### Quality checks
 
 `npm run test:smoke` **19 passed / 5 skipped** (from 16/8) — all three Chronogolf levels now assert contract and parsed output against live data. Remaining skips: CPS Levels 2/3 (need proxy `env`), TeeWire ×3 (intentional). `npm test` 769 passing / 59 files, `npx tsc --noEmit` clean, `npm run lint` 0 errors (3 pre-existing warnings).
+
+## 2026-08-29 — Horizon probe starvation fix
+
+**Branch:** `fix/horizon-probe-starvation` → PR targets `dev` (Review-class — scheduled background-processing architecture; Claude Fable granted Sam's delegated approval). Review record: `docs/plans/2026-08-29-horizon-probe-starvation-fable-review.md`.
+
+### Problem
+
+Weekly booking-horizon discovery had not completed since July 7. The Chronogolf lane's ordinary active polling consumed its 210-second wall-clock budget before the horizon probe at the end of batch-0 housekeeping could start. Twenty-seven active courses with horizons below 14 days therefore could not discover newly published dates.
+
+### What shipped
+
+- `worker.ts` passes Cloudflare's scheduled-trigger timestamp into `runCronPoll`. Scheduled time now drives Central-Time cadence and polling-date selection; execution time remains authoritative for deadlines and operational timestamps.
+- Batch 0's `:30` trigger runs dedicated horizon maintenance from 8:30 PM through 4:30 AM CT. That path performs no ordinary active/inactive polling, cleanup, or CPS v4 upgrade checks, and ordinary cycles no longer query horizon eligibility.
+- Due courses are limited to enabled active rows and ordered deterministically: never-probed first, then oldest timestamp, then course ID.
+- Horizon probes keep monotonic gains found before interruption but update `last_horizon_probe` only after every intended offset was attempted. Budget or deadline interruption leaves the course due, with `Date.now() >= deadline` treated as expired.
+- Maintenance telemetry reports eligible, completed, partial, and attempted-probe counts plus partial course IDs.
+- Regression coverage distinguishes scheduled date from execution date across a CT calendar boundary and covers cadence boundaries, batch/work isolation, deterministic SQL ordering, recovery after ordinary-lane exhaustion, before/mid budget and deadline interruption, max-horizon completion, and telemetry.
+
+### Key decisions
+
+- Reused the existing batch-0 cron expression instead of adding another trigger. Overnight `:30` invocations were previously skipped by normal cadence, so the maintenance window adds bounded work without displacing an ordinary polling cycle.
+- Preserved the 210-second single-lane guard. The deadline begins inside maintenance execution, and partial oldest-first work remains unstamped so the next maintenance cycle resumes it.
+- Accepted bounded head-of-line risk without adding progress schema. The new summary makes repeated partial IDs visible; persistent starvation would justify a follow-up design based on production evidence.
+
+### Quality checks
+
+TDD regression tests failed against the prior behavior, then passed after implementation. Final checks: `npm test` **780 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, and `npx @opennextjs/cloudflare build` complete (standard Windows compatibility warnings). Claude Fable's design review required scheduled-time semantics, complete-only stamping, deterministic ordering, and isolation; the implementation review found one test-honesty gap, which was fixed and re-reviewed to **APPROVE** with no remaining findings.
+
+## 2026-08-29 — Serena project configuration removed
+
+**Branch:** `chore/remove-serena-project` → PR targets `dev` (Routine).
+
+Sam uninstalled Serena, so the tracked `.serena/project.yml` configuration was obsolete. The file was removed while retaining `.serena/.gitignore`; no runtime code, dependencies, or other agent configuration changed. Verification is the focused Git diff and whitespace check because this is a documentation/tooling-configuration deletion with no executable behavior.
