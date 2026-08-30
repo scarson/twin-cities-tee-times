@@ -80,7 +80,7 @@ jobs:
             --only-binary=:all:
 
       - name: Deploy Lambda proxy
-        uses: aws-actions/aws-lambda-deploy@v1
+        uses: aws-actions/aws-lambda-deploy@v1.1.1
         with:
           function-name: tee-times-fetch-proxy
           code-artifacts-dir: lambda/fetch-proxy
