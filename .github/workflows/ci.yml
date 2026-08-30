@@ -83,7 +83,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14" # match the Lambda runtime
       # Pure-logic tests for the fetch-proxy's challenge classifier and the CPS
