@@ -277,3 +277,13 @@ TDD regression tests failed against the prior behavior, then passed after implem
 **Branch:** `chore/remove-serena-project` → PR targets `dev` (Routine).
 
 Sam uninstalled Serena, so the tracked `.serena/project.yml` configuration was obsolete. The file was removed while retaining `.serena/.gitignore`; no runtime code, dependencies, or other agent configuration changed. Verification is the focused Git diff and whitespace check because this is a documentation/tooling-configuration deletion with no executable behavior.
+
+## 2026-08-30 — Lambda deploy action runtime upgrade
+
+**Branch:** `chore/update-lambda-deploy-action` → PR targets `dev` (Routine).
+
+The deployment workflow now pins `aws-actions/aws-lambda-deploy` to `v1.1.1`, whose action runtime is Node.js 24. The upstream floating `v1` tag still targets Node.js 20 and caused GitHub Actions to force the deprecated runtime forward during deployment.
+
+### Quality checks
+
+`npm test` **780 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, and `npx @opennextjs/cloudflare build` complete (standard Windows compatibility warnings).
