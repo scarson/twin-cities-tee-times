@@ -137,7 +137,10 @@ export class CpsGolfAdapter implements PlatformAdapter {
 
     const response = await this.doFetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Referer: this.bookingPageReferer(subdomain),
+      },
       body: "client_id=onlinereswebshortlived",
     }, proxy);
 
@@ -319,6 +322,17 @@ export class CpsGolfAdapter implements PlatformAdapter {
     );
   }
 
+  /**
+   * The facility's online booking page, sent as `Referer` on every CPS call
+   * the way the CPS web app's own requests carry it. CPS's Cloudflare rules
+   * challenge reservation calls that have no Referer even when the TLS
+   * fingerprint is trusted, so the proxy's impersonation alone does not clear
+   * them (DEPLOY-2).
+   */
+  private bookingPageReferer(subdomain: string): string {
+    return `https://${subdomain}.cps.golf/onlineresweb/`;
+  }
+
   private cloudflareChallengeError(status: number): Error {
     return new Error(
       `CPS Golf reservation API blocked by Cloudflare challenge (HTTP ${status})`
@@ -330,11 +344,12 @@ export class CpsGolfAdapter implements PlatformAdapter {
     apiKey: string,
     timezone: string
   ): Record<string, string> {
-    const { websiteId, siteId, terminalId } = config.platformConfig;
+    const { subdomain, websiteId, siteId, terminalId } = config.platformConfig;
 
     return {
       "x-apikey": apiKey,
       "client-id": "js1",
+      Referer: this.bookingPageReferer(subdomain!),
       ...(websiteId && { "x-websiteid": websiteId }),
       ...(siteId && { "x-siteid": siteId }),
       ...(terminalId && { "x-terminalid": terminalId }),
@@ -352,11 +367,12 @@ export class CpsGolfAdapter implements PlatformAdapter {
     token: string,
     timezone: string
   ): Record<string, string> {
-    const { websiteId, siteId, terminalId } = config.platformConfig;
+    const { subdomain, websiteId, siteId, terminalId } = config.platformConfig;
 
     return {
       Authorization: `Bearer ${token}`,
       "client-id": "onlineresweb",
+      Referer: this.bookingPageReferer(subdomain!),
       ...(websiteId && { "x-websiteid": websiteId }),
       ...(siteId && { "x-siteid": siteId }),
       ...(terminalId && { "x-terminalid": terminalId }),
