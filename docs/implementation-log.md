@@ -4,6 +4,29 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-10-13 — Teesnap API host move + StoneRidge repoint (branch `fix/teesnap-api-host`)
+
+**Context:** The same `/check-logs` run showed `stoneridge` and `daytona` (Teesnap) failing every poll with `Unexpected token '<', "<!doctype "... is not valid JSON`; last tee times 2026-09-29.
+
+### Root cause
+
+Teesnap rebuilt its booking site as a single-page app ("Powered by Teesnap v5.61.0"). The old `https://{subdomain}.teesnap.net/customer-api/teetimes-day` now falls through to the app's catch-all route and returns its HTML page with `200 text/html`. Loading the booking page in a browser and reading its resource timings showed the data now comes from `https://{subdomain}.api.teesnap.net/api/bookingsite/teetimes-day`, with the same query parameters and the same response shape.
+
+**Second finding:** the booking page showed `stoneridgegc` is **StoneRidge Golf Course, Prescott Valley, AZ** (928 phone, property endpoint), the year-round test tenant from `docs/research/teesnap-platform-investigation.md`. It had been catalogued as StoneRidge, Stillwater MN since 2026-03-27, so the app showed Arizona tee times as Stillwater. stoneridgegc.com's "Book Tee Times" links to `stoneridgemn.cps.golf`.
+
+### What shipped
+
+- `teesnap.ts`: tee-time URL moved to the per-tenant API host (the `Referer` stays the booking site, as the browser sends it). URL unit test updated first and watched fail.
+- `courses.json`: `stoneridge` → `cps_golf`, `subdomain stoneridgemn`, `courseIds "3"`, `websiteId 44b0bf6d-ac06-4319-1f69-08df28f9a05b` (from `GetAllOptions`). Same commit as the Teesnap fix so the Arizona data can't start flowing again in between. `scripts/seed.sql` regenerated (it also picked up `le-sueur` `disabled=1`, which `courses.json` already had).
+- COURSE-3 amended (a misconfig that *succeeds* with a same-named course elsewhere) + §4.C checklist item; research docs corrected.
+
+### Verification
+
+- Teesnap live smoke test (`vitest.smoke.config.mts`) 3/3 against the new endpoint; Daytona through the production Lambda (proxy allowlist entry `teesnap.net` covers `*.api.teesnap.net`): 51 tee times.
+- StoneRidge CPS flow (with the `Referer` fix): 50 slots for 2026-10-14, `courseName "StoneRidge"`, `GreenFee9Online` / `GreenFee18Online`.
+
+---
+
 ## 2026-10-13 — CPS `Referer` gate: 17-course outage fix (branch `fix/cps-referer-challenge`)
 
 **Context:** `/check-logs` found 17 of 18 enabled CPS courses failing every poll with `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)`; `last_had_tee_times` put the onset at ~2026-09-10 13:00Z (~33 days, longer than `poll_log`'s 7-day retention). Edinburgh USA, the one survivor, is on a non-Cloudflare origin. The daily `CPS profile rotation` workflow stayed green throughout.

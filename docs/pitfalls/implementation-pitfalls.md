@@ -226,6 +226,8 @@ Any row active for more than a few days with zero successes is a misconfiguratio
 
 **The Lesson:** `no_data` that never flips to `success` is a bug signal, not a quiet course. Silence is the most dangerous failure shape — a misconfig that errored would have been caught weeks earlier.
 
+**Worse variant — a misconfig that *succeeds*:** a config can point at a **different course with the same name** on the right-looking platform and poll `success` with someone else's tee times. Real example (found 2026-10-13): `stoneridge` (StoneRidge Golf Club, Stillwater MN) was configured as Teesnap `stoneridgegc` — which is StoneRidge Golf Course in **Prescott Valley, AZ**, used during platform research as a year-round test tenant — from 2026-03-27 until Teesnap moved its API. Users saw Arizona tee times labelled Stillwater; no audit query catches this. The real course books on CPS (`stoneridgemn`). When adding a course, confirm the booking tenant's own identity (its property/profile endpoint, address, or phone area code) matches the catalog's city — a matching name is not enough — and never reuse a research test tenant as a catalog entry.
+
 *See Also:* COURSE-4 (orphan rows from splits), DB-3 (seed UPSERT propagates `platform`).
 
 ---
@@ -250,6 +252,7 @@ Any row active for more than a few days with zero successes is a misconfiguratio
 - [ ] **Permanent exclusion uses `disabled = 1` in `courses.json`** (COURSE-1)
 - [ ] **New course has `latitude`, `longitude`, and `googlePlaceId`** populated (COURSE-2)
 - [ ] **`platform`/`platformConfig` verified against the live booking site** (not just the catalog); never-succeeded audit clean (COURSE-3)
+- [ ] **Booking tenant's own identity (address/phone/profile) matches the catalog city** — a same-named course elsewhere polls `success` with the wrong tee times (COURSE-3)
 - [ ] **Removed/renamed/split courses retired via `UPDATE … SET disabled = 1` migration** — never DELETE; the seed won't do it (COURSE-4)
 
 ---
@@ -363,6 +366,10 @@ Pitfalls that arise when a session dispatches parallel subagents and consolidate
 ---
 
 # Appendix A: Historical Changelog
+
+## 2026-10-13 — COURSE-3 amended (a misconfig that succeeds with another course's data)
+
+- Amended **COURSE-3** with the variant where a wrong config polls `success`: `stoneridge` (Stillwater, MN) had been configured since 2026-03-27 as Teesnap `stoneridgegc`, which is StoneRidge Golf Course in Prescott Valley, AZ (the research doc's year-round test tenant). Surfaced when Teesnap moved its tee-time API to `{subdomain}.api.teesnap.net/api/bookingsite/` and `/check-logs` showed `stoneridge` and `daytona` returning the booking page's HTML. The real StoneRidge books on CPS (`stoneridgemn`, `courseIds 3`, verified live: 50 slots, `courseName "StoneRidge"`). Added a §4.C checklist item to confirm the booking tenant's own identity, not just its name. Status VALIDATED.
 
 ## 2026-10-13 — DEPLOY-2 amended (CPS `Referer` gate; probe-fidelity lesson)
 

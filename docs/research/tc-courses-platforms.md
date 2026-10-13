@@ -153,7 +153,7 @@ Courses using `{subdomain}.teesnap.net` for reservations.
 | Course Name | City | Holes | Booking URL | Notes |
 |---|---|---|---|---|
 | Daytona | Dayton | 18 | daytonagolfclub.teesnap.net | Pay at course |
-| StoneRidge | Stillwater | 18 | stoneridgegc.teesnap.net | Dynamic pricing; pre-pay online |
+| StoneRidge | Stillwater | 18 | ~~stoneridgegc.teesnap.net~~ | **Wrong course (corrected 2026-10-13):** `stoneridgegc` is StoneRidge Golf Course, Prescott Valley, AZ. The Stillwater course books on CPS: `stoneridgemn.cps.golf` (linked from stoneridgegc.com). |
 
 > **Note:** River Oaks Municipal (Cottage Grove) previously used Teesnap but has moved to MemberSports.
 
