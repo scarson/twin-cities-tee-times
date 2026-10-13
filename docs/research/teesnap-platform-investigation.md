@@ -25,6 +25,8 @@ Teesnap is a cloud-based golf course management platform (v5.54.5 at time of res
 https://{subdomain}.teesnap.net/customer-api/{endpoint}
 ```
 
+> **Superseded (observed 2026-10-13):** the booking site was rebuilt as a single-page app (footer "Powered by Teesnap v5.61.0") that answers every unknown path, including `/customer-api/*`, with its own HTML page (`200 text/html`). The tee-time data now comes from a per-tenant API host — `https://{subdomain}.api.teesnap.net/api/bookingsite/{endpoint}` — with the same query parameters and the same `teetimes-day` response shape. The `/customer-api/` paths below are kept for history.
+
 The path prefix is always `/customer-api/`.
 
 ### Authentication

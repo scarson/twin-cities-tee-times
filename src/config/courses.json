@@ -505,12 +505,13 @@
     "address": "13600 Hudson Blvd N, Stillwater, MN 55082",
     "latitude": 44.9491,
     "longitude": -92.8339,
-    "platform": "teesnap",
+    "platform": "cps_golf",
     "platformConfig": {
-      "subdomain": "stoneridgegc",
-      "courseId": "1320"
+      "subdomain": "stoneridgemn",
+      "courseIds": "3",
+      "websiteId": "44b0bf6d-ac06-4319-1f69-08df28f9a05b"
     },
-    "bookingUrl": "https://stoneridgegc.teesnap.net",
+    "bookingUrl": "https://stoneridgemn.cps.golf/onlineresweb",
     "googlePlaceId": "ChIJZ_vNn5Lf94cRR5xMkX3Oh4I"
   },
   {

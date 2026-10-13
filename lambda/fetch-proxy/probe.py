@@ -18,6 +18,9 @@ PROBE_TIMEOUT = 10
 def _headers(subdomain):
     # A browser-like header shape so the probe's challenge verdict matches what
     # production (which forwards the adapter's headers) sees. No credentials.
+    # Referer MUST match the adapter's (cps-golf.ts::bookingPageReferer): CPS's
+    # Cloudflare rules challenge any reservation call without one, whatever the
+    # fingerprint, so a probe/adapter mismatch here hides or fakes an outage.
     return {
         "Content-Type": "application/json",
         "Accept": "application/json, text/plain, */*",

@@ -4,6 +4,57 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-10-13 — Teesnap API host move + StoneRidge repoint (branch `fix/teesnap-api-host`)
+
+**Context:** The same `/check-logs` run showed `stoneridge` and `daytona` (Teesnap) failing every poll with `Unexpected token '<', "<!doctype "... is not valid JSON`; last tee times 2026-09-29.
+
+### Root cause
+
+Teesnap rebuilt its booking site as a single-page app ("Powered by Teesnap v5.61.0"). The old `https://{subdomain}.teesnap.net/customer-api/teetimes-day` now falls through to the app's catch-all route and returns its HTML page with `200 text/html`. Loading the booking page in a browser and reading its resource timings showed the data now comes from `https://{subdomain}.api.teesnap.net/api/bookingsite/teetimes-day`, with the same query parameters and the same response shape.
+
+**Second finding:** the booking page showed `stoneridgegc` is **StoneRidge Golf Course, Prescott Valley, AZ** (928 phone, property endpoint), the year-round test tenant from `docs/research/teesnap-platform-investigation.md`. It had been catalogued as StoneRidge, Stillwater MN since 2026-03-27, so the app showed Arizona tee times as Stillwater. stoneridgegc.com's "Book Tee Times" links to `stoneridgemn.cps.golf`.
+
+### What shipped
+
+- `teesnap.ts`: tee-time URL moved to the per-tenant API host (the `Referer` stays the booking site, as the browser sends it). URL unit test updated first and watched fail.
+- `courses.json`: `stoneridge` → `cps_golf`, `subdomain stoneridgemn`, `courseIds "3"`, `websiteId 44b0bf6d-ac06-4319-1f69-08df28f9a05b` (from `GetAllOptions`). Same commit as the Teesnap fix so the Arizona data can't start flowing again in between. `scripts/seed.sql` regenerated (it also picked up `le-sueur` `disabled=1`, which `courses.json` already had).
+- COURSE-3 amended (a misconfig that *succeeds* with a same-named course elsewhere) + §4.C checklist item; research docs corrected.
+
+### Verification
+
+- Teesnap live smoke test (`vitest.smoke.config.mts`) 3/3 against the new endpoint; Daytona through the production Lambda (proxy allowlist entry `teesnap.net` covers `*.api.teesnap.net`): 51 tee times.
+- StoneRidge CPS flow (with the `Referer` fix): 50 slots for 2026-10-14, `courseName "StoneRidge"`, `GreenFee9Online` / `GreenFee18Online`.
+
+---
+
+## 2026-10-13 — CPS `Referer` gate: 17-course outage fix (branch `fix/cps-referer-challenge`)
+
+**Context:** `/check-logs` found 17 of 18 enabled CPS courses failing every poll with `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)`; `last_had_tee_times` put the onset at ~2026-09-10 13:00Z (~33 days, longer than `poll_log`'s 7-day retention). Edinburgh USA, the one survivor, is on a non-Cloudflare origin. The daily `CPS profile rotation` workflow stayed green throughout.
+
+### Root cause
+
+CPS's Cloudflare rules now challenge reservation calls (`RegisterTransactionId`, `TeeTimes`) that carry **no `Referer`**, regardless of TLS fingerprint. Evidence: invoking the production Lambda directly (`aws lambda invoke tee-times-fetch-proxy`) with the adapter's exact headers → `403 cf-mitigated: challenge`; same with a probe-style header set → origin response. Identical result from a residential IP with `curl_cffi 0.16.2`, so it is not the Lambda's IP. Removing headers one at a time: adding `Referer` alone clears it (`200 true`); `Origin` alone does not; removing any adapter header changes nothing. Same split on all 15 Cloudflare-fronted CPS hosts, including the probe's `jcgsc5`.
+
+**Why the canary missed it:** `probe.py` always sent `Referer` and the adapter never did, so the probe measured a request production does not make and kept reporting `CLEARED`. The rotation only rotates `curl_cffi` — it could not have fixed a header gate anyway, but it also hid the outage.
+
+### What shipped
+
+- `cps-golf.ts`: `bookingPageReferer(subdomain)` → `https://<subdomain>.cps.golf/onlineresweb/`, sent on the token call and via `buildHeaders` / `buildV4Headers` on every reservation call (v5 and v4, direct and proxied).
+- Three TDD tests (v5 direct, v4 direct, proxy path) asserting the `Referer` on every request; watched all three fail first.
+- DEPLOY-2 amended (the `Referer` gate, corrected v4 note, probe-fidelity lesson, §6.C checklist item); `probe.py` comment pinning its `Referer` to the adapter's.
+
+### Verification
+
+- Live, before merging: the adapter's flow with `Referer` replayed through the production Lambda returned 63 T. Wirth slots for 2026-10-14.
+- `vitest run src/adapters/cps-golf.test.ts` 41/41; `tsc --noEmit` clean; `eslint` clean on changed files.
+
+### Gotchas
+
+- `npm ci` fails locally under npm 11.4.2 (nested `wrangler` optional peer `@cloudflare/workers-types ^5` vs root `^4`); CI's npm accepts the same lockfile. Vitest in a worktree resolves the root checkout's `node_modules`.
+- A Python venv under the Claude scratchpad path fails to load `curl_cffi`'s DLL (path too long) — use a short path such as `C:\tmp\cpsv`.
+
+---
+
 ## 2026-07-12 — Dark-courses catalog remediation (branch `fix/dark-courses-catalog`)
 
 **Context:** Executed `docs/plans/2026-06-09-dark-courses-catalog-fix-plan.md` — the 17-course dark-course remediation the prior 429 investigation flagged as never-executed. Every "dark" course (zero `success` rows ever, silent `no_data` per COURSE-3) had migrated booking providers; the old platform keeps answering 200 with an empty teesheet. Fix repoints the migrated courses at their current platform, disables the ones with no adapter, and retires two orphan D1 rows.
