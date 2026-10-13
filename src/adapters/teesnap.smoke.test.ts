@@ -1,4 +1,4 @@
-// ABOUTME: Live API smoke tests for the Teesnap adapter against StoneRidge.
+// ABOUTME: Live API smoke tests for the Teesnap adapter against StoneRidge (Prescott Valley, AZ — open year-round).
 // ABOUTME: Validates adapter execution, raw API contract, and parsed output fields.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TeensnapAdapter } from "./teesnap";

@@ -49,8 +49,10 @@ export class TeensnapAdapter implements PlatformAdapter {
     if (!subdomain) throw new Error("Missing subdomain in platformConfig");
     if (!courseId) throw new Error("Missing courseId in platformConfig");
 
+    // The booking site (origin below) is a single-page app that serves its own
+    // HTML for unknown paths; tee-time data comes from the per-tenant API host.
     const url =
-      `https://${subdomain}.teesnap.net/customer-api/teetimes-day` +
+      `https://${subdomain}.api.teesnap.net/api/bookingsite/teetimes-day` +
       `?course=${courseId}&date=${date}&players=1&holes=18&addons=off`;
 
     const origin = `https://${subdomain}.teesnap.net`;

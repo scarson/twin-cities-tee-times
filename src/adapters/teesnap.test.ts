@@ -284,7 +284,7 @@ describe("TeensnapAdapter", () => {
 
     const url = fetchSpy.mock.calls[0][0] as string;
     expect(url).toBe(
-      "https://stoneridgegc.teesnap.net/customer-api/teetimes-day?course=1320&date=2026-04-15&players=1&holes=18&addons=off"
+      "https://stoneridgegc.api.teesnap.net/api/bookingsite/teetimes-day?course=1320&date=2026-04-15&players=1&holes=18&addons=off"
     );
   });
 
