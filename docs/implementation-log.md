@@ -4,6 +4,34 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-10-13 — CPS `Referer` gate: 17-course outage fix (branch `fix/cps-referer-challenge`)
+
+**Context:** `/check-logs` found 17 of 18 enabled CPS courses failing every poll with `CPS Golf reservation API blocked by Cloudflare challenge (HTTP 403)`; `last_had_tee_times` put the onset at ~2026-09-10 13:00Z (~33 days, longer than `poll_log`'s 7-day retention). Edinburgh USA, the one survivor, is on a non-Cloudflare origin. The daily `CPS profile rotation` workflow stayed green throughout.
+
+### Root cause
+
+CPS's Cloudflare rules now challenge reservation calls (`RegisterTransactionId`, `TeeTimes`) that carry **no `Referer`**, regardless of TLS fingerprint. Evidence: invoking the production Lambda directly (`aws lambda invoke tee-times-fetch-proxy`) with the adapter's exact headers → `403 cf-mitigated: challenge`; same with a probe-style header set → origin response. Identical result from a residential IP with `curl_cffi 0.16.2`, so it is not the Lambda's IP. Removing headers one at a time: adding `Referer` alone clears it (`200 true`); `Origin` alone does not; removing any adapter header changes nothing. Same split on all 15 Cloudflare-fronted CPS hosts, including the probe's `jcgsc5`.
+
+**Why the canary missed it:** `probe.py` always sent `Referer` and the adapter never did, so the probe measured a request production does not make and kept reporting `CLEARED`. The rotation only rotates `curl_cffi` — it could not have fixed a header gate anyway, but it also hid the outage.
+
+### What shipped
+
+- `cps-golf.ts`: `bookingPageReferer(subdomain)` → `https://<subdomain>.cps.golf/onlineresweb/`, sent on the token call and via `buildHeaders` / `buildV4Headers` on every reservation call (v5 and v4, direct and proxied).
+- Three TDD tests (v5 direct, v4 direct, proxy path) asserting the `Referer` on every request; watched all three fail first.
+- DEPLOY-2 amended (the `Referer` gate, corrected v4 note, probe-fidelity lesson, §6.C checklist item); `probe.py` comment pinning its `Referer` to the adapter's.
+
+### Verification
+
+- Live, before merging: the adapter's flow with `Referer` replayed through the production Lambda returned 63 T. Wirth slots for 2026-10-14.
+- `vitest run src/adapters/cps-golf.test.ts` 41/41; `tsc --noEmit` clean; `eslint` clean on changed files.
+
+### Gotchas
+
+- `npm ci` fails locally under npm 11.4.2 (nested `wrangler` optional peer `@cloudflare/workers-types ^5` vs root `^4`); CI's npm accepts the same lockfile. Vitest in a worktree resolves the root checkout's `node_modules`.
+- A Python venv under the Claude scratchpad path fails to load `curl_cffi`'s DLL (path too long) — use a short path such as `C:\tmp\cpsv`.
+
+---
+
 ## 2026-07-12 — Dark-courses catalog remediation (branch `fix/dark-courses-catalog`)
 
 **Context:** Executed `docs/plans/2026-06-09-dark-courses-catalog-fix-plan.md` — the 17-course dark-course remediation the prior 429 investigation flagged as never-executed. Every "dark" course (zero `success` rows ever, silent `no_data` per COURSE-3) had migrated booking providers; the old platform keeps answering 200 with an empty teesheet. Fix repoints the migrated courses at their current platform, disables the ones with no adapter, and retires two orphan D1 rows.

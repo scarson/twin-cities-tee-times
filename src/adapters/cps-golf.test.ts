@@ -195,6 +195,20 @@ describe("CpsGolfAdapter", () => {
     expect(ttHeaders["Authorization"]).toBe("Bearer test-bearer-token");
   });
 
+  it("sends the facility booking page as Referer on every request", async () => {
+    // CPS's Cloudflare rules challenge reservation calls that carry no
+    // Referer, even with a trusted browser TLS fingerprint (DEPLOY-2).
+    const fetchSpy = mockCpsFlow(fixture);
+
+    await adapter.fetchTeeTimes(mockConfig, "2026-03-12");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    for (const [, init] of fetchSpy.mock.calls) {
+      const headers = init?.headers as Record<string, string>;
+      expect(headers["Referer"]).toBe("https://jcgsc5.cps.golf/onlineresweb/");
+    }
+  });
+
   it("does not send x-apikey header", async () => {
     const fetchSpy = mockCpsFlow(fixture);
 
@@ -535,6 +549,24 @@ describe("CpsGolfAdapter", () => {
       expect(results).toHaveLength(3);
     });
 
+    it("sends the facility booking page as Referer on v4 requests", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response(JSON.stringify(true), { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(fixture), { status: 200 })
+        );
+
+      await adapter.fetchTeeTimes(v4Config, "2026-03-12", v4Env);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      for (const [, init] of fetchSpy.mock.calls) {
+        expect((init as RequestInit).headers).toHaveProperty(
+          "Referer",
+          "https://edinburghusa.cps.golf/onlineresweb/"
+        );
+      }
+    });
+
     it("skips transactionId when RegisterTransactionId returns 404", async () => {
       const fetchSpy = vi.spyOn(globalThis, "fetch")
         .mockResolvedValueOnce(new Response("Not Found", { status: 404 })) // register → 404
@@ -674,6 +706,18 @@ describe("CpsGolfAdapter", () => {
       expect(proxyFetch).toHaveBeenCalledTimes(3);
       expect(fetch).not.toHaveBeenCalled();
       expect(results).toHaveLength(3);
+    });
+
+    it("forwards the facility booking page as Referer on every proxied request", async () => {
+      await adapter.fetchTeeTimes(mockConfig, "2026-03-12", proxyEnv);
+
+      expect(proxyFetch).toHaveBeenCalledTimes(3);
+      for (const [request] of vi.mocked(proxyFetch).mock.calls) {
+        expect(request.headers).toHaveProperty(
+          "Referer",
+          "https://jcgsc5.cps.golf/onlineresweb/"
+        );
+      }
     });
 
     it("falls back to direct fetch when proxy env is not set", async () => {
