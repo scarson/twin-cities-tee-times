@@ -338,3 +338,25 @@ The deployment workflow now pins `aws-actions/aws-lambda-deploy` to `v1.1.1`, wh
 ### Quality checks
 
 `npm test` **780 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, and `npx @opennextjs/cloudflare build` complete (standard Windows compatibility warnings).
+
+## 2026-10-15 — Workers smoke-test integration moved to `@cloudflare/vitest-plugin`
+
+**Branch:** `ccr-8fbad59d-x1yl8h` → PR targets `dev` (Routine).
+
+Cloudflare renamed `@cloudflare/vitest-pool-workers` to `@cloudflare/vitest-plugin` at v1 and deprecated the old name ("will not receive future updates"). The old package's last release (0.23.0) peers on Vitest `^4.1.0` only; the plugin peers on `^4.1.0 || ^5.0.0`, so this also removes the blocker for any later Vitest 5 / Vite+ move.
+
+### What shipped
+
+- **`package.json` / `package-lock.json`** — `@cloudflare/vitest-pool-workers@^0.18.6` replaced by `@cloudflare/vitest-plugin@^1.4.2`.
+- **`vitest.smoke.config.mts`** — import source renamed. `cloudflareTest()` and its options are unchanged in v1.
+- **`docs/pitfalls/testing-pitfalls.md`** — the live-tests-on-the-production-runtime entry names the current package.
+
+### Key decisions
+
+- **Did not run Cloudflare's `vitest:pool-workers-to-vitest-plugin` codemod.** Read its source first: it is a `replaceAll` of the package name across every `*.json` file, which would rewrite `package-lock.json` keys while leaving the old `resolved`/`integrity` values. Did the same rename by hand and let `npm install` regenerate the lockfile.
+- **Lockfile churn is the plugin's own tree.** Top-level versions moved only for `semver` (7.7.4 → 7.8.5) and `zod` (4.3.6 → 4.6.5), both hoisting effects inside existing ranges. The plugin pins a pre-release `miniflare` (`5.20261012.0-beta`); the old package had already moved to a pre-release (`5.20260815.0-alpha`) by its final 0.23.0.
+- **Lockfile must be installed with npm 11 (Node 24, as CI does).** npm 10 rejects it on the nested Wrangler's optional `@cloudflare/workers-types@^5` peer — pre-existing, unchanged by this move.
+
+### Quality checks
+
+`npm run test:smoke` **21 passed / 3 skipped**, test-for-test identical to the run before the change (TeeWire ×3 skips are intentional). A throwaway probe under the smoke config confirmed tests still execute in `workerd` (`navigator.userAgent === "Cloudflare-Workers"`). `npm test` **783 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, `npx @opennextjs/cloudflare build` complete. `npm audit` total drops 28 → 27 (deprecated package removed).
