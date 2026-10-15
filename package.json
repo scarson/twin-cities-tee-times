@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
-    "@cloudflare/vitest-pool-workers": "^0.18.6",
+    "@cloudflare/vitest-plugin": "^1.4.2",
     "@cloudflare/workers-types": "^4.20260701.1",
     "@eslint/eslintrc": "^3.3.5",
     "@opennextjs/cloudflare": "^1.18.0",
