@@ -360,3 +360,9 @@ Cloudflare renamed `@cloudflare/vitest-pool-workers` to `@cloudflare/vitest-plug
 ### Quality checks
 
 `npm run test:smoke` **21 passed / 3 skipped**, test-for-test identical to the run before the change (TeeWire ×3 skips are intentional). A throwaway probe under the smoke config confirmed tests still execute in `workerd` (`navigator.userAgent === "Cloudflare-Workers"`). `npm test` **783 passing / 59 files** (six pre-existing canvas warnings), `npx tsc --noEmit` clean, `npm run lint` **0 errors / 3 pre-existing warnings**, `npx @opennextjs/cloudflare build` complete. `npm audit` total drops 28 → 27 (deprecated package removed).
+
+## 2026-10-15 — Vite+ evaluation recorded
+
+**Branch:** `ccr-8fbad59d-x1yl8h` → PR targets `dev` (Routine).
+
+Recorded the Vite+ 1.0 evaluation in `docs/research/2026-10-15-viteplus-evaluation.md` and a session handoff in `docs/plans/2026-10-15-viteplus-handoff.md`. Verdict: defer. Vite+'s build half does not apply to a Next.js + OpenNext app, its Vitest half is a small gain, and its Oxlint swap risks dropping `eslint-config-next` coverage. The one hard blocker, the Workers pool package's Vitest-4-only cap, was removed by the `@cloudflare/vitest-plugin` move above. Docs only; no code or configuration changed.
