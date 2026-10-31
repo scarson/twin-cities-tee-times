@@ -34,7 +34,7 @@
     "jose": "^6.2.2",
     "next": "^16.2.10",
     "react": "^19.2.5",
-    "react-day-picker": "^9.14.0",
+    "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
@@ -42,12 +42,12 @@
     "@cloudflare/vitest-plugin": "^1.4.2",
     "@cloudflare/workers-types": "^4.20260701.1",
     "@eslint/eslintrc": "^3.3.5",
-    "@opennextjs/cloudflare": "^1.18.0",
+    "@opennextjs/cloudflare": "^1.20.1",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.2.14",
     "better-sqlite3": "^12.8.0",
     "eslint": "^9.39.4",
@@ -58,7 +58,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vite": "^8.1.4",
-    "vitest": "^4.1.5",
+    "vitest": "^4.1.10",
     "vitest-axe": "^0.1.0",
     "wrangler": "^4.105.0"
   },
