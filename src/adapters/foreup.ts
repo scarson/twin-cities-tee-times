@@ -64,9 +64,22 @@ export class ForeUpAdapter implements PlatformAdapter {
       throw new Error(`ForeUp API returned HTTP ${response.status}`);
     }
 
-    const data: ForeUpTeeTime[] = await response.json();
+    const data: unknown = await response.json();
 
-    return data.flatMap((tt) => {
+    // ForeUp answers HTTP 200 with a bare `false` body and an X-Message header
+    // when the tee sheet is closed to online booking. An unknown schedule_id
+    // gets the same response, so it is surfaced as an error, never as [].
+    if (!Array.isArray(data)) {
+      const message = response.headers.get("X-Message");
+      if (message) {
+        throw new Error(`ForeUp tee sheet unavailable: ${message}`);
+      }
+      throw new Error(
+        `ForeUp API returned non-array body: ${JSON.stringify(data).slice(0, 200)}`
+      );
+    }
+
+    return (data as ForeUpTeeTime[]).flatMap((tt) => {
       const isInformative = (name: string | null | undefined): name is string =>
         !!name && name !== "New Tee Sheet";
       const nines = isInformative(tt.teesheet_side_name) && isInformative(tt.reround_teesheet_side_name)

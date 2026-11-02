@@ -114,6 +114,35 @@ describe("ForeUpAdapter", () => {
     await expect(adapter.fetchTeeTimes(mockConfig, "2026-04-15")).rejects.toThrow();
   });
 
+  it("throws with ForeUp's X-Message when the tee sheet is closed to online booking", async () => {
+    // Live shape captured 2026-11-02 from Deer Run (21800/8918) after the
+    // facility turned off online booking. An unknown schedule_id returns the
+    // identical response, so this is not a reliable "no tee times" signal.
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("false", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Message": "The requested tee sheet is not available for online bookings.",
+        },
+      })
+    );
+
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-11-03")).rejects.toThrow(
+      "ForeUp tee sheet unavailable: The requested tee sheet is not available for online bookings."
+    );
+  });
+
+  it("throws a descriptive error on a non-array body without X-Message", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "something" }), { status: 200 })
+    );
+
+    await expect(adapter.fetchTeeTimes(mockConfig, "2026-11-03")).rejects.toThrow(
+      'ForeUp API returned non-array body: {"error":"something"}'
+    );
+  });
+
   it("throws on 429 rate-limited response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response("Rate limited", { status: 429 })
