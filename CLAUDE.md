@@ -274,7 +274,7 @@ npm run build           # Production build (next build)
 npm test                # Run tests (vitest run)
 npm run test:watch      # Watch mode tests
 npm run lint            # ESLint (next lint)
-npx tsc --noEmit        # Type-check (excludes worker.ts — see tsconfig)
+npx tsc --noEmit        # Type-check with TypeScript 7 (excludes worker.ts — see tsconfig); npx tsc6 runs TypeScript 6
 npm run preview         # OpenNext build + wrangler dev (local CF preview)
 npm run deploy          # OpenNext build + wrangler deploy
 npm run seed:local      # Generate + apply seed data to local D1
@@ -298,7 +298,7 @@ npx wrangler d1 execute tee-times-db --local --command="SELECT * FROM courses"  
 |-------|--------|
 | Framework | Next.js 16 (App Router, Turbopack dev) |
 | UI | React 19, Tailwind CSS 4 |
-| Language | TypeScript 5 (strict) |
+| Language | TypeScript (strict): 7 for `tsc`, 6 API for tooling — see Language / Framework Gotchas |
 | Hosting | Cloudflare Workers (via OpenNext) |
 | Database | Cloudflare D1 (SQLite) |
 | Scheduling | Cron Triggers → Worker `scheduled()` handler |
@@ -340,6 +340,7 @@ READ `docs/pitfalls/implementation-pitfalls.md` for the full list — it's the s
 - **Never use `datetime()` in SQL comparisons.** It returns space-separated timestamps; JS `toISOString()` returns `T`-separated — lexicographic comparison is always wrong. Use `sqliteIsoNow()` from `src/lib/db.ts`. (DB-1)
 - **Never hard-delete courses.** `ON DELETE CASCADE` on `user_favorites`/`booking_clicks` destroys user data. Use `disabled = 1` or let `is_active` handle it. (DB-2)
 - **Seed script overwrites D1 on every deploy.** `scripts/seed.ts` resets seeded columns (`disabled`, `display_notes`, `platform_config`) from `courses.json`. Make those changes in `courses.json`, not just D1. (DB-3)
+- **Two TypeScript versions are installed side by side.** `npx tsc` is TypeScript 7 (devDependency `@typescript/native`, an npm alias of `typescript@^7`). The `typescript` package name is an npm alias of `@typescript/typescript6`, because TypeScript 7.0 ships no JavaScript API and typescript-eslint and `next build` load `typescript` programmatically. Never change `typescript` itself to `^7` (Dependabot will propose it): lint and build fail without the API. Move fully to 7 once TypeScript 7.1's API ships and typescript-eslint supports it.
 
 ### Universal Gotchas
 

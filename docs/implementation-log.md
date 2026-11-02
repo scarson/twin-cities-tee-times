@@ -4,6 +4,26 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-11-02 — TypeScript 7 side by side with the TypeScript 6 API (branch `build/typescript-7-side-by-side`)
+
+**Context:** Dependabot PR #165 (typescript 6.0.3 → 7.0.2) failed Lint, Build and E2E. TypeScript 7.0 is the native compiler and ships no JavaScript API: the `typescript@7` package's main export is only `lib/version.cjs`. typescript-eslint (8.72.1 peer range `>=4.8.4 <6.1.0`) and `next build` load `typescript` programmatically, so replacing it breaks both. The 7.0 announcement says the new API is expected in TypeScript 7.1 (beta 2026-10-20), and typescript-eslint's TS 7 support is in progress against it (typescript-eslint issue #10940).
+
+### What shipped
+
+The side-by-side setup from the TypeScript 7.0 announcement:
+
+- `"@typescript/native": "npm:typescript@^7.0.2"` provides `tsc`, so `npx tsc --noEmit` (CI's Type Check job) runs TypeScript 7.
+- `"typescript": "npm:@typescript/typescript6@^6.0.2"` keeps the `typescript` package name on the TypeScript 6 API for typescript-eslint and Next.js, and adds a `tsc6` command.
+- No `tsconfig.json` change was needed: none of 7.0's new hard errors (`baseUrl`, `moduleResolution: node`, `target: es5`, and others) apply.
+- `CLAUDE.md` and `AGENTS.md`: the tech stack row and a Language / Framework Gotchas entry explain the alias and say never to change `typescript` itself to `^7`.
+
+### Verification
+
+- `npx tsc --noEmit` on TypeScript 7.0.2: clean in 1.8 s, against 5.0 s for `tsc6` (cold, no incremental cache).
+- `require('typescript')` resolves to 6.0.3. `npm run lint`: 0 errors. `npm test`: 786/786.
+
+---
+
 ## 2026-11-02 — Inactive-course probe interval: hourly → daily (branch `fix/inactive-probe-daily`)
 
 **Context:** While diagnosing Deer Run's closed ForeUp tee sheet, the winter behaviour of the inactive-course probe came up. `runCronPoll` probed each inactive course (today + tomorrow, one `poll_log` row per date) whenever 60 minutes had passed. The design doc (`docs/plans/2026-03-08-tee-times-app-design.md`, course activity detection) specifies "a low-frequency background check (e.g., daily)".
