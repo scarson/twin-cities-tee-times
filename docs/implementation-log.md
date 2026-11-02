@@ -4,6 +4,30 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-11-02 — Inactive-course probe interval: hourly → daily (branch `fix/inactive-probe-daily`)
+
+**Context:** While diagnosing Deer Run's closed ForeUp tee sheet, the winter behaviour of the inactive-course probe came up. `runCronPoll` probed each inactive course (today + tomorrow, one `poll_log` row per date) whenever 60 minutes had passed. The design doc (`docs/plans/2026-03-08-tee-times-app-design.md`, course activity detection) specifies "a low-frequency background check (e.g., daily)".
+
+### Why it mattered
+
+With all 70 enabled courses inactive over a Minnesota winter, the hourly probe made about 3,360 upstream requests and wrote 3,360 `poll_log` rows a day, about 400K of each per season. It also spent Chronogolf lane time (that platform is rate-limited per IP, implementation-pitfalls CF-4) on courses under snow. Detecting a reopening within the hour has no value for a course that has been closed for 30+ days.
+
+### What shipped
+
+- `cron-handler.ts`: `INACTIVE_PROBE_INTERVAL_MINUTES = 24 * 60` replaces the literal `60` in the inactive-probe gate. The gate still keys on the last poll of today's date from the existing 24-hour `poll_log` lookup, so a course is probed again once no poll of today's date falls within the last 24 hours. Probes still cover today + tomorrow.
+- Tests: the "recently probed" case now uses a probe 22 hours earlier (failed against the hourly gate first), and a new case confirms a probe 25 hours earlier triggers one.
+- COURSE-1 and the `deactivateStaleCourses` doc comment now say daily.
+
+### Not changed
+
+The probe still only looks at today and tomorrow. A course that posts opening-day tee times a week in advance is detected the day before it opens. Widening the window was discussed and left out.
+
+### Verification
+
+- `cron-handler.test.ts` 63/63; full suite and `tsc --noEmit` clean (see PR).
+
+---
+
 ## 2026-11-02 — ForeUp non-array response handling (branch `fix/foreup-non-array-body`)
 
 **Context:** `deer-run` (ForeUp 21800/8918) logged `data.flatMap is not a function` on every poll from 2026-10-28T15:23Z (2,538 errors through 2026-11-02). It had tee times until 2026-10-25, then `[]` (`no_data`) until 2026-10-28T15:14Z.
@@ -22,7 +46,7 @@ A nonexistent `schedule_id` (tested `99999999`) returns the identical `false` + 
 
 ### Expected production behaviour
 
-Deer Run keeps logging `error` rows, now with the descriptive message, until `deactivateStaleCourses` sets `is_active = 0` (30 days after `last_had_tee_times` 2026-10-25, about 2026-11-24). After that the hourly inactive probe logs about 2 errors per hour until Deer Run reopens online booking, at which point the probe finds tee times and reactivates it.
+Deer Run keeps logging `error` rows, now with the descriptive message, until `deactivateStaleCourses` sets `is_active = 0` (30 days after `last_had_tee_times` 2026-10-25, about 2026-11-24). After that the daily inactive probe (interval changed from hourly in the entry above) logs 2 errors a day until Deer Run reopens online booking, at which point the probe finds tee times and reactivates it.
 
 ### Verification
 

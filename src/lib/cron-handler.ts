@@ -20,6 +20,15 @@ export const SUBREQUEST_BUDGET = 500; // Paid plan allows 10,000; headroom for ~
 export const CHRONOGOLF_LANE_BUDGET_MS = 210_000;
 
 /**
+ * Minimum time between probes of an inactive (seasonally closed) course.
+ * A course that has gone 30 days without tee times is closed for the season,
+ * so detecting its reopening within a day is soon enough; probing more often
+ * spends upstream requests, Chronogolf lane time, and poll_log writes on
+ * every closed course all winter.
+ */
+export const INACTIVE_PROBE_INTERVAL_MINUTES = 24 * 60;
+
+/**
  * Determine whether this cron invocation should actually poll,
  * based on current Central Time hour.
  *
@@ -405,7 +414,7 @@ export async function runCronPoll(
       }
     }
 
-    // --- Inactive courses: hourly probe of today + tomorrow ---
+    // --- Inactive courses: daily probe of today + tomorrow ---
     const probeDates = dates.slice(0, 2);
 
     for (const course of inactiveCourses) {
@@ -417,7 +426,7 @@ export async function runCronPoll(
           ? (Date.now() - new Date(lastProbed).getTime()) / 60000
           : Infinity;
 
-        if (minutesSinceProbe < 60) continue;
+        if (minutesSinceProbe < INACTIVE_PROBE_INTERVAL_MINUTES) continue;
 
         let foundTeeTimes = false;
 

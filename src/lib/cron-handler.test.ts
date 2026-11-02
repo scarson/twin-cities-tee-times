@@ -943,8 +943,9 @@ describe("runCronPoll active/inactive polling", () => {
     consoleSpy.mockRestore();
   });
 
-  it("does not probe inactive courses if polled less than 1 hour ago", async () => {
-    const recentPoll = new Date("2026-04-15T06:30:00-05:00").toISOString();
+  it("does not probe inactive courses if probed less than 24 hours ago", async () => {
+    // 22 hours before the 07:00 system time
+    const recentPoll = new Date("2026-04-14T09:00:00-05:00").toISOString();
     const courses = [
       makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
     ];
@@ -955,6 +956,21 @@ describe("runCronPoll active/inactive polling", () => {
 
     await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
     expect(mockedPollCourse).not.toHaveBeenCalled();
+  });
+
+  it("probes inactive courses again once 24 hours have passed", async () => {
+    // 25 hours before the 07:00 system time
+    const stalePoll = new Date("2026-04-14T06:00:00-05:00").toISOString();
+    const courses = [
+      makeCourseRow("test-inactive", "chronogolf", { is_active: 0 }),
+    ];
+    const db = makeMockDb(
+      courses,
+      [{ course_id: "test-inactive", date: "2026-04-15", last_polled: stalePoll }]
+    );
+
+    await withTimers(() => runCronPoll({ DB: db } as unknown as CloudflareEnv, BATCH_0_CRON));
+    expect(mockedPollCourse).toHaveBeenCalledTimes(2);
   });
 
   it("does not promote inactive course when poll returns error", async () => {
