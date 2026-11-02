@@ -195,7 +195,7 @@ Do not assume Workers, D1, Cron Trigger, or Wrangler semantics from memory. Use 
 **Why It Matters:** They control polling for different reasons and have different owners:
 
 - **`disabled`** (manual, permanent): set in `courses.json`. Means "the adapter can't work for this course" (bot protection, no API). Cron skips disabled courses entirely (`WHERE disabled = 0`). The UI shows a default amber message, greyed-out date buttons, and no tee-time list; a custom `display_notes` overrides the default message.
-- **`is_active`** (automatic, seasonal): managed **entirely by cron, never by humans**. Auto-deactivates after 30 days with no tee times (winter). Auto-reactivates when an hourly probe of today+tomorrow finds tee times (spring). The seed script does **not** touch `is_active` for existing courses.
+- **`is_active`** (automatic, seasonal): managed **entirely by cron, never by humans**. Auto-deactivates after 30 days with no tee times (winter). Auto-reactivates when the daily probe of today+tomorrow (`INACTIVE_PROBE_INTERVAL_MINUTES` in `src/lib/cron-handler.ts`) finds tee times (spring). The seed script does **not** touch `is_active` for existing courses.
 
 **The Fix:** Use `disabled` for permanent/manual exclusion via `courses.json`; leave `is_active` to the cron lifecycle. Never hand-set `is_active`.
 

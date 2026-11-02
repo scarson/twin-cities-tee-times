@@ -172,7 +172,7 @@ export async function cleanupPastTeeTimes(db: D1Database, todayStr: string): Pro
  *   for over 3 days, evidenced by a poll_log row older than 3 days. poll_log
  *   retention is 7 days (cleanupOldPolls), so the evidence window stays valid.
  * Courses with NULL last_had_tee_times and no aged polls (freshly added) are
- * left active. Deactivation is reversible: inactive courses get hourly probes
+ * left active. Deactivation is reversible: inactive courses get daily probes
  * and auto-reactivate when tee times appear (see runCronPoll).
  * Returns the number of deactivated courses.
  */
