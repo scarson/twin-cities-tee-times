@@ -4,6 +4,33 @@ Running record of substantive implementation work: what was built, key decisions
 
 ---
 
+## 2026-11-02 — ForeUp non-array response handling (branch `fix/foreup-non-array-body`)
+
+**Context:** `deer-run` (ForeUp 21800/8918) logged `data.flatMap is not a function` on every poll from 2026-10-28T15:23Z (2,538 errors through 2026-11-02). It had tee times until 2026-10-25, then `[]` (`no_data`) until 2026-10-28T15:14Z.
+
+### Root cause
+
+Deer Run switched off online booking on ForeUp. The facility record on its booking page now has `"online_booking":"0"` and `SCHEDULES = false`, and `api/booking/times` returns HTTP 200 with body `false` and header `X-Message: The requested tee sheet is not available for online bookings.`, for every date including spring 2027. The adapter cast the parsed body to an array and called `.flatMap` on `false`. The course has not changed provider: deerrungolf.com's "Tee Times" button still links to `foreupsoftware.com/index.php/booking/21800/8918`, and the facility record is still Deer Run Golf Club (MN), 8661 Deer Run Dr. Config unchanged.
+
+A nonexistent `schedule_id` (tested `99999999`) returns the identical `false` + `X-Message`, so the response cannot tell "closed to online booking" from "wrong schedule". Other ForeUp courses that ended their season (Braemar, Meadows at Mystic Lake, Emerald Greens Silver) still return `[]`.
+
+### What shipped
+
+- `foreup.ts`: a non-array body throws. With `X-Message` present the error is `ForeUp tee sheet unavailable: <X-Message>`, otherwise `ForeUp API returned non-array body: <first 200 chars>`. It does not return `[]`, because that would hide a misconfigured schedule as silent `no_data` (implementation-pitfalls COURSE-3).
+- Two unit tests (live `false` + `X-Message` shape, and a non-array object without the header), both watched fail with the production message first.
+- testing-pitfalls §9.5 entry for the `false` body.
+
+### Expected production behaviour
+
+Deer Run keeps logging `error` rows, now with the descriptive message, until `deactivateStaleCourses` sets `is_active = 0` (30 days after `last_had_tee_times` 2026-10-25, about 2026-11-24). After that the hourly inactive probe logs about 2 errors per hour until Deer Run reopens online booking, at which point the probe finds tee times and reactivates it.
+
+### Verification
+
+- `foreup.test.ts` 25/25; `tsc --noEmit` and ESLint clean.
+- Live through the adapter for 2026-11-03: `deer-run` throws `ForeUp tee sheet unavailable: The requested tee sheet is not available for online bookings.`; `bunker-hills` returns 74 tee times.
+
+---
+
 ## 2026-10-13 — Teesnap API host move + StoneRidge repoint (branch `fix/teesnap-api-host`)
 
 **Context:** The same `/check-logs` run showed `stoneridge` and `daytona` (Teesnap) failing every poll with `Unexpected token '<', "<!doctype "... is not valid JSON`; last tee times 2026-09-29.
