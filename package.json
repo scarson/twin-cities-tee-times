@@ -52,7 +52,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "better-sqlite3": "^12.8.0",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.4",
+    "eslint-config-next": "^16.4.3",
     "jsdom": "^29.0.2",
     "postcss": "^8.5.23",
     "tailwindcss": "^4.3.2",
