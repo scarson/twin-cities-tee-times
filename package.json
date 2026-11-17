@@ -32,7 +32,7 @@
     "arctic": "^3.7.0",
     "aws4fetch": "^1.0.20",
     "jose": "^6.2.2",
-    "next": "^16.4.4",
+    "next": "^16.4.6",
     "react": "^19.2.5",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.5"
